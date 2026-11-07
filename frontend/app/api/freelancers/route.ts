@@ -10,12 +10,17 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category');
+    const serviceCategory = searchParams.get('serviceCategory');
 
     const query: any = { role: 'freelancer' };
     if (category && ['dev', 'designer', 'marketer'].includes(category)) {
       query.category = category;
     }
+    if (serviceCategory) {
+      query.serviceCategories = serviceCategory;
+    }
 
+    // Never return password
     const freelancers = await UserModel.find(query)
       .select('-password')
       .sort({ rating: -1, createdAt: -1 })

@@ -80,7 +80,18 @@ export async function POST(req: NextRequest) {
       lower.includes('campaign');
 
     // Default to at least what's mentioned, or all 3 if broad general prompt
-    const activeRoles: { category: string; roleName: string; title: string; desc: string; ratio: number }[] = [];
+    interface RoleSpec {
+      category: string;
+      roleName: string;
+      title: string;
+      desc: string;
+      ratio: number;
+      skills: string[];
+      deliverables: string[];
+      estimatedDays: number;
+    }
+
+    const activeRoles: RoleSpec[] = [];
 
     if (needsDesigner || (!needsDev && !needsMarketer)) {
       activeRoles.push({
@@ -89,6 +100,9 @@ export async function POST(req: NextRequest) {
         title: 'Visual Identity & Interface Prototype',
         desc: `Produce brand marks, UI screens, and interactive user flows for: "${cleanPrompt.slice(0, 70)}..."`,
         ratio: 0.3,
+        skills: ['Figma', 'UI/UX Design', 'Brand Identity', 'Design Systems', 'Graphic Design'],
+        deliverables: ['Design System', 'Interactive Figma Prototype', 'Vector Brand Assets & Logo'],
+        estimatedDays: 7,
       });
     }
 
@@ -99,6 +113,9 @@ export async function POST(req: NextRequest) {
         title: 'Full-Stack Application Implementation',
         desc: 'Build responsive Next.js application, database schema, functional workflows, and API endpoints.',
         ratio: 0.5,
+        skills: ['Next.js', 'React', 'TypeScript', 'Node.js', 'MongoDB', 'REST APIs'],
+        deliverables: ['Production Next.js Codebase', 'Database Models & APIs', 'Deployment Pipeline'],
+        estimatedDays: 14,
       });
     }
 
@@ -109,6 +126,9 @@ export async function POST(req: NextRequest) {
         title: 'Search Optimization & Launch Campaign',
         desc: 'Execute SEO keyword strategy, conversion funnel tracking, and go-to-market campaign.',
         ratio: 0.2,
+        skills: ['SEO Strategy', 'Copywriting', 'Social Media Marketing', 'Google Analytics'],
+        deliverables: ['SEO Keyword Plan', 'Social Media Launch Creatives', 'Marketing Funnel Blueprint'],
+        estimatedDays: 5,
       });
     }
 
@@ -145,6 +165,16 @@ export async function POST(req: NextRequest) {
         assignedFreelancerEmail: matchedFreelancer?.email,
         inviteStatus: 'invited',
         status: 'Pending',
+        // AI Integration Fields
+        requiredSkills: r.skills,
+        deliverables: r.deliverables,
+        estimatedDays: r.estimatedDays,
+        currency: 'USD',
+        quotationAmount: allocatedPrice,
+        quotationCurrency: 'USD',
+        quotationDeliveryDays: r.estimatedDays,
+        quotationScope: r.desc,
+        quotationStatus: 'pending',
       });
     }
 

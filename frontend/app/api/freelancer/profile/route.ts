@@ -41,7 +41,21 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, bio, hourlyRate, skills, pastProjects, paypalEmail, availability } = body;
+    const {
+      title,
+      bio,
+      hourlyRate,
+      skills,
+      pastProjects,
+      paypalEmail,
+      availability,
+      serviceCategories,
+      yearsOfExperience,
+      typicalDeliveryDays,
+      indicativeProjectPrice,
+      location,
+      priceBasis,
+    } = body;
 
     await connectToDatabase();
 
@@ -56,6 +70,14 @@ export async function PUT(req: NextRequest) {
           ...(Array.isArray(pastProjects) && { pastProjects }),
           ...(paypalEmail !== undefined && { paypalEmail }),
           ...(availability !== undefined && { availability }),
+          ...(Array.isArray(serviceCategories) && { serviceCategories }),
+          ...(yearsOfExperience !== undefined && { yearsOfExperience: Number(yearsOfExperience) }),
+          ...(typicalDeliveryDays !== undefined && { typicalDeliveryDays: Number(typicalDeliveryDays) }),
+          ...(indicativeProjectPrice !== undefined && {
+            indicativeProjectPrice: Number(indicativeProjectPrice),
+          }),
+          ...(location !== undefined && { location }),
+          ...(priceBasis !== undefined && { priceBasis }),
         },
       },
       { new: true }

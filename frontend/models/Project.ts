@@ -18,6 +18,17 @@ export interface IWorkPackage {
   deliverableLink?: string;
   deliverableNotes?: string;
   progressUpdates?: IProgressUpdate[];
+
+  // AI Service Integration Fields (Optional for backward compatibility)
+  requiredSkills?: string[];
+  deliverables?: string[];
+  estimatedDays?: number;
+  currency?: string;
+  quotationAmount?: number;
+  quotationCurrency?: string;
+  quotationDeliveryDays?: number;
+  quotationScope?: string;
+  quotationStatus?: 'pending' | 'accepted' | 'declined' | 'counteroffer';
 }
 
 export interface IProjectDocument extends Document {
@@ -86,6 +97,20 @@ const WorkPackageSchema = new Schema<IWorkPackage>({
   deliverableLink: { type: String },
   deliverableNotes: { type: String },
   progressUpdates: [ProgressUpdateSchema],
+
+  // AI Integration Fields
+  requiredSkills: [{ type: String }],
+  deliverables: [{ type: String }],
+  estimatedDays: { type: Number },
+  currency: { type: String, default: 'USD' },
+  quotationAmount: { type: Number },
+  quotationCurrency: { type: String, default: 'USD' },
+  quotationDeliveryDays: { type: Number },
+  quotationScope: { type: String },
+  quotationStatus: {
+    type: String,
+    enum: ['pending', 'accepted', 'declined', 'counteroffer'],
+  },
 });
 
 const ProjectSchema = new Schema<IProjectDocument>(
@@ -109,6 +134,10 @@ const ProjectSchema = new Schema<IProjectDocument>(
   },
   { timestamps: true }
 );
+
+// Indexes for querying projects by merchant and assigned freelancers
+ProjectSchema.index({ merchantId: 1, createdAt: -1 });
+ProjectSchema.index({ 'workPackages.assignedFreelancerId': 1 });
 
 export const ProjectModel: Model<IProjectDocument> =
   mongoose.models.Project || mongoose.model<IProjectDocument>('Project', ProjectSchema);

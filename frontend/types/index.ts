@@ -24,7 +24,15 @@ export interface IUser {
   completedProjects?: number;
   pastProjects?: IPastProject[];
   availability?: 'available' | 'busy';
+  // AI Integration Fields (optional for backward compatibility)
+  serviceCategories?: string[];
+  yearsOfExperience?: number;
+  typicalDeliveryDays?: number;
+  indicativeProjectPrice?: number;
+  location?: string;
+  priceBasis?: 'hour' | 'project';
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface IProgressUpdate {
@@ -62,6 +70,16 @@ export interface WorkPackage {
   deliverableLink?: string;
   deliverableNotes?: string;
   progressUpdates?: IProgressUpdate[];
+  // AI Integration Fields (optional for backward compatibility)
+  requiredSkills?: string[];
+  deliverables?: string[];
+  estimatedDays?: number;
+  currency?: string;
+  quotationAmount?: number;
+  quotationCurrency?: string;
+  quotationDeliveryDays?: number;
+  quotationScope?: string;
+  quotationStatus?: 'pending' | 'accepted' | 'declined' | 'counteroffer';
 }
 
 export interface ProjectProposal {
@@ -80,4 +98,18 @@ export interface ProjectProposal {
   status: 'draft' | 'funded' | 'completed';
   paypalOrderId?: string;
   createdAt: string;
+}
+
+export interface IServiceCatalog {
+  _id?: string;
+  serviceId: string;
+  category: string;
+  description: string;
+  baselinePrice: number;
+  minimumPrice: number;
+  maximumPrice: number;
+  currency: string;
+  managedBy: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
