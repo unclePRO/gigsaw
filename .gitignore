@@ -1,0 +1,69 @@
+# ==========================================
+# Frontend (Next.js / Node.js)
+# ==========================================
+node_modules/
+*/node_modules/
+.pnp
+.pnp.js
+
+# Next.js Build Outputs
+.next/
+*/.next/
+out/
+*/out/
+build/
+*/build/
+dist/
+*/dist/
+
+# TypeScript Build Info
+*.tsbuildinfo
+next-env.d.ts
+*/next-env.d.ts
+
+# Environment Variables (Keep secrets safe!)
+.env
+.env*.local
+.env.local
+*/.env
+*/.env*.local
+*/.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vercel
+.vercel
+*/.vercel
+
+# ==========================================
+# Backend (Python / FastAPI)
+# ==========================================
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ==========================================
+# Operating System & IDE Files
+# ==========================================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
