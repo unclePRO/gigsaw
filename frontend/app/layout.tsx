@@ -33,7 +33,7 @@ export default function RootLayout({
                     <span>AI Team Assembly & Escrow</span>
                   </div>
                   <div>
-                    Built for the PayPal AI Hackathon &bull; &copy; {new Date().getFullYear()}
+                    Next-Generation AI Freelance Platform &bull; &copy; {new Date().getFullYear()}
                   </div>
                 </div>
               </footer>
