@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   UserCheck,
   UserX,
+  Sparkles,
 } from 'lucide-react';
 import { WorkPackage, ProjectProposal } from '@/types';
 import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
@@ -111,31 +112,31 @@ export default function MerchantDashboardPage() {
   const columnDefs = useMemo<ColDef<WorkPackage>[]>(() => [
     {
       field: 'category',
-      headerName: 'Role Category',
-      width: 130,
+      headerName: 'Specialty',
+      width: 140,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
         const cat = params.data?.category || 'dev';
         const role = params.data?.roleName;
         return (
-          <div className="py-2">
-            <span className="font-extrabold uppercase text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-800 inline-block">
+          <div className="py-2.5">
+            <span className="font-extrabold uppercase text-[10px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 inline-block">
               {cat}
             </span>
-            {role && <div className="text-[10px] text-slate-400 truncate">{role}</div>}
+            {role && <div className="text-[10px] text-slate-400 truncate mt-0.5">{role}</div>}
           </div>
         );
       },
     },
     {
       field: 'title',
-      headerName: 'Milestone / Task',
+      headerName: 'Milestone Task',
       flex: 1.6,
-      minWidth: 200,
+      minWidth: 220,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
         if (!params.data) return null;
         return (
-          <div className="py-2">
-            <div className="font-bold text-slate-900 leading-snug">{params.data.title}</div>
+          <div className="py-2.5">
+            <div className="font-bold text-slate-900 dark:text-white leading-snug">{params.data.title}</div>
             <div className="text-[11px] text-slate-400 truncate">{params.data.description}</div>
           </div>
         );
@@ -150,11 +151,11 @@ export default function MerchantDashboardPage() {
         const name = params.data?.assignedFreelancerName;
         const email = params.data?.assignedFreelancerEmail;
         if (!name) {
-          return <span className="text-slate-400 text-xs py-3 block">Pending Talent Match</span>;
+          return <span className="text-slate-400 text-xs py-3 block italic">Open Milestone</span>;
         }
         return (
-          <div className="py-2">
-            <div className="font-bold text-xs text-slate-900">{name}</div>
+          <div className="py-2.5">
+            <div className="font-bold text-xs text-slate-900 dark:text-white">{name}</div>
             <div className="text-[11px] text-slate-400 truncate">{email}</div>
           </div>
         );
@@ -163,27 +164,27 @@ export default function MerchantDashboardPage() {
     {
       field: 'inviteStatus',
       headerName: 'Invite Status',
-      width: 130,
+      width: 140,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
         const inv = params.data?.inviteStatus || 'invited';
         if (inv === 'accepted') {
           return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 my-3">
-              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 my-3">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               <span>Accepted</span>
             </span>
           );
         }
         if (inv === 'declined') {
           return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 my-3">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 my-3">
               <span>Declined</span>
             </span>
           );
         }
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 my-3">
-            <Clock className="w-3 h-3 text-amber-600" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 my-3">
+            <Clock className="w-3 h-3 text-amber-500" />
             <span>Invite Sent</span>
           </span>
         );
@@ -192,43 +193,45 @@ export default function MerchantDashboardPage() {
     {
       field: 'allocatedPrice',
       headerName: 'Price ($)',
-      width: 100,
+      width: 110,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => (
-        <span className="font-bold text-slate-900 py-3 block">${params.data?.allocatedPrice}</span>
+        <span className="font-bold text-slate-900 dark:text-white py-3 block">
+          ${params.data?.allocatedPrice}
+        </span>
       ),
     },
     {
       field: 'status',
       headerName: 'Milestone State',
-      width: 130,
+      width: 140,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
         const status = params.data?.status || 'Pending';
         if (status === 'Completed') {
           return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
-              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               <span>Completed</span>
             </span>
           );
         }
         if (status === 'In Progress') {
           return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">
-              <Clock className="w-3 h-3 text-amber-600" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+              <Clock className="w-3 h-3 text-amber-500" />
               <span>In Progress</span>
             </span>
           );
         }
         if (status === 'Revision Requested') {
           return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">
-              <AlertTriangle className="w-3 h-3 text-rose-600" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300">
+              <AlertTriangle className="w-3 h-3 text-rose-500" />
               <span>Revision</span>
             </span>
           );
         }
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
             <span>Pending</span>
           </span>
         );
@@ -240,13 +243,13 @@ export default function MerchantDashboardPage() {
       width: 120,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
         const link = params.data?.deliverableLink;
-        if (!link) return <span className="text-slate-400 text-xs py-3 block">None</span>;
+        if (!link) return <span className="text-slate-400 text-xs py-3 block italic">None yet</span>;
         return (
           <a
             href={link}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-bold text-cyan-600 hover:underline py-3"
+            className="inline-flex items-center gap-1 text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline py-3"
           >
             <span>Review</span>
             <ExternalLink className="w-3 h-3" />
@@ -256,20 +259,20 @@ export default function MerchantDashboardPage() {
     },
     {
       headerName: 'Actions',
-      width: 170,
+      width: 180,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
         const wp = params.data;
         if (!wp || !currentProjectId) return null;
         const isCompleted = wp.status === 'Completed';
 
         return (
-          <div className="flex items-center gap-1.5 py-2">
+          <div className="flex items-center gap-1.5 py-2.5">
             <button
               onClick={() => handleUpdateStatus(currentProjectId, wp.id, 'Completed')}
               disabled={isCompleted}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
                 isCompleted
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                   : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
               }`}
             >
@@ -280,7 +283,7 @@ export default function MerchantDashboardPage() {
               onClick={() =>
                 setRevisionModalOpen({ projectId: currentProjectId, packageId: wp.id })
               }
-              className="px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700"
+              className="px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
             >
               Revision
             </button>
@@ -291,65 +294,84 @@ export default function MerchantDashboardPage() {
   ], [currentProjectId]);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Project Dashboard</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Monitor dynamic roles, milestone invitation states, and chat with your assigned team.
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+              Merchant Management
+            </span>
+            <span className="text-xs font-semibold text-slate-400">
+              AG Grid Powered
+            </span>
+          </div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5">
+            Project Dashboard
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Track milestone delivery, inspect submitted links, communicate via team chat, and release escrow payouts.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={fetchProjects}
-            className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"
+            className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             title="Refresh from MongoDB"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <Link
             href="/create"
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold rounded-lg shadow-sm transition-colors"
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold rounded-xl shadow-glow-cyan transition-all"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>New Project</span>
+            <span>Launch New Project</span>
           </Link>
         </div>
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500 text-xs">
-          <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-600" />
-          <span>Fetching projects from MongoDB Atlas...</span>
+        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
+          <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-500" />
+          <span>Synchronizing with MongoDB Atlas...</span>
         </div>
       ) : !currentProject ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-4">
-          <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4 shadow-sm transition-colors">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
             <FolderOpen className="w-6 h-6" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-slate-900">No projects found in MongoDB</h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              You haven&apos;t launched any projects yet. Use the project creator to decompose your project and send invitations to freelancers.
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">No projects found in MongoDB Atlas</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              You haven&apos;t launched any projects yet. Use the project studio to decompose your project and coordinate your specialist team.
             </p>
           </div>
           <Link
             href="/create"
-            className="inline-block px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold rounded-lg shadow-sm"
+            className="inline-block px-5 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold rounded-xl shadow-glow-cyan transition-all"
           >
-            Create Your First Project
+            Launch Your First Project
           </Link>
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* Active Project Card */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div className="space-y-5">
+          {/* Active Project Banner Card */}
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 flex flex-wrap items-center justify-between gap-4 shadow-sm transition-colors">
             <div>
-              <span className="text-xs text-slate-400 font-bold uppercase">Active Project</span>
-              <h2 className="text-lg font-bold text-slate-900">{currentProject.projectName}</h2>
-              <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{currentProject.merchantPrompt}</p>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 px-2 py-0.5 rounded-full">
+                  Active Project
+                </span>
+                <span className="text-xs text-slate-400">Escrow Funded</span>
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
+                {currentProject.projectName}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 max-w-xl">
+                {currentProject.merchantPrompt}
+              </p>
             </div>
 
             <div className="flex items-center gap-4">
@@ -362,36 +384,41 @@ export default function MerchantDashboardPage() {
                   });
                   setChatOpen(true);
                 }}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors"
+                className="px-4 py-2.5 bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
               >
-                <MessageSquare className="w-4 h-4 text-cyan-400" />
-                <span>Team Chat</span>
+                <MessageSquare className="w-4 h-4" />
+                <span>Team Chat Room</span>
               </button>
 
-              <div className="text-right border-l pl-4 border-slate-200">
-                <span className="text-xs text-slate-400 font-medium block">Total Budget</span>
-                <span className="text-lg font-bold text-slate-900">${currentProject.totalBudget}</span>
+              <div className="text-right border-l border-slate-200 dark:border-slate-800 pl-4">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Budget</span>
+                <span className="text-xl font-black text-slate-900 dark:text-white">${currentProject.totalBudget}</span>
               </div>
             </div>
           </div>
 
           {/* AG Grid Work Packages Table */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 text-sm">
-                Project Milestones ({currentProject.workPackages.length} Dynamic Roles)
-              </h3>
-              <span className="text-xs text-slate-400">
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm transition-colors">
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                  Project Milestones & Deliverable Tracking
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {currentProject.workPackages.length} Assembled Milestones
+                </p>
+              </div>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
                 {currentProject.workPackages.filter((w) => w.status === 'Completed').length} of{' '}
                 {currentProject.workPackages.length} Completed
               </span>
             </div>
 
-            <div className="ag-theme-alpine w-full h-[320px]">
+            <div className="ag-theme-alpine w-full h-[340px]">
               <AgGridReact<WorkPackage>
                 rowData={currentProject.workPackages}
                 columnDefs={columnDefs}
-                rowHeight={60}
+                rowHeight={64}
                 animateRows={true}
               />
             </div>
@@ -401,26 +428,26 @@ export default function MerchantDashboardPage() {
 
       {/* Revision Modal */}
       {revisionModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl space-y-4 border border-slate-200">
-            <h4 className="font-bold text-slate-900 text-base">Request Revision</h4>
-            <p className="text-xs text-slate-500">
-              Enter specific revision notes for this milestone:
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200 dark:border-slate-800">
+            <h4 className="font-bold text-slate-900 dark:text-white text-base">Request Revision from Specialist</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Provide feedback or specify required adjustments before approving this milestone:
             </p>
 
             <textarea
               rows={4}
               value={revisionFeedback}
               onChange={(e) => setRevisionFeedback(e.target.value)}
-              placeholder="e.g. Please update the hero font and add mobile breakpoints..."
-              className="w-full p-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              placeholder="e.g. Please update the color contrast on the mobile view and adjust typography..."
+              className="w-full p-3.5 text-xs border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 leading-relaxed"
             />
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setRevisionModalOpen(null)}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -435,9 +462,9 @@ export default function MerchantDashboardPage() {
                   setRevisionModalOpen(null);
                   setRevisionFeedback('');
                 }}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-rose-600 hover:bg-rose-700"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm"
               >
-                Send Request
+                Send Revision Request
               </button>
             </div>
           </div>

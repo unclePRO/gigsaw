@@ -14,11 +14,18 @@ import {
   Layers,
   Sparkles,
   LogIn,
+  Sun,
+  Moon,
+  PlusCircle,
+  BarChart3,
+  CheckSquare,
 } from 'lucide-react';
+import { useTheme } from '@/components/providers/ThemeProvider';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { theme, toggleTheme } = useTheme();
   const [profileOpen, setProfileOpen] = useState(false);
 
   const user = session?.user as any;
@@ -26,129 +33,155 @@ export const Navbar: React.FC = () => {
   const isFreelancer = user?.role === 'freelancer';
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
+    <header className="sticky top-0 z-50 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Brand Logo */}
-        <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          <Image
-            src="/logo.jpg"
-            alt="GigSaw"
-            width={32}
-            height={32}
-            className="rounded-lg object-contain"
-            priority
-          />
-          <span className="font-extrabold text-xl text-slate-900 tracking-tight">GigSaw</span>
+        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+          <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-105">
+            <Image
+              src="/logo.jpg"
+              alt="GigSaw"
+              width={32}
+              height={32}
+              className="object-contain w-full h-full"
+              priority
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-extrabold text-xl text-slate-900 dark:text-white tracking-tight">GigSaw</span>
+            <span className="hidden sm:inline-block text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+              AI
+            </span>
+          </div>
         </Link>
 
         {/* Center: Navigation Links */}
-        <nav className="flex items-center justify-center gap-2 text-sm font-semibold">
+        <nav className="flex items-center justify-center gap-1.5 text-xs font-semibold">
           {session ? (
-            /* Center links when logged in */
+            /* Navigation links when authenticated */
             isMerchant ? (
               <>
                 <Link
                   href="/create"
-                  className={`px-3.5 py-2 rounded-lg transition-colors ${
+                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
                     pathname === '/create'
-                      ? 'bg-cyan-50 text-cyan-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
                   }`}
                 >
-                  Create Project
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Launch Project</span>
                 </Link>
                 <Link
                   href="/dashboard"
-                  className={`px-3.5 py-2 rounded-lg transition-colors ${
+                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
                     pathname === '/dashboard'
-                      ? 'bg-cyan-50 text-cyan-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
                   }`}
                 >
-                  Project Dashboard
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  <span>Project Dashboard</span>
                 </Link>
               </>
             ) : (
               <>
                 <Link
                   href="/freelancer/dashboard"
-                  className={`px-3.5 py-2 rounded-lg transition-colors ${
+                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
                     pathname === '/freelancer/dashboard'
-                      ? 'bg-cyan-50 text-cyan-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
                   }`}
                 >
-                  My Gigs
-                </Link>
-                <Link
-                  href="/freelancer/profile"
-                  className={`px-3.5 py-2 rounded-lg transition-colors ${
-                    pathname === '/freelancer/profile'
-                      ? 'bg-cyan-50 text-cyan-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  Skills & Portfolio
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>My Gigs</span>
                 </Link>
                 <Link
                   href="/freelancer/invitations"
-                  className={`px-3.5 py-2 rounded-lg transition-colors ${
+                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
                     pathname === '/freelancer/invitations'
-                      ? 'bg-cyan-50 text-cyan-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
                   }`}
                 >
-                  Invitations
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>Invitations</span>
+                </Link>
+                <Link
+                  href="/freelancer/profile"
+                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
+                    pathname === '/freelancer/profile'
+                      ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>Portfolio</span>
                 </Link>
               </>
             )
           ) : (
-            /* Center links when NOT logged in: 'Hire Freelancers' and 'Find Work' */
-            <div className="flex items-center gap-3">
+            /* Clean action links when NOT authenticated */
+            <div className="flex items-center gap-2">
               <Link
                 href="/login?tab=register&role=merchant"
-                className="px-4 py-2 rounded-lg text-xs font-bold text-slate-700 hover:text-slate-950 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-lg font-bold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-1.5"
               >
-                <Users className="w-3.5 h-3.5 text-cyan-600" />
+                <Users className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                 <span>Hire Freelancers</span>
               </Link>
               <Link
                 href="/login?tab=register&role=freelancer"
-                className="px-4 py-2 rounded-lg text-xs font-bold text-slate-700 hover:text-slate-950 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-lg font-bold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-1.5"
               >
-                <Briefcase className="w-3.5 h-3.5 text-cyan-600" />
+                <Briefcase className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                 <span>Find Work</span>
               </Link>
             </div>
           )}
         </nav>
 
-        {/* Right Auth: Sign In button has the blue/cyan styling */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Right: Theme Toggle & Auth */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Theme Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-all border border-slate-200 dark:border-slate-800"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-amber-400 transition-transform rotate-0 scale-100" />
+            ) : (
+              <Moon className="w-4 h-4 text-slate-600 transition-transform rotate-0 scale-100" />
+            )}
+          </button>
+
           {session?.user ? (
             <div className="relative">
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-2 p-1.5 pl-2.5 rounded-full border border-slate-200 hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-2 p-1 pl-2.5 rounded-full border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
               >
-                <span className="text-xs font-bold text-slate-800 max-w-[120px] truncate">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[110px] truncate">
                   {user.name}
                 </span>
-                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                   {user.role === 'freelancer' && user.category ? user.category : user.role}
                 </span>
-                <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">
+                <div className="w-6 h-6 rounded-full bg-cyan-500 text-white font-bold flex items-center justify-center text-xs">
                   {user.name?.charAt(0) || 'U'}
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 mr-1" />
               </button>
 
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 text-xs z-50">
-                  <div className="px-3 py-2 border-b border-slate-100">
-                    <p className="font-bold text-slate-900">{user.name}</p>
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#0F172A] rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 text-xs z-50">
+                  <div className="px-3.5 py-2.5 border-b border-slate-100 dark:border-slate-800">
+                    <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
                     <p className="text-slate-400 text-[11px] truncate">{user.email}</p>
-                    <span className="inline-block mt-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700">
+                    <span className="inline-block mt-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/80 text-cyan-700 dark:text-cyan-400">
                       {user.role} {user.category ? `(${user.category})` : ''}
                     </span>
                   </div>
@@ -158,7 +191,7 @@ export const Navbar: React.FC = () => {
                       <Link
                         href="/dashboard"
                         onClick={() => setProfileOpen(false)}
-                        className="block px-3 py-1.5 hover:bg-slate-50 text-slate-700"
+                        className="block px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium"
                       >
                         Merchant Dashboard
                       </Link>
@@ -167,28 +200,28 @@ export const Navbar: React.FC = () => {
                         <Link
                           href="/freelancer/dashboard"
                           onClick={() => setProfileOpen(false)}
-                          className="block px-3 py-1.5 hover:bg-slate-50 text-slate-700"
+                          className="block px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium"
                         >
                           My Gigs
                         </Link>
                         <Link
                           href="/freelancer/profile"
                           onClick={() => setProfileOpen(false)}
-                          className="block px-3 py-1.5 hover:bg-slate-50 text-slate-700"
+                          className="block px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium"
                         >
-                          Skills & Portfolio
+                          Portfolio & Profile
                         </Link>
                       </>
                     )}
                   </div>
 
-                  <div className="border-t border-slate-100 pt-1">
+                  <div className="border-t border-slate-100 dark:border-slate-800 pt-1">
                     <button
                       onClick={() => {
                         setProfileOpen(false);
                         signOut({ callbackUrl: '/login' });
                       }}
-                      className="w-full text-left px-3 py-2 hover:bg-rose-50 text-rose-600 flex items-center gap-1.5 font-semibold"
+                      className="w-full text-left px-3.5 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center gap-1.5 font-semibold"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>Log Out</span>
@@ -198,10 +231,10 @@ export const Navbar: React.FC = () => {
               )}
             </div>
           ) : (
-            /* Sign In button with the Cyan/Blue highlight on the right */
+            /* Sign In button with Cyan highlight */
             <Link
               href="/login"
-              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 active:scale-95 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>Sign In</span>

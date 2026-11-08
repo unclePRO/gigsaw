@@ -13,6 +13,9 @@ import {
   FolderOpen,
   ArrowRight,
   ShieldCheck,
+  DollarSign,
+  AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 import { ProjectProposal } from '@/types';
 
@@ -67,7 +70,7 @@ export default function FreelancerInvitationsPage() {
       const data = await res.json();
       if (data.success) {
         if (action === 'accept') {
-          setSuccessActionMsg('Invitation accepted! This gig is now active in your workspace.');
+          setSuccessActionMsg('Invitation accepted! This milestone is now active in your workspace.');
         } else {
           setSuccessActionMsg('Invitation declined.');
         }
@@ -99,42 +102,52 @@ export default function FreelancerInvitationsPage() {
 
   if (loading || status === 'loading') {
     return (
-      <div className="p-12 text-center text-xs text-slate-500">
-        <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-cyan-600" />
+      <div className="p-16 text-center text-xs text-slate-400">
+        <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-cyan-500" />
         <span>Loading invitations from MongoDB...</span>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Task Invitations</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Milestones matched by our AI talent selection engine for your category (
-            <strong className="uppercase">{userCategory}</strong>).
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+              Matched Opportunities
+            </span>
+            <span className="text-xs font-semibold text-slate-400">
+              {pendingInvites.length} Pending
+            </span>
+          </div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5">
+            Task Invitations
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Milestones matched by our AI talent selection engine for your specialty (
+            <strong className="uppercase text-cyan-600 dark:text-cyan-400">{userCategory}</strong>).
           </p>
         </div>
 
         <button
           onClick={fetchInvitations}
-          className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 self-start sm:self-auto"
-          title="Refresh"
+          className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors self-start sm:self-auto"
+          title="Refresh Invitations"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {successActionMsg && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center justify-between">
+        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
             <span>{successActionMsg}</span>
           </div>
           <Link
             href="/freelancer/dashboard"
-            className="text-cyan-700 underline font-bold hover:text-cyan-900"
+            className="text-cyan-600 dark:text-cyan-400 underline font-bold hover:text-cyan-700 dark:hover:text-cyan-300 shrink-0"
           >
             Go to Active Gigs &rarr;
           </Link>
@@ -142,18 +155,22 @@ export default function FreelancerInvitationsPage() {
       )}
 
       {pendingInvites.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
-          <FolderOpen className="w-9 h-9 text-slate-300 mx-auto" />
-          <h3 className="text-base font-bold text-slate-900">No Pending Invitations</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            You currently have no pending invites. When a merchant launches a project that matches your skills, AI invitations will arrive here.
-          </p>
+        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4 shadow-sm transition-colors">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+            <FolderOpen className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">No Pending Invitations</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              You are all caught up! When a merchant launches a project that matches your skills, AI invitations with guaranteed PayPal escrow will arrive here.
+            </p>
+          </div>
           <div className="pt-2">
             <Link
               href="/freelancer/profile"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
             >
-              <span>Update Skills & Portfolio to Increase Matches</span>
+              <span>Update Skills & Portfolio</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -167,47 +184,47 @@ export default function FreelancerInvitationsPage() {
             return (
               <div
                 key={`${projId}-${pkg.id}`}
-                className="bg-white rounded-xl border border-slate-200 p-6 space-y-4 shadow-sm"
+                className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded">
-                        Category: {pkg.category} {pkg.roleName ? `• ${pkg.roleName}` : ''}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 px-2.5 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-800">
+                        Specialty: {pkg.category} {pkg.roleName ? `• ${pkg.roleName}` : ''}
                       </span>
-                      <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-bold">
-                        Pending Your Acceptance
+                      <span className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full font-bold border border-amber-200 dark:border-amber-800">
+                        Action Required
                       </span>
                     </div>
-                    <h2 className="text-lg font-bold text-slate-900 mt-1">{project.projectName}</h2>
-                    <p className="text-xs text-slate-500">
-                      Merchant: <strong className="text-slate-700">{project.merchantName}</strong> ({project.merchantEmail})
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1.5">{project.projectName}</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Merchant: <strong className="text-slate-700 dark:text-slate-300">{project.merchantName}</strong> ({project.merchantEmail})
                     </p>
                   </div>
 
-                  <div className="text-right">
-                    <span className="text-xs text-slate-400 block font-medium">Offered Payout</span>
-                    <span className="text-2xl font-black text-slate-900">${pkg.allocatedPrice}</span>
+                  <div className="text-left sm:text-right">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Milestone Offer</span>
+                    <span className="text-2xl font-black text-slate-900 dark:text-white">${pkg.allocatedPrice} <span className="text-xs font-semibold text-slate-400">USD</span></span>
                   </div>
                 </div>
 
-                <div className="space-y-1 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                  <span className="text-xs font-bold text-slate-700">{pkg.title}</span>
-                  <p className="text-xs text-slate-600 leading-relaxed">{pkg.description}</p>
+                <div className="space-y-1.5 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{pkg.title}</span>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{pkg.description}</p>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Payment authorized by merchant in escrow</span>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>Funds authorized in PayPal Escrow &bull; Released on milestone approval</span>
                   </span>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
                     <button
                       type="button"
                       disabled={isProcessing}
                       onClick={() => handleRespond(projId, pkg.id, 'decline')}
-                      className="px-3.5 py-1.5 border border-slate-300 hover:bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold transition-colors"
+                      className="px-4 py-2 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-semibold transition-colors"
                     >
                       Decline
                     </button>
@@ -215,14 +232,14 @@ export default function FreelancerInvitationsPage() {
                       type="button"
                       disabled={isProcessing}
                       onClick={() => handleRespond(projId, pkg.id, 'accept')}
-                      className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                      className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
                     >
                       {isProcessing ? (
                         <span>Processing...</span>
                       ) : (
                         <>
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Accept & Start Gig</span>
+                          <span>Accept Milestone</span>
                         </>
                       )}
                     </button>
