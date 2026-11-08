@@ -19,7 +19,7 @@ export interface IWorkPackage {
   deliverableNotes?: string;
   progressUpdates?: IProgressUpdate[];
 
-  // AI Service Integration Fields (Optional for backward compatibility)
+  // AI Integration Fields (Optional for backward compatibility)
   requiredSkills?: string[];
   deliverables?: string[];
   estimatedDays?: number;
@@ -29,6 +29,9 @@ export interface IWorkPackage {
   quotationDeliveryDays?: number;
   quotationScope?: string;
   quotationStatus?: 'pending' | 'accepted' | 'declined' | 'counteroffer';
+  matchScore?: number;
+  matchScoreBreakdown?: Record<string, number>;
+  matchReasons?: string[];
 }
 
 export interface IProjectDocument extends Document {
@@ -44,6 +47,10 @@ export interface IProjectDocument extends Document {
   messages: IChatMessage[];
   status: 'draft' | 'funded' | 'completed';
   paypalOrderId?: string;
+  aiAnalysis?: any;
+  dependencyPlan?: any;
+  assumptions?: string[];
+  risks?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -111,6 +118,9 @@ const WorkPackageSchema = new Schema<IWorkPackage>({
     type: String,
     enum: ['pending', 'accepted', 'declined', 'counteroffer'],
   },
+  matchScore: { type: Number },
+  matchScoreBreakdown: { type: Schema.Types.Mixed },
+  matchReasons: [{ type: String }],
 });
 
 const ProjectSchema = new Schema<IProjectDocument>(
@@ -131,6 +141,10 @@ const ProjectSchema = new Schema<IProjectDocument>(
       default: 'draft',
     },
     paypalOrderId: { type: String },
+    aiAnalysis: { type: Schema.Types.Mixed },
+    dependencyPlan: { type: Schema.Types.Mixed },
+    assumptions: [{ type: String }],
+    risks: [{ type: String }],
   },
   { timestamps: true }
 );

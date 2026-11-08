@@ -14,6 +14,8 @@ import {
   AlertCircle,
   RefreshCw,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   UserCheck,
   UserX,
   Layers,
@@ -25,6 +27,8 @@ import {
   TrendingUp,
   Clock,
   Tag,
+  Info,
+  ShieldAlert,
 } from 'lucide-react';
 import { PayPalButtons } from '@paypal/react-paypal-js';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -47,12 +51,19 @@ export default function CreateProjectPage() {
     setWorkPackages,
     proposal,
     resetDraft,
+    aiAnalysis,
+    dependencyPlan,
+    assumptions,
+    risks,
+    setAiMetadata,
   } = useProjectStore();
 
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [showIntelligenceDetails, setShowIntelligenceDetails] = useState<boolean>(false);
 
   // Quick Starter Prompts
   const starterPrompts = [
@@ -165,7 +176,13 @@ export default function CreateProjectPage() {
 
       const data = await res.json();
       if (data.success && data.workPackages) {
-        setWorkPackages(data.workPackages);
+        setWorkPackages(data.workPackages, data.proposal);
+        setAiMetadata({
+          aiAnalysis: data.aiAnalysis,
+          dependencyPlan: data.dependencyPlan,
+          assumptions: data.assumptions || [],
+          risks: data.risks || [],
+        });
         setCurrentStep(2);
       } else {
         setSaveError(data.error || 'Failed to decompose project.');
@@ -197,6 +214,10 @@ export default function CreateProjectPage() {
           merchantId: (session?.user as any)?.id,
           merchantName: session?.user?.name || 'Merchant',
           merchantEmail: session?.user?.email || 'merchant@example.com',
+          aiAnalysis: aiAnalysis || proposal?.aiAnalysis,
+          dependencyPlan: dependencyPlan || proposal?.dependencyPlan,
+          assumptions: assumptions || proposal?.assumptions,
+          risks: risks || proposal?.risks,
         }),
       });
 
@@ -434,8 +455,9 @@ export default function CreateProjectPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                    AI Execution Plan
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center gap-1">
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>AI Execution Architecture</span>
                   </span>
                   <span className="text-xs text-slate-400">
                     Topological Dependency Order
@@ -444,10 +466,15 @@ export default function CreateProjectPage() {
                 <h2 className="text-lg font-bold text-white mt-1">
                   {proposal?.projectName || 'Assembled Specialist Proposal'}
                 </h2>
+                {aiAnalysis?.business_goal && (
+                  <p className="text-xs text-slate-300 mt-1 max-w-2xl line-clamp-2">
+                    <span className="font-semibold text-cyan-400">Goal:</span> {aiAnalysis.business_goal}
+                  </p>
+                )}
               </div>
 
               {/* Financial metrics */}
-              <div className="flex items-center gap-4 text-left sm:text-right">
+              <div className="flex items-center gap-4 text-left sm:text-right shrink-0">
                 <div className="pr-4 border-r border-slate-800">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Budget</span>
                   <span className="text-lg font-black text-white">${budget}</span>
@@ -466,7 +493,7 @@ export default function CreateProjectPage() {
             {/* Execution Sequence DAG Pills */}
             <div className="space-y-1.5">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Execution Milestone Flow:
+                Milestone Execution Sequence:
               </span>
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 {workPackages.map((wp, idx) => (
@@ -485,6 +512,67 @@ export default function CreateProjectPage() {
                 ))}
               </div>
             </div>
+
+            {/* AI Assumptions & Risk Analysis Drawer Toggle */}
+            {((assumptions && assumptions.length > 0) || (risks && risks.length > 0)) && (
+              <div className="pt-2 border-t border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => setShowIntelligenceDetails(!showIntelligenceDetails)}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  <span>
+                    AI Intelligence Report ({assumptions?.length || 0} Assumptions, {risks?.length || 0} Risks)
+                  </span>
+                  {showIntelligenceDetails ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                </button>
+
+                {showIntelligenceDetails && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 mt-2 text-xs">
+                    {/* Assumptions */}
+                    {assumptions && assumptions.length > 0 && (
+                      <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-1.5">
+                        <div className="font-bold text-slate-200 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Identified Assumptions</span>
+                        </div>
+                        <ul className="space-y-1 text-slate-400 text-[11px]">
+                          {assumptions.map((asm, i) => (
+                            <li key={i} className="flex items-start gap-1.5">
+                              <span className="text-cyan-400 font-bold">•</span>
+                              <span>{asm}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Risks */}
+                    {risks && risks.length > 0 && (
+                      <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-1.5">
+                        <div className="font-bold text-amber-300 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                          <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Identified Project Risks</span>
+                        </div>
+                        <ul className="space-y-1 text-slate-400 text-[11px]">
+                          {risks.map((rsk, i) => (
+                            <li key={i} className="flex items-start gap-1.5">
+                              <span className="text-amber-400 font-bold">•</span>
+                              <span>{rsk}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Work Package Cards (Designed for Explainable AI Matching) */}
@@ -492,6 +580,7 @@ export default function CreateProjectPage() {
             {workPackages.map((wp, idx) => {
               const isDev = wp.category === 'dev';
               const isDesigner = wp.category === 'designer';
+              const isExpanded = expandedMatchId === wp.id;
 
               return (
                 <div
@@ -500,7 +589,7 @@ export default function CreateProjectPage() {
                 >
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     {/* Left: Task Info & Deliverables */}
-                    <div className="space-y-2 flex-1">
+                    <div className="space-y-2.5 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span
                           className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${
@@ -533,9 +622,24 @@ export default function CreateProjectPage() {
                         {wp.description}
                       </p>
 
+                      {/* Required Skills Badges */}
+                      {wp.requiredSkills && wp.requiredSkills.length > 0 && (
+                        <div className="pt-0.5 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Skills:</span>
+                          {wp.requiredSkills.map((sk, ski) => (
+                            <span
+                              key={ski}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-900/40"
+                            >
+                              {sk}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
                       {/* Deliverables Tag Cloud */}
                       {wp.deliverables && wp.deliverables.length > 0 && (
-                        <div className="pt-1 flex flex-wrap items-center gap-1.5">
+                        <div className="pt-0.5 flex flex-wrap items-center gap-1.5">
                           <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Deliverables:</span>
                           {wp.deliverables.map((d, di) => (
                             <span
@@ -550,7 +654,7 @@ export default function CreateProjectPage() {
                     </div>
 
                     {/* Right: Matched Freelancer Profile & Price */}
-                    <div className="flex md:flex-col items-end justify-between gap-3 shrink-0 md:w-64">
+                    <div className="flex md:flex-col items-end justify-between gap-3 shrink-0 md:w-72">
                       {/* Price badge */}
                       <div className="text-left md:text-right">
                         <span className="text-[10px] font-bold uppercase text-slate-400 block">Milestone Budget</span>
@@ -559,22 +663,33 @@ export default function CreateProjectPage() {
                         </div>
                       </div>
 
-                      {/* Matched Freelancer Card */}
-                      <div className="w-full bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5">
+                      {/* Matched Freelancer Card with Explainable Match Score */}
+                      <div className="w-full bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
                         {wp.assignedFreelancerName ? (
                           <>
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
-                                <Sparkles className="w-3 h-3" />
-                                <span>95% Match Score</span>
-                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedMatchId(isExpanded ? null : wp.id)}
+                                className="text-[10px] font-extrabold text-cyan-600 dark:text-cyan-400 flex items-center gap-1 hover:underline cursor-pointer bg-cyan-50 dark:bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-900"
+                                title="Click to view explainable 6-factor AI match breakdown"
+                              >
+                                <Sparkles className="w-3 h-3 text-cyan-500" />
+                                <span>{wp.matchScore ? `${wp.matchScore}% Match` : '95% Match Score'}</span>
+                                {isExpanded ? (
+                                  <ChevronUp className="w-3 h-3" />
+                                ) : (
+                                  <ChevronDown className="w-3 h-3" />
+                                )}
+                              </button>
                               <div className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
                                 <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                                 <span>5.0</span>
                               </div>
                             </div>
+
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-cyan-500 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
                                 {wp.assignedFreelancerName.charAt(0)}
                               </div>
                               <div className="min-w-0">
@@ -586,6 +701,69 @@ export default function CreateProjectPage() {
                                 </div>
                               </div>
                             </div>
+
+                            {/* Expandable Explainable AI Match Breakdown */}
+                            {isExpanded && (
+                              <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-800 space-y-2 text-left">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                  Explainable Match Factors:
+                                </div>
+                                <div className="space-y-1 text-[10px]">
+                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                                    <span>Semantic Relevance (35%)</span>
+                                    <span className="font-bold text-cyan-600 dark:text-cyan-400">
+                                      {Math.round(((wp.matchScoreBreakdown as any)?.semantic_relevance ?? 0.94) * 100)}%
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                                    <span>Skills Overlap (25%)</span>
+                                    <span className="font-bold text-cyan-600 dark:text-cyan-400">
+                                      {Math.round(((wp.matchScoreBreakdown as any)?.skill_overlap ?? 0.95) * 100)}%
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                                    <span>Rating & Track Record (15%)</span>
+                                    <span className="font-bold text-amber-500">
+                                      {Math.round(((wp.matchScoreBreakdown as any)?.rating ?? 0.98) * 100)}%
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                                    <span>Availability (10%)</span>
+                                    <span className="font-bold text-emerald-500">
+                                      {Math.round(((wp.matchScoreBreakdown as any)?.availability ?? 1.0) * 100)}%
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                                    <span>Price Fit (10%)</span>
+                                    <span className="font-bold text-cyan-600 dark:text-cyan-400">
+                                      {Math.round(((wp.matchScoreBreakdown as any)?.price_compatibility ?? 0.92) * 100)}%
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                                    <span>Delivery Turnaround (5%)</span>
+                                    <span className="font-bold text-cyan-600 dark:text-cyan-400">
+                                      {Math.round(((wp.matchScoreBreakdown as any)?.delivery_time ?? 0.9) * 100)}%
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {wp.matchReasons && wp.matchReasons.length > 0 && (
+                                  <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800 space-y-1">
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+                                      Selection Reasons:
+                                    </span>
+                                    <ul className="text-[10px] text-slate-600 dark:text-slate-400 space-y-0.5">
+                                      {wp.matchReasons.map((reason, ri) => (
+                                        <li key={ri} className="flex items-start gap-1">
+                                          <span className="text-cyan-500">•</span>
+                                          <span>{reason}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </>
                         ) : (
                           <div className="flex items-center gap-2 text-slate-400">

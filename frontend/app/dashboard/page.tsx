@@ -19,8 +19,13 @@ import {
   UserCheck,
   UserX,
   Sparkles,
+  TrendingUp,
+  Activity,
+  ShieldAlert,
+  ArrowRight,
+  Info,
 } from 'lucide-react';
-import { WorkPackage, ProjectProposal } from '@/types';
+import { WorkPackage, ProjectProposal, IAiProgressSummary, IAiCounterofferAnalysis } from '@/types';
 import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
 
 export default function MerchantDashboardPage() {
@@ -40,6 +45,16 @@ export default function MerchantDashboardPage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [activeChatProject, setActiveChatProject] = useState<{ id: string; name: string } | null>(null);
 
+  // AI Project Intelligence & Counteroffer state
+  const [progressSummary, setProgressSummary] = useState<IAiProgressSummary | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState<boolean>(false);
+  const [counterofferModal, setCounterofferModal] = useState<{
+    pkg: WorkPackage;
+    analysis: IAiCounterofferAnalysis | null;
+    loading: boolean;
+  } | null>(null);
+  const [isDecidingCounter, setIsDecidingCounter] = useState<boolean>(false);
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login?callbackUrl=/dashboard');
@@ -47,6 +62,40 @@ export default function MerchantDashboardPage() {
       router.push('/freelancer/dashboard');
     }
   }, [status, session, router]);
+
+  const fetchProgressSummary = useCallback(async (project: ProjectProposal) => {
+    setLoadingProgress(true);
+    try {
+      const res = await fetch('/api/ai/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_name: project.projectName,
+          tasks: project.workPackages.map((wp) => ({
+            work_package_id: wp.id,
+            name: wp.title,
+            status:
+              wp.status === 'Completed'
+                ? 'completed'
+                : wp.status === 'In Progress'
+                ? 'in_progress'
+                : wp.status === 'Revision Requested'
+                ? 'blocked'
+                : 'not_started',
+            blocker: wp.status === 'Revision Requested' ? 'Revision requested by merchant' : undefined,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.progress) {
+        setProgressSummary(data.progress);
+      }
+    } catch (err) {
+      console.warn('Failed to load AI progress summary:', err);
+    } finally {
+      setLoadingProgress(false);
+    }
+  }, []);
 
   const fetchProjects = useCallback(async () => {
     setLoading(true);
@@ -56,6 +105,9 @@ export default function MerchantDashboardPage() {
       const data = await res.json();
       if (data.success && Array.isArray(data.projects)) {
         setProjects(data.projects);
+        if (data.projects.length > 0) {
+          fetchProgressSummary(data.projects[0]);
+        }
       } else {
         setProjects([]);
       }
@@ -65,13 +117,73 @@ export default function MerchantDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchProgressSummary]);
 
   useEffect(() => {
     if (status === 'authenticated') {
       fetchProjects();
     }
   }, [status, fetchProjects]);
+
+  const handleReviewCounteroffer = async (wp: WorkPackage) => {
+    setCounterofferModal({ pkg: wp, analysis: null, loading: true });
+    try {
+      const res = await fetch('/api/ai/counteroffer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          original_quotation: {
+            quotation_id: `quote-${wp.id}`,
+            freelancer_id: wp.assignedFreelancerId || 'fl-1',
+            work_package_id: wp.id,
+            amount: wp.allocatedPrice,
+            delivery_days: wp.estimatedDays || 7,
+            scope: wp.description,
+            status: 'pending',
+          },
+          proposed_amount: wp.quotationAmount || wp.allocatedPrice,
+          proposed_delivery_days: wp.quotationDeliveryDays || wp.estimatedDays || 7,
+          message: wp.quotationScope || 'Scope and deliverable schedule adjustments',
+          project_budget_remaining: projects[0]?.savings || 0,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.analysis) {
+        setCounterofferModal({ pkg: wp, analysis: data.analysis, loading: false });
+      } else {
+        setCounterofferModal({ pkg: wp, analysis: null, loading: false });
+      }
+    } catch (err) {
+      console.error('Counteroffer analysis error:', err);
+      setCounterofferModal({ pkg: wp, analysis: null, loading: false });
+    }
+  };
+
+  const handleCounterofferDecision = async (packageId: string, decision: 'accept' | 'decline') => {
+    const currentProj = projects[0];
+    const projId = currentProj ? (currentProj as any)._id || currentProj.id : '';
+    if (!projId) return;
+    setIsDecidingCounter(true);
+    try {
+      const res = await fetch(`/api/invitations/${projId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: decision === 'accept' ? 'accept_counteroffer' : 'decline_counteroffer',
+          packageId,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCounterofferModal(null);
+        fetchProjects();
+      }
+    } catch (err) {
+      console.error('Decision error:', err);
+    } finally {
+      setIsDecidingCounter(false);
+    }
+  };
 
   const handleUpdateStatus = async (
     projectId: string,
@@ -164,8 +276,22 @@ export default function MerchantDashboardPage() {
     {
       field: 'inviteStatus',
       headerName: 'Invite Status',
-      width: 140,
+      width: 160,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
+        const wp = params.data;
+        if (wp?.quotationStatus === 'counteroffer') {
+          return (
+            <button
+              type="button"
+              onClick={() => handleReviewCounteroffer(wp)}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 my-2.5 hover:scale-105 transition-transform"
+              title="Click to view AI Counteroffer Impact Analysis"
+            >
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              <span>Counter: ${wp.quotationAmount}</span>
+            </button>
+          );
+        }
         const inv = params.data?.inviteStatus || 'invited';
         if (inv === 'accepted') {
           return (
@@ -397,6 +523,117 @@ export default function MerchantDashboardPage() {
             </div>
           </div>
 
+          {/* Specialist Counteroffer Alert Banner */}
+          {currentProject.workPackages.some((w) => w.quotationStatus === 'counteroffer') && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
+                <div>
+                  <div className="font-bold text-amber-800 dark:text-amber-300">
+                    Specialist Counteroffer Awaiting Review
+                  </div>
+                  <div className="text-slate-600 dark:text-slate-400 text-[11px]">
+                    One or more specialists submitted revised pricing or turnaround estimates. Review AI budget impact analysis.
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {currentProject.workPackages
+                  .filter((w) => w.quotationStatus === 'counteroffer')
+                  .map((wp) => (
+                    <button
+                      key={wp.id}
+                      type="button"
+                      onClick={() => handleReviewCounteroffer(wp)}
+                      className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-sm flex items-center gap-1.5"
+                    >
+                      <span>Analyze {wp.roleName || wp.title} (${wp.quotationAmount})</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Executive AI Progress Monitor Card */}
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-sm transition-colors space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 px-2.5 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-800 flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-cyan-500" />
+                  <span>Executive AI Project Monitor</span>
+                </span>
+                {loadingProgress && (
+                  <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3 animate-spin text-cyan-500" />
+                    <span>Evaluating tasks...</span>
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 text-xs">
+                <span className="text-slate-500 dark:text-slate-400">
+                  Completion Rate:{' '}
+                  <strong className="text-slate-900 dark:text-white font-black">
+                    {progressSummary?.completion_percentage ??
+                      Math.round(
+                        (currentProject.workPackages.filter((w) => w.status === 'Completed').length /
+                          currentProject.workPackages.length) *
+                          100
+                      )}
+                    %
+                  </strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${
+                    progressSummary?.completion_percentage ??
+                    Math.round(
+                      (currentProject.workPackages.filter((w) => w.status === 'Completed').length /
+                        currentProject.workPackages.length) *
+                        100
+                    )
+                  }%`,
+                }}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+              {/* Summary */}
+              <div className="md:col-span-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  AI Health Summary
+                </div>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                  {progressSummary?.summary || 'All project tasks synchronized with live escrow milestones.'}
+                </p>
+              </div>
+
+              {/* Recommended Actions */}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Recommended Next Step
+                </div>
+                <div className="text-xs text-slate-700 dark:text-slate-300">
+                  {progressSummary?.recommended_actions && progressSummary.recommended_actions.length > 0 ? (
+                    <span className="flex items-start gap-1">
+                      <span className="text-cyan-500 font-bold">•</span>
+                      <span>{progressSummary.recommended_actions[0]}</span>
+                    </span>
+                  ) : (
+                    <span>Awaiting deliverable submissions from active team members.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* AG Grid Work Packages Table */}
           <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm transition-colors">
             <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -479,6 +716,130 @@ export default function MerchantDashboardPage() {
           isOpen={chatOpen}
           onClose={() => setChatOpen(false)}
         />
+      )}
+
+      {/* Counteroffer AI Impact Review Modal */}
+      {counterofferModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-cyan-500" />
+                  <span>AI Negotiation Intelligence</span>
+                </span>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                  Milestone Counteroffer Variance Analysis
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCounterofferModal(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-1 text-xs">
+              <div className="font-bold text-slate-900 dark:text-white">
+                Milestone: {counterofferModal.pkg.title}
+              </div>
+              <div className="text-slate-500 dark:text-slate-400">
+                Specialist: {counterofferModal.pkg.assignedFreelancerName || 'Assigned Specialist'}
+              </div>
+            </div>
+
+            {/* Comparison Metrics */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-0.5">
+                <span className="text-[10px] font-bold uppercase text-slate-400 block">Original Offer</span>
+                <span className="text-base font-black text-slate-900 dark:text-white">
+                  ${counterofferModal.pkg.allocatedPrice}
+                </span>
+                <span className="text-[10px] text-slate-400 block">
+                  {counterofferModal.pkg.estimatedDays || 7} Days
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 space-y-0.5">
+                <span className="text-[10px] font-bold uppercase text-cyan-600 dark:text-cyan-400 block">Proposed Counter</span>
+                <span className="text-base font-black text-cyan-700 dark:text-cyan-300">
+                  ${counterofferModal.pkg.quotationAmount || counterofferModal.pkg.allocatedPrice}
+                </span>
+                <span className="text-[10px] text-cyan-600/80 dark:text-cyan-400/80 block">
+                  {counterofferModal.pkg.quotationDeliveryDays || counterofferModal.pkg.estimatedDays || 7} Days
+                </span>
+              </div>
+            </div>
+
+            {/* AI Analysis Details */}
+            {counterofferModal.loading ? (
+              <div className="p-6 text-center text-xs text-slate-400 space-y-2">
+                <RefreshCw className="w-5 h-5 animate-spin mx-auto text-cyan-500" />
+                <span>Running algorithmic variance analysis...</span>
+              </div>
+            ) : counterofferModal.analysis ? (
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-700 dark:text-slate-300">Budget Impact:</span>
+                    <span className="font-bold text-cyan-600 dark:text-cyan-400">
+                      {counterofferModal.analysis.percentage_delta > 0 ? '+' : ''}
+                      {counterofferModal.analysis.percentage_delta}% ({counterofferModal.analysis.amount_delta >= 0 ? '+' : ''}${counterofferModal.analysis.amount_delta})
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                    {counterofferModal.analysis.budget_impact}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1 text-xs">
+                  <div className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>AI Recommendation</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-900/90 dark:text-emerald-300/90 leading-relaxed">
+                    {counterofferModal.analysis.recommendation}
+                  </p>
+                </div>
+
+                {counterofferModal.pkg.quotationScope && (
+                  <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                    <strong className="text-slate-700 dark:text-slate-300">Specialist Note:</strong> {counterofferModal.pkg.quotationScope}
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            {/* Decision Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={isDecidingCounter}
+                onClick={() => handleCounterofferDecision(counterofferModal.pkg.id, 'decline')}
+                className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Decline Counteroffer
+              </button>
+              <button
+                type="button"
+                disabled={isDecidingCounter}
+                onClick={() => handleCounterofferDecision(counterofferModal.pkg.id, 'accept')}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+              >
+                {isDecidingCounter ? (
+                  <span>Updating Escrow...</span>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Accept & Update Milestone</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
