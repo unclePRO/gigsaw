@@ -17,33 +17,128 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    // 1. Try Teammate's Python FastAPI AI Microservice if configured
-    const microserviceUrl = process.env.NEXT_PUBLIC_AI_MICROSERVICE_URL;
-    if (microserviceUrl && microserviceUrl !== 'http://localhost:8000') {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3500);
+    const words = cleanPrompt.split(' ').slice(0, 5).join(' ');
+    const projectName =
+      words.length > 0
+        ? `${words.charAt(0).toUpperCase() + words.slice(1)} Project`
+        : 'New Launch Project';
 
-        const res = await fetch(`${microserviceUrl}/api/decompose`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: cleanPrompt, budget }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
+    // 1. Try Teammate's Python FastAPI AI Microservice if reachable
+    const microserviceUrl = process.env.NEXT_PUBLIC_AI_MICROSERVICE_URL || 'http://localhost:8001';
+    let aiPackages: WorkPackage[] | null = null;
+    let aiProposal: ProjectProposal | null = null;
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data && Array.isArray(data.workPackages)) {
-            return NextResponse.json(data);
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+
+      const res = await fetch(`${microserviceUrl}/api/v1/projects/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_request: cleanPrompt,
+          budget: budget.toString(),
+          currency: 'USD',
+          project_name: projectName,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.work_packages) && data.work_packages.length > 0) {
+          await connectToDatabase();
+
+          const allocations = data.budget_plan?.allocations || [];
+          const convertedPackages: WorkPackage[] = [];
+
+          for (let i = 0; i < data.work_packages.length; i++) {
+            const wp = data.work_packages[i];
+            const alloc = allocations.find(
+              (a: any) => a.service_category?.toLowerCase() === wp.service_category?.toLowerCase()
+            );
+            const allocatedPrice = alloc ? Math.round(Number(alloc.allocated_amount)) : Math.round(budget / data.work_packages.length);
+
+            // Determine broad category for UI styling
+            const svcLower = (wp.service_category || '').toLowerCase();
+            let broadCategory: 'dev' | 'designer' | 'marketer' = 'dev';
+            if (svcLower.includes('design') || svcLower.includes('logo') || svcLower.includes('brand') || svcLower.includes('photo') || svcLower.includes('menu')) {
+              broadCategory = 'designer';
+            } else if (svcLower.includes('market') || svcLower.includes('social') || svcLower.includes('seo')) {
+              broadCategory = 'marketer';
+            }
+
+            // Match suitable freelancer from MongoDB
+            const matchedFreelancer = await UserModel.findOne({
+              role: 'freelancer',
+              $or: [
+                { serviceCategories: wp.service_category },
+                { category: broadCategory },
+              ],
+            })
+              .select('-password')
+              .sort({ rating: -1, completedProjects: -1 })
+              .lean();
+
+            convertedPackages.push({
+              id: wp.work_package_id || `wp-${broadCategory}-${Date.now()}-${i}`,
+              category: broadCategory,
+              roleName: wp.name || wp.service_category,
+              title: wp.name || `${wp.service_category} Milestone`,
+              description: wp.description || '',
+              allocatedPrice,
+              dependencies: wp.dependencies || [],
+              dependencyNames: wp.dependencies && wp.dependencies.length > 0 ? wp.dependencies : ['Root Milestone'],
+              assignedFreelancerId: matchedFreelancer?._id?.toString(),
+              assignedFreelancerName: matchedFreelancer?.name,
+              assignedFreelancerEmail: matchedFreelancer?.email,
+              inviteStatus: 'invited',
+              status: 'Pending',
+              requiredSkills: wp.required_skills || [],
+              deliverables: wp.deliverables || [],
+              estimatedDays: wp.estimated_days || 7,
+              currency: 'USD',
+              quotationAmount: allocatedPrice,
+              quotationCurrency: 'USD',
+              quotationDeliveryDays: wp.estimated_days || 7,
+              quotationScope: wp.description || '',
+              quotationStatus: 'pending',
+            });
           }
+
+          const allocatedTotal = convertedPackages.reduce((s, p) => s + p.allocatedPrice, 0);
+
+          aiPackages = convertedPackages;
+          aiProposal = {
+            merchantId: '',
+            merchantName: '',
+            merchantEmail: '',
+            projectName: data.analysis?.project_name || projectName,
+            merchantPrompt: cleanPrompt,
+            totalBudget: budget,
+            allocatedTotal,
+            savings: Math.max(0, budget - allocatedTotal),
+            workPackages: convertedPackages,
+            status: 'draft',
+            createdAt: new Date().toISOString(),
+          };
+
+          return NextResponse.json({
+            success: true,
+            proposal: aiProposal,
+            workPackages: aiPackages,
+            isDynamic: true,
+            aiSource: 'fastapi_microservice',
+            rolesCount: aiPackages.length,
+          });
         }
-      } catch (err: any) {
-        console.log('Teammate Python AI microservice not reachable, using dynamic local decomposition.');
       }
+    } catch (err: any) {
+      console.log('Teammate FastAPI microservice not running on port 8001, falling back to local decomposition.');
     }
 
-    // 2. Connect to MongoDB to match real freelancers
+    // 2. Connect to MongoDB to match real freelancers (Local Fallback)
     await connectToDatabase();
 
     const lower = cleanPrompt.toLowerCase();
@@ -79,7 +174,6 @@ export async function POST(req: NextRequest) {
       lower.includes('ads') ||
       lower.includes('campaign');
 
-    // Default to at least what's mentioned, or all 3 if broad general prompt
     interface RoleSpec {
       category: string;
       roleName: string;
@@ -165,7 +259,6 @@ export async function POST(req: NextRequest) {
         assignedFreelancerEmail: matchedFreelancer?.email,
         inviteStatus: 'invited',
         status: 'Pending',
-        // AI Integration Fields
         requiredSkills: r.skills,
         deliverables: r.deliverables,
         estimatedDays: r.estimatedDays,
@@ -177,12 +270,6 @@ export async function POST(req: NextRequest) {
         quotationStatus: 'pending',
       });
     }
-
-    const words = cleanPrompt.split(' ').slice(0, 5).join(' ');
-    const projectName =
-      words.length > 0
-        ? `${words.charAt(0).toUpperCase() + words.slice(1)} Project`
-        : 'New Launch Project';
 
     const allocatedTotal = packages.reduce((s, p) => s + p.allocatedPrice, 0);
 
@@ -205,6 +292,7 @@ export async function POST(req: NextRequest) {
       proposal,
       workPackages: packages,
       isDynamic: true,
+      aiSource: 'local_engine',
       rolesCount: packages.length,
     });
   } catch (error: any) {
