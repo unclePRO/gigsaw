@@ -107,6 +107,11 @@ export default function CreateProjectPage() {
   const [chatInput, setChatInput] = useState('');
   const [questionIndex, setQuestionIndex] = useState(0);
 
+  // Phase 1 → 2 animation states
+  const [heroVisible, setHeroVisible] = useState(true);
+  const [cardSlidingDown, setCardSlidingDown] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
   // Pool of alternative freelancers by category fetched from MongoDB
   const [availableFreelancers, setAvailableFreelancers] = useState<Record<string, any[]>>({});
   const [swappingPackageId, setSwappingPackageId] = useState<string | null>(null);
@@ -157,6 +162,17 @@ export default function CreateProjectPage() {
       chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatMessages, createPhase]);
+
+  // Scroll to top on every phase change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Reset animation states when returning to prompt
+    if (createPhase === 'prompt') {
+      setHeroVisible(true);
+      setCardSlidingDown(false);
+      setIsTransitioning(false);
+    }
+  }, [createPhase]);
 
   // Computed values
   const allocatedTotal = workPackages.reduce((sum, wp) => sum + (wp.allocatedPrice || 0), 0);
@@ -219,21 +235,32 @@ export default function CreateProjectPage() {
     }
   };
 
-  // STEP 1 -> STEP 2: Transition to Conversational AI Gathering
+  // STEP 1 -> STEP 2: Animated Transition to Conversational AI Gathering
   const handleInitialSubmit = () => {
-    if (!prompt.trim()) return;
-    setCreatePhase('chat');
+    if (!prompt.trim() || isTransitioning) return;
 
-    // AI initiates the conversation as Project Manager
-    if (chatMessages.length === 0) {
-      setTimeout(() => {
+    setIsTransitioning(true);
+
+    // Stage 1 (0ms): fade hero text up
+    setHeroVisible(false);
+
+    // Stage 2 (200ms): slide card down toward bottom
+    setTimeout(() => setCardSlidingDown(true), 180);
+
+    // Stage 3 (750ms): switch phase after animation completes
+    setTimeout(() => {
+      setCreatePhase('chat');
+      // Animation state reset handled by useEffect on createPhase change
+
+      // AI initiates the conversation as Project Manager
+      if (chatMessages.length === 0) {
         addChatMessage({
           role: 'ai',
           content: `Hi ${session?.user?.name || 'there'}! I'm your AI Project Manager. I've captured your primary goal:\n\n"${prompt.trim()}"\n\nTo ensure our algorithm decomposes this with precise milestone budgets and matches the top specialists, let me gather a few quick details:\n\n${PROJECT_MANAGER_QUESTIONS[0]}`,
         });
         setQuestionIndex(1);
-      }, 500);
-    }
+      }
+    }, 750);
   };
 
   // Conversational response handler
@@ -441,11 +468,20 @@ export default function CreateProjectPage() {
       {/* ─────────────────────────────────────────────────────────────────
           STEP 1: THE INITIAL PROMPT (Centered Minimalist UI)
       ─────────────────────────────────────────────────────────────────── */}
-      {createPhase === 'prompt' && (
-        <div className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-12 transition-all duration-700 ease-in-out">
-          <div className="w-full max-w-2xl space-y-7 animate-fadeIn">
-            {/* Header / Intro */}
-            <div className="text-center space-y-3">
+      {(createPhase === 'prompt' || isTransitioning) && (
+        <div
+          className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-12 overflow-hidden"
+          style={{ pointerEvents: isTransitioning ? 'none' : 'auto' }}
+        >
+          <div className="w-full max-w-2xl space-y-7">
+            {/* Header / Intro — fades up when transitioning */}
+            <div
+              className={`text-center space-y-3 transition-all duration-300 ease-out ${
+                heroVisible
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 -translate-y-6 pointer-events-none'
+              }`}
+            >
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold shadow-sm">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>AI Project Architect</span>
@@ -458,8 +494,14 @@ export default function CreateProjectPage() {
               </p>
             </div>
 
-            {/* Main Centered Chatbox */}
-            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-6 sm:p-7 space-y-5 transition-all">
+            {/* Main Centered Chatbox — slides down when transitioning */}
+            <div
+              className={`bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-6 sm:p-7 space-y-5 transition-all duration-500 ease-in-out ${
+                cardSlidingDown
+                  ? 'translate-y-[60vh] scale-95 opacity-0'
+                  : 'translate-y-0 scale-100 opacity-100'
+              }`}
+            >
               <div className="relative">
                 <textarea
                   ref={textareaRef}
@@ -523,10 +565,10 @@ export default function CreateProjectPage() {
               <div className="pt-2">
                 <button
                   type="button"
-                  disabled={!prompt.trim()}
+                  disabled={!prompt.trim() || isTransitioning}
                   onClick={handleInitialSubmit}
                   className={`w-full py-3.5 rounded-xl font-bold text-sm text-white transition-all flex items-center justify-center gap-2 ${
-                    !prompt.trim()
+                    !prompt.trim() || isTransitioning
                       ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                       : 'bg-cyan-500 hover:bg-cyan-600 active:scale-[0.99] shadow-glow-cyan'
                   }`}
