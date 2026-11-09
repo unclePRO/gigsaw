@@ -11,6 +11,11 @@
   --foreground: #0F172A;
 }
 
+.dark {
+  --background: #090D16;
+  --foreground: #F8FAFC;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
@@ -24,17 +29,23 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 3px;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
 
-/* Custom AG Grid tweaks for modern sleek styling */
+/* Custom AG Grid styling for Light & Dark mode */
 .ag-theme-alpine {
   --ag-header-background-color: #0F172A;
   --ag-header-foreground-color: #F8FAFC;
@@ -45,4 +56,16 @@ body {
   --ag-selected-row-background-color: #E0F2FE;
   font-family: inherit;
   font-size: 13px;
+}
+
+.dark .ag-theme-alpine {
+  --ag-background-color: #0b1120;
+  --ag-foreground-color: #e2e8f0;
+  --ag-header-background-color: #020617;
+  --ag-header-foreground-color: #f8fafc;
+  --ag-border-color: #1e293b;
+  --ag-row-border-color: #1e293b;
+  --ag-odd-row-background-color: #0f172a;
+  --ag-row-hover-color: #1e293b;
+  --ag-selected-row-background-color: #1e3a5f;
 }

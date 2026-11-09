@@ -61,6 +61,10 @@ export async function POST(req: NextRequest) {
       merchantId,
       merchantName,
       merchantEmail,
+      aiAnalysis,
+      dependencyPlan,
+      assumptions,
+      risks,
     } = body;
 
     if (!merchantPrompt || !totalBudget || !workPackages) {
@@ -88,6 +92,10 @@ export async function POST(req: NextRequest) {
       workPackages,
       status: 'funded',
       paypalOrderId: paypalOrderId || `ORDER-${Date.now()}`,
+      aiAnalysis,
+      dependencyPlan,
+      assumptions,
+      risks,
     });
 
     return NextResponse.json({ success: true, project: newProject }, { status: 201 });

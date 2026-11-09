@@ -18,11 +18,12 @@ export async function PATCH(
 
     const { projectId } = params;
     const body = await req.json();
-    const { action, packageId } = body;
+    const { action, packageId, proposedAmount, proposedDeliveryDays, notes } = body;
 
-    if (!action || !['accept', 'decline'].includes(action) || !packageId) {
+    const allowedActions = ['accept', 'decline', 'counteroffer', 'accept_counteroffer', 'decline_counteroffer'];
+    if (!action || !allowedActions.includes(action) || !packageId) {
       return NextResponse.json(
-        { error: 'action (accept/decline) and packageId are required.' },
+        { error: `action (${allowedActions.join('/')}) and packageId are required.` },
         { status: 400 }
       );
     }
@@ -39,6 +40,48 @@ export async function PATCH(
 
     if (!pkg) {
       return NextResponse.json({ error: 'Work package not found.' }, { status: 404 });
+    }
+
+    const isMerchant = project.merchantEmail?.toLowerCase() === userEmail;
+
+    if (action === 'accept_counteroffer' || action === 'decline_counteroffer') {
+      if (!isMerchant) {
+        return NextResponse.json(
+          { error: 'Forbidden: Only the project merchant can review counteroffers.' },
+          { status: 403 }
+        );
+      }
+
+      if (action === 'accept_counteroffer') {
+        if (pkg.quotationAmount) {
+          pkg.allocatedPrice = pkg.quotationAmount;
+        }
+        if (pkg.quotationDeliveryDays) {
+          pkg.estimatedDays = pkg.quotationDeliveryDays;
+        }
+        pkg.quotationStatus = 'accepted';
+        pkg.inviteStatus = 'accepted';
+        pkg.status = 'In Progress';
+
+        // Recalculate totals
+        project.allocatedTotal = project.workPackages.reduce((s, w) => s + (w.allocatedPrice || 0), 0);
+        project.savings = Math.max(0, project.totalBudget - project.allocatedTotal);
+      } else {
+        pkg.quotationStatus = 'declined';
+      }
+
+      await project.save();
+
+      return NextResponse.json({
+        success: true,
+        action,
+        packageId,
+        quotationStatus: pkg.quotationStatus,
+        allocatedPrice: pkg.allocatedPrice,
+        estimatedDays: pkg.estimatedDays,
+        inviteStatus: pkg.inviteStatus,
+        status: pkg.status,
+      });
     }
 
     // Verify assignment to this freelancer
@@ -63,6 +106,16 @@ export async function PATCH(
         pkg.assignedFreelancerName = session.user.name || 'Freelancer';
         pkg.assignedFreelancerId = (session.user as any).id;
       }
+    } else if (action === 'counteroffer') {
+      pkg.quotationStatus = 'counteroffer';
+      pkg.quotationAmount = Number(proposedAmount) || pkg.allocatedPrice;
+      pkg.quotationDeliveryDays = Number(proposedDeliveryDays) || pkg.estimatedDays || 7;
+      pkg.quotationScope = notes || pkg.description;
+      if (!pkg.assignedFreelancerEmail) {
+        pkg.assignedFreelancerEmail = userEmail;
+        pkg.assignedFreelancerName = session.user.name || 'Freelancer';
+        pkg.assignedFreelancerId = (session.user as any).id;
+      }
     } else {
       pkg.inviteStatus = 'declined';
       pkg.status = 'Pending';
@@ -76,6 +129,8 @@ export async function PATCH(
       packageId,
       inviteStatus: pkg.inviteStatus,
       status: pkg.status,
+      quotationStatus: pkg.quotationStatus,
+      quotationAmount: pkg.quotationAmount,
     });
   } catch (error: any) {
     console.error('Error handling invitation:', error);

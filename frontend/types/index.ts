@@ -53,6 +53,15 @@ export interface IChatMessage {
   timestamp: string;
 }
 
+export interface IAiScoreBreakdown {
+  semantic_relevance?: number;
+  skill_overlap?: number;
+  rating?: number;
+  availability?: number;
+  price_compatibility?: number;
+  delivery_time?: number;
+}
+
 export interface WorkPackage {
   id: string;
   category: FreelancerCategory;
@@ -70,7 +79,7 @@ export interface WorkPackage {
   deliverableLink?: string;
   deliverableNotes?: string;
   progressUpdates?: IProgressUpdate[];
-  // AI Integration Fields (optional for backward compatibility)
+  // AI Integration Fields
   requiredSkills?: string[];
   deliverables?: string[];
   estimatedDays?: number;
@@ -80,6 +89,40 @@ export interface WorkPackage {
   quotationDeliveryDays?: number;
   quotationScope?: string;
   quotationStatus?: 'pending' | 'accepted' | 'declined' | 'counteroffer';
+  // Explainable AI Match Data
+  matchScore?: number;
+  matchScoreBreakdown?: IAiScoreBreakdown;
+  matchReasons?: string[];
+  // Rich Freelancer Profile Data
+  assignedFreelancerBio?: string;
+  assignedFreelancerSkills?: string[];
+  assignedFreelancerRating?: number;
+  assignedFreelancerCompletedProjects?: number;
+  assignedFreelancerPastProjects?: IPastProject[];
+  assignedFreelancerYearsOfExperience?: number;
+  assignedFreelancerHourlyRate?: number;
+  assignedFreelancerLocation?: string;
+}
+
+export interface IAiAnalysis {
+  project_name: string;
+  business_goal: string;
+  summary: string;
+  required_services: string[];
+  assumptions: string[];
+  risks: string[];
+}
+
+export interface IAiBudgetAllocation {
+  service_category: string;
+  allocated_amount: string | number;
+  percentage?: number;
+}
+
+export interface IAiBudgetPlan {
+  allocated_total: string | number;
+  currency: string;
+  allocations: IAiBudgetAllocation[];
 }
 
 export interface ProjectProposal {
@@ -98,6 +141,11 @@ export interface ProjectProposal {
   status: 'draft' | 'funded' | 'completed';
   paypalOrderId?: string;
   createdAt: string;
+  // Extended AI metadata
+  aiAnalysis?: IAiAnalysis;
+  dependencyPlan?: Record<string, string[]>;
+  assumptions?: string[];
+  risks?: string[];
 }
 
 export interface IServiceCatalog {
@@ -112,4 +160,37 @@ export interface IServiceCatalog {
   managedBy: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface IAiCounterofferAnalysis {
+  amount_delta: number;
+  percentage_delta: number;
+  delivery_days_delta: number;
+  budget_impact: string;
+  recommendation: string;
+  approval_required: boolean;
+}
+
+export interface IAiInvoiceDraft {
+  invoice_number: string;
+  client_name: string;
+  freelancer_name: string;
+  currency: string;
+  line_items: { description: string; amount: string }[];
+  subtotal: number | string;
+  tax: number | string;
+  total: number | string;
+  payment_note: string;
+  disclaimer: string;
+}
+
+export interface IAiProgressSummary {
+  project_name: string;
+  completion_percentage: number;
+  completed_count: number;
+  in_progress_count: number;
+  blocked_tasks: string[];
+  overdue_tasks: string[];
+  summary: string;
+  recommended_actions: string[];
 }

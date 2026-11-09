@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: 'class',
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -38,6 +39,13 @@ const config: Config = {
           declined: "#F43F5E",
         }
       },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
+      boxShadow: {
+        'glow-cyan': '0 0 25px -5px rgba(6, 182, 212, 0.3)',
+        'glow-royal': '0 0 25px -5px rgba(37, 99, 235, 0.3)',
+      }
     },
   },
   plugins: [],

@@ -18,38 +18,44 @@ if (!global.mongooseCache) {
   global.mongooseCache = cached;
 }
 
-export async function connectToDatabase(): Promise<typeof mongoose | null> {
+export async function connectToDatabase(): Promise<typeof mongoose> {
   if (cached.conn) {
     return cached.conn;
   }
 
   if (!MONGODB_URI) {
-    console.warn('⚠️ MONGODB_URI is not defined in environment variables. Please add it to your .env.local file.');
-    return null;
+    throw new Error('MONGODB_URI is not defined in environment variables. Please check your .env.local file.');
   }
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 15000,
+      connectTimeoutMS: 15000,
+      socketTimeoutMS: 30000,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((m) => {
-      console.log('MongoDB connected successfully');
-      return m;
-    }).catch((err) => {
-      console.error('❌ MongoDB connection error:', err.message);
-      cached.promise = null;
-      return null;
-    });
+    cached.promise = mongoose
+      .connect(MONGODB_URI, opts)
+      .then((m) => {
+        console.log('MongoDB connected successfully');
+        return m;
+      })
+      .catch((err) => {
+        console.error('❌ MongoDB connection error:', err.message);
+        cached.promise = null;
+        throw err;
+      });
   }
 
   try {
     cached.conn = await cached.promise;
-  } catch (e) {
+    if (!cached.conn) {
+      throw new Error('Mongoose connection resolved to null');
+    }
+    return cached.conn;
+  } catch (e: any) {
     cached.promise = null;
-    return null;
+    throw new Error(`Database connection failed: ${e.message || 'Unable to connect to MongoDB'}`);
   }
-
-  return cached.conn;
 }
