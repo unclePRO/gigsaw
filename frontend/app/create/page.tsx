@@ -35,15 +35,7 @@ import { PayPalButtons } from '@paypal/react-paypal-js';
 import { useProjectStore } from '@/store/useProjectStore';
 import { WorkPackage } from '@/types';
 
-// Structured clarifying questions for the AI Project Manager
-const PROJECT_MANAGER_QUESTIONS = [
-  'What is the theme or brand aesthetic you have in mind? (e.g., minimalist modern, artisan boutique, corporate tech)',
-  'Do you already have digital assets (like logos, photography, copy, menus) or should our design specialists build them from scratch?',
-  'What is your target launch turnaround time (in weeks or days)?',
-  'Are there any specific tech stack or platform integrations needed (e.g., Next.js, Stripe, Shopify, Meta/Google Ads)?',
-  'Is there any specific reference website or competitor whose vibe you want to match?',
-];
-
+// Structured clarifying categories for the AI Project Manager
 function CategoryBadge({ category }: { category: string }) {
   const cat = category.toLowerCase();
   if (cat === 'dev') {
@@ -105,7 +97,19 @@ export default function CreateProjectPage() {
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [showIntelligenceDetails, setShowIntelligenceDetails] = useState<boolean>(false);
   const [chatInput, setChatInput] = useState('');
-  const [questionIndex, setQuestionIndex] = useState(0);
+
+  // Conversational Scoping AI State
+  const [isAiThinking, setIsAiThinking] = useState(false);
+  const [suggestedReplies, setSuggestedReplies] = useState<string[]>([
+    'Minimalist & Modern',
+    'Artisan Boutique',
+    'Have logo & copy ready',
+    'Need design from scratch',
+  ]);
+  const [completenessScore, setCompletenessScore] = useState<number>(0.25);
+  const [extractedSpec, setExtractedSpec] = useState<Record<string, string>>({});
+  const [isReadyToFinalize, setIsReadyToFinalize] = useState<boolean>(false);
+  const [excludedFreelancers, setExcludedFreelancers] = useState<Record<string, string[]>>({});
 
   // Phase 1 → 2 animation states
   const [heroVisible, setHeroVisible] = useState(true);
@@ -245,50 +249,128 @@ export default function CreateProjectPage() {
     // Stage 1 (0ms): fade hero text up
     setHeroVisible(false);
 
-    // Stage 2 (200ms): slide card down toward bottom
+    // Stage 2 (180ms): slide card down toward bottom
     setTimeout(() => setCardSlidingDown(true), 180);
 
     // Stage 3 (750ms): switch phase after animation completes
-    setTimeout(() => {
+    setTimeout(async () => {
       setCreatePhase('chat');
-      // Animation state reset handled by useEffect on createPhase change
 
       // AI initiates the conversation as Project Manager
       if (chatMessages.length === 0) {
-        addChatMessage({
-          role: 'ai',
-          content: `Hi ${session?.user?.name || 'there'}! I'm your AI Project Manager. I've captured your primary goal:\n\n"${prompt.trim()}"\n\nTo ensure our algorithm decomposes this with precise milestone budgets and matches the top specialists, let me gather a few quick details:\n\n${PROJECT_MANAGER_QUESTIONS[0]}`,
-        });
-        setQuestionIndex(1);
+        setIsAiThinking(true);
+        try {
+          const res = await fetch('/api/ai/scoping/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              initial_goal: prompt.trim(),
+              messages: [],
+              current_budget: budget,
+            }),
+          });
+          const data = await res.json();
+          if (data.success && data.reply) {
+            addChatMessage({
+              role: 'ai',
+              content: `Hi ${session?.user?.name || 'there'}! I'm your AI Project Manager. I've captured your primary goal:\n\n"${prompt.trim()}"\n\n${data.reply}`,
+            });
+            if (data.suggested_replies && data.suggested_replies.length > 0) {
+              setSuggestedReplies(data.suggested_replies);
+            }
+            if (data.completeness_score != null) {
+              setCompletenessScore(data.completeness_score);
+            }
+            if (data.extracted_spec) {
+              setExtractedSpec(data.extracted_spec);
+            }
+            if (data.is_ready_to_finalize) {
+              setIsReadyToFinalize(true);
+            }
+          } else {
+            addChatMessage({
+              role: 'ai',
+              content: `Hi ${session?.user?.name || 'there'}! I'm your AI Project Manager. I've captured your primary goal:\n\n"${prompt.trim()}"\n\nWhat is the theme or brand aesthetic you have in mind? (e.g., minimalist modern, artisan boutique, corporate tech)`,
+            });
+            setSuggestedReplies(['Minimalist & Modern', 'Artisan Boutique', 'Bold & Vibrant', 'Corporate Professional']);
+          }
+        } catch {
+          addChatMessage({
+            role: 'ai',
+            content: `Hi ${session?.user?.name || 'there'}! I'm your AI Project Manager. I've captured your primary goal:\n\n"${prompt.trim()}"\n\nWhat is the theme or brand aesthetic you have in mind?`,
+          });
+        } finally {
+          setIsAiThinking(false);
+        }
       }
     }, 750);
   };
 
-  // Conversational response handler
-  const handleChatSend = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!chatInput.trim()) return;
+  // Conversational response handler via AI Scoping Assistant
+  const handleChatSend = async (customText?: string) => {
+    const text = (typeof customText === 'string' ? customText : chatInput).trim();
+    if (!text || isAiThinking) return;
 
-    const userText = chatInput.trim();
-    addChatMessage({ role: 'user', content: userText });
+    // Append user message immediately
+    const updatedUserMessages = [...chatMessages, { role: 'user' as const, content: text }];
+    addChatMessage({ role: 'user', content: text });
     setChatInput('');
+    setSuggestedReplies([]);
+    setIsAiThinking(true);
 
-    // AI Project Manager asks subsequent questions
-    setTimeout(() => {
-      if (questionIndex < PROJECT_MANAGER_QUESTIONS.length) {
+    try {
+      // Map to ScopingChatMessage format for API
+      const apiMessages = updatedUserMessages.map((m) => ({
+        role: m.role === 'ai' ? ('assistant' as const) : ('user' as const),
+        content: m.content,
+      }));
+
+      const res = await fetch('/api/ai/scoping/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initial_goal: prompt.trim(),
+          messages: apiMessages,
+          current_budget: budget,
+          extracted_spec: extractedSpec,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.reply) {
         addChatMessage({
           role: 'ai',
-          content: PROJECT_MANAGER_QUESTIONS[questionIndex],
+          content: data.reply,
         });
-        setQuestionIndex((prev) => prev + 1);
+        if (data.suggested_replies && data.suggested_replies.length > 0) {
+          setSuggestedReplies(data.suggested_replies);
+        }
+        if (data.completeness_score != null) {
+          setCompletenessScore(data.completeness_score);
+        }
+        if (data.extracted_spec) {
+          setExtractedSpec(data.extracted_spec);
+        }
+        if (data.is_ready_to_finalize) {
+          setIsReadyToFinalize(true);
+        }
       } else {
         addChatMessage({
           role: 'ai',
-          content:
-            "Thank you! I have all key parameters gathered for scope, aesthetics, and technical requirements. Whenever you're ready, click **Finalize Details & Assemble Team** to run our decomposition and match top specialists.",
+          content: "Got it! Whenever you are ready, click Finalize Details & Match Specialists to run our decomposition and match top specialists.",
         });
+        setIsReadyToFinalize(true);
       }
-    }, 600);
+    } catch (e) {
+      console.error('Scoping chat error:', e);
+      addChatMessage({
+        role: 'ai',
+        content: "I've noted these details! You can click Finalize Details & Match Specialists whenever you're ready to review the matched team.",
+      });
+      setIsReadyToFinalize(true);
+    } finally {
+      setIsAiThinking(false);
+    }
   };
 
   // STEP 2 -> STEP 3: AI Decomposition & Freelancer Matching
@@ -358,68 +440,64 @@ export default function CreateProjectPage() {
     }
   };
 
-  // STEP 4: "Pick Someone Else" - Replace Freelancer with next real specialist from pool
-  const handleSwapFreelancer = (pkg: WorkPackage) => {
-    const category = pkg.category.toLowerCase();
-    const pool = availableFreelancers[category] || [];
-    if (pool.length === 0) return;
-
+  // STEP 4: "Pick Someone Else" - Replace Freelancer with AI-ranked alternative
+  const handleSwapFreelancer = async (pkg: WorkPackage) => {
     setSwappingPackageId(pkg.id);
 
-    setTimeout(() => {
-      // Find current freelancer index
-      const currentIndex = pool.findIndex(
-        (f) =>
-          f.email?.toLowerCase() === pkg.assignedFreelancerEmail?.toLowerCase() ||
-          f._id?.toString() === pkg.assignedFreelancerId
-      );
+    try {
+      const currentExcluded = excludedFreelancers[pkg.id] || [];
+      const res = await fetch('/api/ai/swap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          work_package_id: pkg.id,
+          service_category: pkg.category,
+          required_skills: pkg.requiredSkills || [],
+          brief: pkg.description || '',
+          budget: pkg.allocatedPrice,
+          max_delivery_days: pkg.estimatedDays,
+          current_freelancer_id: pkg.assignedFreelancerId,
+          exclude_freelancer_ids: currentExcluded,
+        }),
+      });
 
-      // Pick next freelancer in circular array
-      const nextIndex = (currentIndex + 1) % pool.length;
-      const nextFreelancer = pool[nextIndex];
-
-      if (nextFreelancer) {
-        const rating = nextFreelancer.rating || 5.0;
-        const normalizedScore = Math.min(99, Math.max(85, Math.round(rating * 19)));
-
+      const data = await res.json();
+      if (data.success && data.freelancer) {
+        const fl = data.freelancer;
         const updatedPackages = workPackages.map((wp) => {
           if (wp.id === pkg.id) {
             return {
               ...wp,
-              assignedFreelancerId: nextFreelancer._id?.toString(),
-              assignedFreelancerName: nextFreelancer.name,
-              assignedFreelancerEmail: nextFreelancer.email,
-              assignedFreelancerBio: nextFreelancer.bio || '',
-              assignedFreelancerSkills: nextFreelancer.skills || wp.requiredSkills || [],
-              assignedFreelancerRating: rating,
-              assignedFreelancerCompletedProjects: nextFreelancer.completedProjects || 0,
-              assignedFreelancerPastProjects: nextFreelancer.pastProjects || [],
-              assignedFreelancerYearsOfExperience: nextFreelancer.yearsOfExperience || 0,
-              assignedFreelancerHourlyRate: nextFreelancer.hourlyRate || 50,
-              assignedFreelancerLocation: nextFreelancer.location || 'Remote',
-              matchScore: normalizedScore,
-              matchScoreBreakdown: {
-                semantic_relevance: 31,
-                skill_overlap: 23,
-                rating: 14,
-                availability: 10,
-                price_compatibility: 9,
-                delivery_time: 4.5,
-              },
-              matchReasons: [
-                `Verified ${category.toUpperCase()} specialist from talent network`,
-                `Rating of ${rating.toFixed(1)}/5 on completed milestones`,
-                'Available for immediate sprint assignment',
-              ],
+              assignedFreelancerId: fl.id,
+              assignedFreelancerName: fl.name,
+              assignedFreelancerEmail: fl.email,
+              assignedFreelancerBio: fl.bio || '',
+              assignedFreelancerSkills: fl.skills || wp.requiredSkills || [],
+              assignedFreelancerRating: fl.rating || 5.0,
+              assignedFreelancerCompletedProjects: fl.completedProjects || 0,
+              assignedFreelancerPastProjects: fl.pastProjects || [],
+              assignedFreelancerYearsOfExperience: fl.yearsOfExperience || 0,
+              assignedFreelancerHourlyRate: fl.hourlyRate || 50,
+              assignedFreelancerLocation: fl.location || 'Remote',
+              matchScore: fl.matchScore || 94,
+              matchScoreBreakdown: fl.matchScoreBreakdown,
+              matchReasons: fl.matchReasons,
             };
           }
           return wp;
         });
 
         setWorkPackages(updatedPackages);
+        setExcludedFreelancers((prev) => ({
+          ...prev,
+          [pkg.id]: [...(prev[pkg.id] || []), fl.id],
+        }));
       }
+    } catch (err) {
+      console.error('Swap error:', err);
+    } finally {
       setSwappingPackageId(null);
-    }, 350);
+    }
   };
 
   // STEP 5: Finalize Team & Send Invites -> Escrow & Project Creation
@@ -613,8 +691,22 @@ export default function CreateProjectPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{prompt}</p>
-                  <p className="text-[10px] text-slate-400">Budget: ${budget} USD &bull; AI Project Gathering</p>
+                  <p className="text-[10px] text-slate-400">Budget: ${budget} USD &bull; Conversational AI Scoping</p>
                 </div>
+              </div>
+
+              {/* Scoping Completeness Progress Indicator */}
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Scope Clarity</span>
+                <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                  <div
+                    className="h-full bg-cyan-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.round(completenessScore * 100)}%` }}
+                  />
+                </div>
+                <span className="text-[10px] font-black text-cyan-600 dark:text-cyan-400">
+                  {Math.round(completenessScore * 100)}%
+                </span>
               </div>
 
               <button
@@ -630,7 +722,7 @@ export default function CreateProjectPage() {
 
           {/* Chat Stream Area */}
           <div className="flex-1 overflow-y-auto px-4 py-6">
-            <div className="max-w-3xl mx-auto space-y-4 pb-44">
+            <div className="max-w-3xl mx-auto space-y-4 pb-48">
               {chatMessages.map((msg, idx) => (
                 <div
                   key={idx}
@@ -654,6 +746,13 @@ export default function CreateProjectPage() {
                 </div>
               ))}
 
+              {isAiThinking && (
+                <div className="flex justify-start items-center gap-2.5 p-3 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm text-xs text-slate-500 animate-pulse">
+                  <Sparkles className="w-4 h-4 text-cyan-500 animate-spin" />
+                  <span>AI Project Manager is analyzing specifications...</span>
+                </div>
+              )}
+
               {isAnalyzing && (
                 <div className="flex justify-start items-center gap-2.5 p-3 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm text-xs text-slate-500 animate-pulse">
                   <RefreshCw className="w-4 h-4 animate-spin text-cyan-500 shrink-0" />
@@ -668,12 +767,33 @@ export default function CreateProjectPage() {
           {/* Bottom Chat Input Bar & Finalize Trigger */}
           <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-4 py-3 shadow-lg">
             <div className="max-w-3xl mx-auto space-y-2.5">
+              {/* Clickable Quick Suggestion Chips */}
+              {suggestedReplies.length > 0 && !isAiThinking && (
+                <div className="flex flex-wrap items-center gap-1.5 pb-1 animate-fadeIn">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Suggestions:</span>
+                  {suggestedReplies.map((reply, rIdx) => (
+                    <button
+                      key={rIdx}
+                      type="button"
+                      onClick={() => handleChatSend(reply)}
+                      className="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-50 dark:bg-cyan-950/60 hover:bg-cyan-100 dark:hover:bg-cyan-900/80 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 transition-all active:scale-95 shadow-2xs"
+                    >
+                      {reply}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Primary Finalize Details Button */}
               <button
                 type="button"
                 disabled={isAnalyzing}
                 onClick={handleFinalizeDetails}
-                className="w-full py-2.5 bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600 active:scale-[0.99] text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2"
+                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 text-white ${
+                  isReadyToFinalize || completenessScore >= 0.75
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 active:scale-[0.99] shadow-glow-cyan'
+                    : 'bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600'
+                }`}
               >
                 {isAnalyzing ? (
                   <>
@@ -683,28 +803,38 @@ export default function CreateProjectPage() {
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Finalize Details & Match Specialists</span>
+                    <span>
+                      {isReadyToFinalize
+                        ? 'Scope Ready: Finalize Details & Match Specialists'
+                        : 'Finalize Details & Match Specialists'}
+                    </span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </>
                 )}
               </button>
 
               {/* Chat Input Bar */}
-              <form onSubmit={handleChatSend} className="flex items-center gap-2">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleChatSend();
+                }}
+                className="flex items-center gap-2"
+              >
                 <input
                   type="text"
                   placeholder="Answer project questions or provide details..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  disabled={isAnalyzing}
+                  disabled={isAnalyzing || isAiThinking}
                   className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors"
                 />
 
                 <button
                   type="submit"
-                  disabled={!chatInput.trim() || isAnalyzing}
+                  disabled={!chatInput.trim() || isAnalyzing || isAiThinking}
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all flex items-center gap-1.5 shrink-0 ${
-                    !chatInput.trim() || isAnalyzing
+                    !chatInput.trim() || isAnalyzing || isAiThinking
                       ? 'bg-slate-300 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                       : 'bg-cyan-500 hover:bg-cyan-600 shadow-sm'
                   }`}

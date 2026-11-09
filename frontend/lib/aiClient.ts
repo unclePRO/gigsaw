@@ -80,6 +80,132 @@ export interface FreelancerMatchResponse {
   search_note?: string;
 }
 
+export interface ScopingChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: string;
+}
+
+export interface ProjectScopingChatRequest {
+  initial_goal: string;
+  messages: ScopingChatMessage[];
+  current_budget?: number;
+  currency?: string;
+  extracted_spec?: Record<string, string>;
+}
+
+export interface ProjectScopingChatResponse {
+  reply: string;
+  clarifying_question?: string | null;
+  suggested_replies: string[];
+  extracted_spec: Record<string, string>;
+  completeness_score: number;
+  is_ready_to_finalize: boolean;
+  ready_for_decomposition: boolean;
+  recommended_action: 'continue_asking' | 'ready_to_finalize';
+}
+
+export interface ProjectScopingFinalizeRequest {
+  initial_goal: string;
+  messages: ScopingChatMessage[];
+  extracted_spec?: Record<string, string>;
+  budget?: number;
+  currency?: string;
+  project_name?: string;
+  auto_decompose?: boolean;
+}
+
+export interface ProjectScopingFinalizeResponse {
+  project_name: string;
+  enriched_brief: string;
+  detected_services: string[];
+  suggested_budget?: number;
+  currency: string;
+  extracted_spec: Record<string, string>;
+  analysis_result?: ProjectAnalyzeResponse | null;
+}
+
+export interface FreelancerSwapRequest {
+  work_package_id?: string;
+  service_category: string;
+  required_skills?: string[];
+  brief?: string;
+  budget?: number;
+  max_delivery_days?: number;
+  current_freelancer_id: string;
+  exclude_freelancer_ids?: string[];
+}
+
+export interface FreelancerSwapResponse {
+  swapped: boolean;
+  work_package_id?: string;
+  previous_freelancer_id: string;
+  new_match: FreelancerMatchItem | null;
+  message: string;
+}
+
+export interface RoomMember {
+  name: string;
+  role: 'merchant' | 'freelancer' | 'ai_assistant';
+  package_title?: string;
+  freelancer_id?: string;
+}
+
+export interface RoomMessage {
+  sender: string;
+  role: 'merchant' | 'freelancer' | 'ai_assistant';
+  text: string;
+  timestamp?: string;
+}
+
+export interface ProjectChatRoomAssistRequest {
+  project_id?: string;
+  project_name: string;
+  merchant_name?: string;
+  members: RoomMember[];
+  messages: RoomMessage[];
+  action: 'kickoff' | 'summarize' | 'action_items' | 'mediate_scope';
+}
+
+export interface ChatActionItem {
+  task: string;
+  assignee: string;
+  status: 'pending' | 'in_progress' | 'done';
+}
+
+export interface ProjectChatRoomAssistResponse {
+  action: string;
+  message: string;
+  action_items: ChatActionItem[];
+  summary?: string | null;
+}
+
+export interface FreelancerInvitationReviewRequest {
+  freelancer_id: string;
+  project_name: string;
+  merchant_name?: string;
+  work_package_title: string;
+  service_category: string;
+  description: string;
+  deliverables?: string[];
+  allocated_price: number;
+  estimated_days: number;
+  currency?: string;
+}
+
+export interface FreelancerInvitationReviewResponse {
+  feasibility_score: number;
+  feasibility_assessment: 'high' | 'moderate' | 'low';
+  market_rate_evaluation: string;
+  estimated_hours: number;
+  pros: string[];
+  watchouts: string[];
+  suggested_decision: 'accept' | 'counteroffer' | 'request_clarification';
+  recommended_counteroffer_amount?: number | null;
+  recommended_counteroffer_days?: number | null;
+  counteroffer_rationale?: string | null;
+}
+
 export const aiClient = {
   /**
    * Check if the FastAPI service and databases are online
@@ -221,6 +347,82 @@ export const aiClient = {
     return fetchFromAi<IAiProgressSummary>('/api/v1/projects/progress-summary', {
       method: 'POST',
       body: JSON.stringify(params),
+    });
+  },
+
+  /**
+   * Interactive conversational scoping chat for merchant create flow
+   */
+  async scopingChat(params: ProjectScopingChatRequest): Promise<ProjectScopingChatResponse | null> {
+    return fetchFromAi<ProjectScopingChatResponse>('/api/v1/projects/scoping/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        initial_goal: params.initial_goal,
+        messages: params.messages,
+        current_budget: params.current_budget != null ? params.current_budget.toString() : undefined,
+        currency: params.currency || 'USD',
+        extracted_spec: params.extracted_spec || {},
+      }),
+    });
+  },
+
+  /**
+   * Finalize scoping conversation and automatically trigger project decomposition
+   */
+  async scopingFinalize(params: ProjectScopingFinalizeRequest): Promise<ProjectScopingFinalizeResponse | null> {
+    return fetchFromAi<ProjectScopingFinalizeResponse>('/api/v1/projects/scoping/finalize', {
+      method: 'POST',
+      body: JSON.stringify({
+        initial_goal: params.initial_goal,
+        messages: params.messages,
+        extracted_spec: params.extracted_spec || {},
+        budget: params.budget != null ? params.budget.toString() : undefined,
+        currency: params.currency || 'USD',
+        project_name: params.project_name,
+        auto_decompose: params.auto_decompose ?? true,
+      }),
+    });
+  },
+
+  /**
+   * Swap out matched freelancer for an alternative AI-ranked specialist
+   */
+  async swapFreelancer(params: FreelancerSwapRequest): Promise<FreelancerSwapResponse | null> {
+    return fetchFromAi<FreelancerSwapResponse>('/api/v1/matching/freelancers/swap', {
+      method: 'POST',
+      body: JSON.stringify({
+        work_package_id: params.work_package_id,
+        service_category: params.service_category,
+        required_skills: params.required_skills || [],
+        brief: params.brief || '',
+        budget: params.budget != null ? params.budget.toString() : undefined,
+        max_delivery_days: params.max_delivery_days,
+        current_freelancer_id: params.current_freelancer_id,
+        exclude_freelancer_ids: params.exclude_freelancer_ids || [],
+      }),
+    });
+  },
+
+  /**
+   * Facilitate integrated group project chat room (kickoff, summarize, action items)
+   */
+  async chatRoomAssist(params: ProjectChatRoomAssistRequest): Promise<ProjectChatRoomAssistResponse | null> {
+    return fetchFromAi<ProjectChatRoomAssistResponse>('/api/v1/chat-room/assist', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  },
+
+  /**
+   * Explainable feasibility review for freelancer invitations
+   */
+  async reviewInvitation(params: FreelancerInvitationReviewRequest): Promise<FreelancerInvitationReviewResponse | null> {
+    return fetchFromAi<FreelancerInvitationReviewResponse>('/api/v1/freelancer-assistant/invitation/review', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...params,
+        allocated_price: params.allocated_price.toString(),
+      }),
     });
   },
 };

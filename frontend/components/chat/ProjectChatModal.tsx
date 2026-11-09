@@ -20,6 +20,7 @@ import {
   TrendingUp,
   UserCheck,
   Info,
+  Sparkles,
 } from 'lucide-react';
 import { IChatMessage } from '@/types';
 
@@ -44,6 +45,7 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +117,53 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
     }
   };
 
+  const handleAiAssist = async (action: 'kickoff' | 'action_items' | 'summarize') => {
+    if (isAiGenerating) return;
+    setIsAiGenerating(true);
+
+    try {
+      const res = await fetch('/api/ai/chat-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          project_name: projectName,
+          merchant_name: session?.user?.name || 'Merchant',
+          members: participants.map((p) => ({
+            name: p.name,
+            role: p.role?.toLowerCase().includes('merchant') ? 'merchant' : 'freelancer',
+          })),
+          messages: messages.map((m) => ({
+            sender: m.senderName,
+            role: m.senderRole === 'merchant' ? 'merchant' : m.senderRole === 'ai_assistant' ? 'ai_assistant' : 'freelancer',
+            text: m.message,
+          })),
+          action,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.message) {
+        // Post the AI coordinator message directly into the room
+        await fetch(`/api/projects/${projectId}/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: data.message,
+            isAiAssistant: true,
+          }),
+        });
+
+        await fetchChat();
+        scrollToBottom();
+      }
+    } catch (err) {
+      console.error('AI chat room error:', err);
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const currentEmail = session?.user?.email?.toLowerCase();
@@ -122,6 +171,7 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
   // Color generator for participant names in WhatsApp style
   const getParticipantColor = (role: string) => {
     const r = role.toLowerCase();
+    if (r === 'ai_assistant') return 'text-cyan-600 dark:text-cyan-400 font-extrabold';
     if (r.includes('dev')) return 'text-cyan-600 dark:text-cyan-400';
     if (r.includes('design')) return 'text-purple-600 dark:text-purple-400';
     if (r.includes('market')) return 'text-emerald-600 dark:text-emerald-400';
@@ -131,6 +181,7 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
 
   const getRoleIcon = (role: string) => {
     const r = role.toLowerCase();
+    if (r === 'ai_assistant') return <Sparkles className="w-3.5 h-3.5 text-cyan-500" />;
     if (r.includes('dev')) return <Briefcase className="w-3.5 h-3.5 text-cyan-500" />;
     if (r.includes('design')) return <Layers className="w-3.5 h-3.5 text-purple-400" />;
     if (r.includes('market')) return <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />;
@@ -253,6 +304,7 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
           ) : (
             messages.map((msg) => {
               const isMe = msg.senderEmail.toLowerCase() === currentEmail;
+              const isAi = msg.senderRole === 'ai_assistant';
               const formattedTime = new Date(msg.timestamp).toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -265,7 +317,9 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
                 >
                   <div
                     className={`relative max-w-sm sm:max-w-md px-3 py-2 rounded-2xl text-xs shadow-sm ${
-                      isMe
+                      isAi
+                        ? 'bg-cyan-50/95 dark:bg-cyan-950/70 border border-cyan-300/80 dark:border-cyan-800 text-slate-900 dark:text-cyan-100 rounded-tl-none shadow-cyan-500/10'
+                        : isMe
                         ? 'bg-[#D9FDD3] dark:bg-[#005C4B] text-slate-900 dark:text-white rounded-tr-none'
                         : 'bg-white dark:bg-[#202C33] text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-200 dark:border-slate-800'
                     }`}
@@ -273,11 +327,12 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
                     {/* Sender Name in WhatsApp colors for other team members */}
                     {!isMe && (
                       <div className="flex items-center gap-1.5 mb-1">
+                        {isAi && <Sparkles className="w-3.5 h-3.5 text-cyan-500 shrink-0" />}
                         <span className={`font-bold text-[11px] ${getParticipantColor(msg.senderRole)}`}>
                           {msg.senderName}
                         </span>
                         <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 font-bold">
-                          {msg.senderRole}
+                          {isAi ? 'AI Facilitator' : msg.senderRole}
                         </span>
                       </div>
                     )}
@@ -300,6 +355,38 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
             })
           )}
           <div ref={messagesEndRef} />
+        </div>
+
+        {/* AI Room Coordinator Quick Actions */}
+        <div className="px-3 py-1.5 bg-[#EFEAE2]/90 dark:bg-[#0B141A]/90 border-t border-slate-200 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+          <span className="font-bold text-slate-400 uppercase text-[10px] shrink-0 flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-cyan-500" />
+            <span>AI Room Tools:</span>
+          </span>
+          <button
+            type="button"
+            disabled={isAiGenerating}
+            onClick={() => handleAiAssist('kickoff')}
+            className="px-2.5 py-0.5 rounded-full bg-white dark:bg-[#1F2C34] hover:bg-cyan-50 dark:hover:bg-cyan-950/40 text-slate-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 border border-slate-300 dark:border-slate-700 font-semibold transition-all shrink-0 active:scale-95"
+          >
+            {isAiGenerating ? 'Generating...' : '✨ Team Kickoff'}
+          </button>
+          <button
+            type="button"
+            disabled={isAiGenerating}
+            onClick={() => handleAiAssist('action_items')}
+            className="px-2.5 py-0.5 rounded-full bg-white dark:bg-[#1F2C34] hover:bg-cyan-50 dark:hover:bg-cyan-950/40 text-slate-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 border border-slate-300 dark:border-slate-700 font-semibold transition-all shrink-0 active:scale-95"
+          >
+            📋 Milestone Action Items
+          </button>
+          <button
+            type="button"
+            disabled={isAiGenerating}
+            onClick={() => handleAiAssist('summarize')}
+            className="px-2.5 py-0.5 rounded-full bg-white dark:bg-[#1F2C34] hover:bg-cyan-50 dark:hover:bg-cyan-950/40 text-slate-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 border border-slate-300 dark:border-slate-700 font-semibold transition-all shrink-0 active:scale-95"
+          >
+            📝 Executive Summary
+          </button>
         </div>
 
         {/* WhatsApp Style Message Input Bar */}

@@ -48,7 +48,7 @@ export interface IChatMessage {
   senderId: string;
   senderName: string;
   senderEmail: string;
-  senderRole: UserRole;
+  senderRole: UserRole | 'ai_assistant';
   message: string;
   timestamp: string;
 }
