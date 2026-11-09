@@ -137,6 +137,20 @@ export async function POST(req: NextRequest) {
             }
           }
 
+          let flProfile: any = null;
+          if (assignedFreelancerEmail || assignedFreelancerId) {
+            try {
+              flProfile = await UserModel.findOne({
+                $or: [
+                  ...(assignedFreelancerEmail ? [{ email: assignedFreelancerEmail.toLowerCase() }] : []),
+                  ...(assignedFreelancerId ? [{ _id: assignedFreelancerId }] : []),
+                ],
+              })
+                .select('-password')
+                .lean();
+            } catch {}
+          }
+
           convertedPackages.push({
             id: wp.work_package_id || `wp-${broadCategory}-${Date.now()}-${i}`,
             category: broadCategory,
@@ -166,6 +180,14 @@ export async function POST(req: NextRequest) {
             matchScore,
             matchScoreBreakdown,
             matchReasons,
+            assignedFreelancerBio: flProfile?.bio || '',
+            assignedFreelancerSkills: flProfile?.skills || wp.required_skills || [],
+            assignedFreelancerRating: flProfile?.rating || 5.0,
+            assignedFreelancerCompletedProjects: flProfile?.completedProjects || 0,
+            assignedFreelancerPastProjects: flProfile?.pastProjects || [],
+            assignedFreelancerYearsOfExperience: flProfile?.yearsOfExperience || 3,
+            assignedFreelancerHourlyRate: flProfile?.hourlyRate || 50,
+            assignedFreelancerLocation: flProfile?.location || 'Remote',
           });
         }
 
@@ -351,6 +373,14 @@ export async function POST(req: NextRequest) {
           `High skill alignment with ${r.skills.slice(0, 3).join(', ')}`,
           'Available for immediate sprint assignment',
         ],
+        assignedFreelancerBio: matchedFreelancer?.bio || '',
+        assignedFreelancerSkills: matchedFreelancer?.skills || r.skills,
+        assignedFreelancerRating: matchedFreelancer?.rating || 5.0,
+        assignedFreelancerCompletedProjects: matchedFreelancer?.completedProjects || 0,
+        assignedFreelancerPastProjects: matchedFreelancer?.pastProjects || [],
+        assignedFreelancerYearsOfExperience: matchedFreelancer?.yearsOfExperience || 3,
+        assignedFreelancerHourlyRate: matchedFreelancer?.hourlyRate || 50,
+        assignedFreelancerLocation: matchedFreelancer?.location || 'Remote',
       });
     }
 

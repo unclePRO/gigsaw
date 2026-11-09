@@ -32,6 +32,14 @@ export interface IWorkPackage {
   matchScore?: number;
   matchScoreBreakdown?: Record<string, number>;
   matchReasons?: string[];
+  assignedFreelancerBio?: string;
+  assignedFreelancerSkills?: string[];
+  assignedFreelancerRating?: number;
+  assignedFreelancerCompletedProjects?: number;
+  assignedFreelancerPastProjects?: any[];
+  assignedFreelancerYearsOfExperience?: number;
+  assignedFreelancerHourlyRate?: number;
+  assignedFreelancerLocation?: string;
 }
 
 export interface IProjectDocument extends Document {
@@ -121,6 +129,14 @@ const WorkPackageSchema = new Schema<IWorkPackage>({
   matchScore: { type: Number },
   matchScoreBreakdown: { type: Schema.Types.Mixed },
   matchReasons: [{ type: String }],
+  assignedFreelancerBio: { type: String },
+  assignedFreelancerSkills: [{ type: String }],
+  assignedFreelancerRating: { type: Number },
+  assignedFreelancerCompletedProjects: { type: Number },
+  assignedFreelancerPastProjects: [{ type: Schema.Types.Mixed }],
+  assignedFreelancerYearsOfExperience: { type: Number },
+  assignedFreelancerHourlyRate: { type: Number },
+  assignedFreelancerLocation: { type: String },
 });
 
 const ProjectSchema = new Schema<IProjectDocument>(

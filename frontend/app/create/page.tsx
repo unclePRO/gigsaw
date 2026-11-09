@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import {
@@ -13,26 +13,62 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  ChevronRight,
   ChevronDown,
   ChevronUp,
-  UserCheck,
-  UserX,
-  Layers,
   Star,
   ShieldCheck,
-  Zap,
-  Code2,
-  Palette,
-  TrendingUp,
   Clock,
-  Tag,
   Info,
   ShieldAlert,
+  Send,
+  Users,
+  UserCheck,
+  Briefcase,
+  Layers,
+  TrendingUp,
+  FolderGit2,
+  ExternalLink,
+  RotateCcw,
+  Check,
 } from 'lucide-react';
 import { PayPalButtons } from '@paypal/react-paypal-js';
 import { useProjectStore } from '@/store/useProjectStore';
 import { WorkPackage } from '@/types';
+
+// Structured clarifying questions for the AI Project Manager
+const PROJECT_MANAGER_QUESTIONS = [
+  'What is the theme or brand aesthetic you have in mind? (e.g., minimalist modern, artisan boutique, corporate tech)',
+  'Do you already have digital assets (like logos, photography, copy, menus) or should our design specialists build them from scratch?',
+  'What is your target launch turnaround time (in weeks or days)?',
+  'Are there any specific tech stack or platform integrations needed (e.g., Next.js, Stripe, Shopify, Meta/Google Ads)?',
+  'Is there any specific reference website or competitor whose vibe you want to match?',
+];
+
+function CategoryBadge({ category }: { category: string }) {
+  const cat = category.toLowerCase();
+  if (cat === 'dev') {
+    return (
+      <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-900 flex items-center gap-1">
+        <Briefcase className="w-3 h-3 text-cyan-500" />
+        <span>Full-Stack Dev</span>
+      </span>
+    );
+  }
+  if (cat === 'designer') {
+    return (
+      <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900 flex items-center gap-1">
+        <Layers className="w-3 h-3 text-blue-400" />
+        <span>UI/UX Designer</span>
+      </span>
+    );
+  }
+  return (
+    <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900 flex items-center gap-1">
+      <TrendingUp className="w-3 h-3 text-emerald-500" />
+      <span>Growth Marketer</span>
+    </span>
+  );
+}
 
 export default function CreateProjectPage() {
   const router = useRouter();
@@ -43,8 +79,6 @@ export default function CreateProjectPage() {
     setPrompt,
     budget,
     setBudget,
-    currentStep,
-    setCurrentStep,
     isAnalyzing,
     setAnalyzing,
     workPackages,
@@ -56,69 +90,97 @@ export default function CreateProjectPage() {
     assumptions,
     risks,
     setAiMetadata,
+    createPhase,
+    setCreatePhase,
+    chatMessages,
+    addChatMessage,
+    setSelectedFreelancer,
   } = useProjectStore();
 
+  // Voice & Local UI State
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [showIntelligenceDetails, setShowIntelligenceDetails] = useState<boolean>(false);
+  const [chatInput, setChatInput] = useState('');
+  const [questionIndex, setQuestionIndex] = useState(0);
 
-  // Quick Starter Prompts
-  const starterPrompts = [
-    {
-      title: 'Artisan Cafe & Bakery Launch',
-      prompt: 'Open a modern specialty coffeehouse with brand logo, interactive QR digital menu, food photography, Next.js web application, and a local social media launch campaign.',
-      budget: 1800,
-    },
-    {
-      title: 'SaaS Startup Web App & Branding',
-      prompt: 'Build a production-ready B2B SaaS web app with high-converting landing page, responsive dashboard, Stripe/PayPal billing integration, design tokens, and organic SEO architecture.',
-      budget: 2500,
-    },
-    {
-      title: 'E-commerce Brand & Growth Funnel',
-      prompt: 'Launch an eco-friendly apparel ecommerce store with custom vector branding, modern storefront, product mockups, and high-ROI Meta & Google ad campaign blueprints.',
-      budget: 2000,
-    },
-  ];
+  // Pool of alternative freelancers by category fetched from MongoDB
+  const [availableFreelancers, setAvailableFreelancers] = useState<Record<string, any[]>>({});
+  const [swappingPackageId, setSwappingPackageId] = useState<string | null>(null);
 
-  const budgetPresets = [500, 1000, 1800, 2500, 5000];
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Authentication guard
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login?callbackUrl=/create');
     }
   }, [status, router]);
 
+  // Speech Recognition check
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const SpeechRecognition =
-        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        setSpeechSupported(false);
-      }
+      const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SR) setSpeechSupported(false);
     }
   }, []);
 
+  // Fetch real freelancers from MongoDB for replacement pool
+  useEffect(() => {
+    async function loadFreelancers() {
+      try {
+        const res = await fetch('/api/freelancers');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.freelancers)) {
+          const grouped: Record<string, any[]> = { dev: [], designer: [], marketer: [] };
+          data.freelancers.forEach((fl: any) => {
+            const cat = fl.category || 'dev';
+            if (!grouped[cat]) grouped[cat] = [];
+            grouped[cat].push(fl);
+          });
+          setAvailableFreelancers(grouped);
+        }
+      } catch (e) {
+        console.error('Failed to load alternative freelancers:', e);
+      }
+    }
+    loadFreelancers();
+  }, []);
+
+  // Auto-scroll chat
+  useEffect(() => {
+    if (createPhase === 'chat') {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, createPhase]);
+
+  // Computed values
+  const allocatedTotal = workPackages.reduce((sum, wp) => sum + (wp.allocatedPrice || 0), 0);
+  const savings = Math.max(0, budget - allocatedTotal);
+
   if (status === 'loading') {
     return (
-      <div className="p-16 text-center text-xs text-slate-400">
-        <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-cyan-500" />
-        <span>Loading workspace...</span>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <RefreshCw className="w-6 h-6 animate-spin mx-auto text-cyan-500" />
+          <span className="text-xs text-slate-400">Loading project studio...</span>
+        </div>
       </div>
     );
   }
 
-  // Block freelancers from creating projects
+  // Guard: freelancers cannot launch projects
   if (session?.user && (session.user as any).role === 'freelancer') {
     return (
       <div className="p-8 max-w-md mx-auto text-center space-y-4 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-slate-800 mt-12 shadow-sm">
         <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Merchant Only Feature</h2>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Merchant Only Studio</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-          Freelancers cannot launch projects. Projects are created by merchants, and our matching engine pairs specialists automatically based on specialty and verified ratings.
+          Freelancers cannot launch projects. Projects are created by merchants, and our AI talent matcher pairs specialists automatically.
         </p>
         <button
           onClick={() => router.push('/freelancer/dashboard')}
@@ -130,22 +192,19 @@ export default function CreateProjectPage() {
     );
   }
 
+  // Voice Input Toggle
   const toggleListening = () => {
     if (isListening) {
       setIsListening(false);
       return;
     }
-
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
     try {
-      const recognition = new SpeechRecognition();
+      const recognition = new SR();
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.lang = 'en-US';
-
       recognition.onstart = () => setIsListening(true);
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
@@ -154,24 +213,72 @@ export default function CreateProjectPage() {
       };
       recognition.onerror = () => setIsListening(false);
       recognition.onend = () => setIsListening(false);
-
       recognition.start();
     } catch {
       setIsListening(false);
     }
   };
 
-  const handleDecompose = async () => {
+  // STEP 1 -> STEP 2: Transition to Conversational AI Gathering
+  const handleInitialSubmit = () => {
     if (!prompt.trim()) return;
+    setCreatePhase('chat');
 
+    // AI initiates the conversation as Project Manager
+    if (chatMessages.length === 0) {
+      setTimeout(() => {
+        addChatMessage({
+          role: 'ai',
+          content: `Hi ${session?.user?.name || 'there'}! I'm your AI Project Manager. I've captured your primary goal:\n\n"${prompt.trim()}"\n\nTo ensure our algorithm decomposes this with precise milestone budgets and matches the top specialists, let me gather a few quick details:\n\n${PROJECT_MANAGER_QUESTIONS[0]}`,
+        });
+        setQuestionIndex(1);
+      }, 500);
+    }
+  };
+
+  // Conversational response handler
+  const handleChatSend = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userText = chatInput.trim();
+    addChatMessage({ role: 'user', content: userText });
+    setChatInput('');
+
+    // AI Project Manager asks subsequent questions
+    setTimeout(() => {
+      if (questionIndex < PROJECT_MANAGER_QUESTIONS.length) {
+        addChatMessage({
+          role: 'ai',
+          content: PROJECT_MANAGER_QUESTIONS[questionIndex],
+        });
+        setQuestionIndex((prev) => prev + 1);
+      } else {
+        addChatMessage({
+          role: 'ai',
+          content:
+            "Thank you! I have all key parameters gathered for scope, aesthetics, and technical requirements. Whenever you're ready, click **Finalize Details & Assemble Team** to run our decomposition and match top specialists.",
+        });
+      }
+    }, 600);
+  };
+
+  // STEP 2 -> STEP 3: AI Decomposition & Freelancer Matching
+  const handleFinalizeDetails = async () => {
     setAnalyzing(true);
     setSaveError(null);
+
+    // Concatenate prompt with conversational answers
+    const conversationContext = chatMessages
+      .map((m) => `${m.role === 'ai' ? 'Project Manager' : 'Merchant'}: ${m.content}`)
+      .join('\n');
+    const enrichedPrompt = `${prompt}\n\nMerchant Clarifications:\n${conversationContext}`;
 
     try {
       const res = await fetch('/api/ai/decompose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, budget }),
+        body: JSON.stringify({ prompt: enrichedPrompt, budget }),
       });
 
       const data = await res.json();
@@ -183,19 +290,96 @@ export default function CreateProjectPage() {
           assumptions: data.assumptions || [],
           risks: data.risks || [],
         });
-        setCurrentStep(2);
+
+        // Store selected freelancers in state
+        data.workPackages.forEach((wp: WorkPackage) => {
+          if (wp.assignedFreelancerName) {
+            setSelectedFreelancer(wp.id, {
+              id: wp.assignedFreelancerId,
+              name: wp.assignedFreelancerName,
+              email: wp.assignedFreelancerEmail,
+              bio: wp.assignedFreelancerBio,
+              skills: wp.assignedFreelancerSkills,
+              rating: wp.assignedFreelancerRating,
+              completedProjects: wp.assignedFreelancerCompletedProjects,
+              pastProjects: wp.assignedFreelancerPastProjects,
+              yearsOfExperience: wp.assignedFreelancerYearsOfExperience,
+              hourlyRate: wp.assignedFreelancerHourlyRate,
+              location: wp.assignedFreelancerLocation,
+              matchScore: wp.matchScore,
+              matchScoreBreakdown: wp.matchScoreBreakdown,
+              matchReasons: wp.matchReasons,
+            });
+          }
+        });
+
+        setCreatePhase('results');
       } else {
         setSaveError(data.error || 'Failed to decompose project.');
       }
     } catch (err: any) {
-      console.error('Decompose error:', err);
-      setSaveError(err.message || 'Network error during decomposition.');
+      console.error('Decomposition error:', err);
+      setSaveError(err.message || 'Network error during AI decomposition.');
     } finally {
       setAnalyzing(false);
     }
   };
 
-  const handleSaveAndCheckout = async (orderId: string) => {
+  // STEP 4: "Pick Someone Else" - Replace Freelancer with next in pool
+  const handleSwapFreelancer = (pkg: WorkPackage) => {
+    const category = pkg.category.toLowerCase();
+    const pool = availableFreelancers[category] || [];
+    if (pool.length === 0) return;
+
+    setSwappingPackageId(pkg.id);
+
+    setTimeout(() => {
+      // Find current freelancer index
+      const currentIndex = pool.findIndex(
+        (f) =>
+          f.email?.toLowerCase() === pkg.assignedFreelancerEmail?.toLowerCase() ||
+          f._id?.toString() === pkg.assignedFreelancerId
+      );
+
+      // Pick next freelancer in circular array
+      const nextIndex = (currentIndex + 1) % pool.length;
+      const nextFreelancer = pool[nextIndex];
+
+      if (nextFreelancer) {
+        const updatedPackages = workPackages.map((wp) => {
+          if (wp.id === pkg.id) {
+            return {
+              ...wp,
+              assignedFreelancerId: nextFreelancer._id?.toString(),
+              assignedFreelancerName: nextFreelancer.name,
+              assignedFreelancerEmail: nextFreelancer.email,
+              assignedFreelancerBio: nextFreelancer.bio || '',
+              assignedFreelancerSkills: nextFreelancer.skills || wp.requiredSkills || [],
+              assignedFreelancerRating: nextFreelancer.rating || 5.0,
+              assignedFreelancerCompletedProjects: nextFreelancer.completedProjects || 0,
+              assignedFreelancerPastProjects: nextFreelancer.pastProjects || [],
+              assignedFreelancerYearsOfExperience: nextFreelancer.yearsOfExperience || 3,
+              assignedFreelancerHourlyRate: nextFreelancer.hourlyRate || 50,
+              assignedFreelancerLocation: nextFreelancer.location || 'Remote',
+              matchScore: Math.min(99, Math.max(90, Math.round((nextFreelancer.rating || 4.9) * 19.5))),
+              matchReasons: [
+                `Verified specialist in ${category.toUpperCase()}`,
+                `Proven track record with ${nextFreelancer.completedProjects || 0} completed projects`,
+                'High historic satisfaction rating',
+              ],
+            };
+          }
+          return wp;
+        });
+
+        setWorkPackages(updatedPackages);
+      }
+      setSwappingPackageId(null);
+    }, 400);
+  };
+
+  // STEP 5: Finalize Team & Send Invites -> Escrow & Project Creation
+  const handleFinalizeAndCheckout = async (orderId: string) => {
     setIsSavingProject(true);
     setSaveError(null);
 
@@ -204,7 +388,7 @@ export default function CreateProjectPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          projectName: proposal?.projectName || 'New Launch Project',
+          projectName: proposal?.projectName || `${prompt.slice(0, 30)} Project`,
           merchantPrompt: prompt,
           totalBudget: budget,
           allocatedTotal: workPackages.reduce((s, w) => s + w.allocatedPrice, 0),
@@ -222,7 +406,6 @@ export default function CreateProjectPage() {
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         throw new Error(data.error || 'Failed to save project to MongoDB');
       }
@@ -230,227 +413,258 @@ export default function CreateProjectPage() {
       resetDraft();
       router.push('/dashboard');
     } catch (err: any) {
-      console.error('Save project error:', err);
+      console.error('Error funding project:', err);
       setSaveError(err.message || 'Error saving project to database.');
     } finally {
       setIsSavingProject(false);
     }
   };
 
-  const allocatedTotal = workPackages.reduce((sum, wp) => sum + (wp.allocatedPrice || 0), 0);
-  const savings = Math.max(0, budget - allocatedTotal);
-
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
-      {/* Sleek Header & Stepper */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">
-              Project Studio
-            </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              Escrow Powered
-            </span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5">
-            Launch Your Project
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Define one goal. Assemble a multidisciplinary team with unified PayPal checkout.
-          </p>
-        </div>
-
-        {/* Stepper pills */}
-        <div className="flex items-center gap-2 text-xs font-semibold shrink-0">
-          {[
-            { num: 1, label: 'Goal & Budget' },
-            { num: 2, label: 'Team Breakdown' },
-            { num: 3, label: 'Unified Checkout' },
-          ].map((step, idx) => (
-            <React.Fragment key={step.num}>
-              <div
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all ${
-                  currentStep === step.num
-                    ? 'bg-slate-900 dark:bg-cyan-500 text-white font-bold shadow-sm'
-                    : currentStep > step.num
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
-                    : 'bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500'
-                }`}
-              >
-                <span>{currentStep > step.num ? '✓' : `0${step.num}`}</span>
-                <span className="hidden sm:inline">{step.label}</span>
-              </div>
-              {idx < 2 && <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-700 shrink-0" />}
-            </React.Fragment>
-          ))}
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-slate-50 dark:bg-[#080E1A] text-slate-900 dark:text-slate-100 transition-colors">
+      {/* Global Error Banner */}
       {saveError && (
-        <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-          <span>{saveError}</span>
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 w-full max-w-lg px-4 animate-fadeIn">
+          <div className="p-3 bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-900/60 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-2 shadow-xl">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+            <span className="flex-1">{saveError}</span>
+            <button
+              onClick={() => setSaveError(null)}
+              className="text-rose-400 hover:text-rose-600 font-bold text-sm"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 
-      {/* STEP 1: REQUIREMENT INPUT */}
-      {currentStep === 1 && (
-        <div className="space-y-6">
-          {/* Main Prompt Card */}
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-5 transition-colors">
-            <div className="flex items-center justify-between">
-              <div>
-                <label htmlFor="prompt-input" className="text-sm font-bold text-slate-900 dark:text-white block">
-                  What would you like to build or launch?
-                </label>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Type your project requirements in plain natural language or speak them.
-                </p>
+      {/* ─────────────────────────────────────────────────────────────────
+          STEP 1: THE INITIAL PROMPT (Centered Minimalist UI)
+      ─────────────────────────────────────────────────────────────────── */}
+      {createPhase === 'prompt' && (
+        <div className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-12 transition-all duration-700 ease-in-out">
+          <div className="w-full max-w-2xl space-y-7 animate-fadeIn">
+            {/* Header / Intro */}
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold shadow-sm">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>AI Project Architect</span>
               </div>
-
-              {speechSupported && (
-                <button
-                  type="button"
-                  onClick={toggleListening}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    isListening
-                      ? 'bg-rose-500 text-white animate-pulse shadow-sm'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5 text-cyan-500" />}
-                  <span>{isListening ? 'Listening...' : 'Voice Input'}</span>
-                </button>
-              )}
+              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+                What would you like to build?
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                Describe your project in plain language. Our conversational AI will structure requirements and match top verified specialists.
+              </p>
             </div>
 
-            <div className="space-y-2">
-              <textarea
-                id="prompt-input"
-                rows={5}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="e.g. Launch an artisanal coffee shop: design a modern vector logo mark and brand guidelines, build a responsive Next.js web application with a digital QR menu, shoot food photography, and run a local launch marketing campaign..."
-                className="w-full p-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 leading-relaxed transition-colors"
-              />
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span>Natural language requirement decomposition</span>
-                <span>{prompt.length} characters</span>
-              </div>
-            </div>
+            {/* Main Centered Chatbox */}
+            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-6 sm:p-7 space-y-5 transition-all">
+              <div className="relative">
+                <textarea
+                  ref={textareaRef}
+                  id="prompt-input"
+                  rows={4}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && prompt.trim()) {
+                      handleInitialSubmit();
+                    }
+                  }}
+                  placeholder="e.g. I need a website for my coffee shop with brand identity, digital menu, and a local social media launch campaign..."
+                  className="w-full p-4 pr-14 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 leading-relaxed resize-none transition-colors"
+                />
 
-            {/* Quick Starter Inspiration Chips */}
-            <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
-                Quick Project Templates:
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {starterPrompts.map((st, i) => (
+                {speechSupported && (
                   <button
-                    key={i}
                     type="button"
-                    onClick={() => {
-                      setPrompt(st.prompt);
-                      setBudget(st.budget);
-                    }}
-                    className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-cyan-50/50 dark:hover:bg-cyan-950/30 hover:border-cyan-300 dark:hover:border-cyan-800 text-left transition-all group"
+                    onClick={toggleListening}
+                    className={`absolute right-3.5 top-3.5 p-2 rounded-xl transition-all ${
+                      isListening
+                        ? 'bg-rose-500 text-white animate-pulse'
+                        : 'text-slate-400 hover:text-cyan-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                    title={isListening ? 'Stop listening' : 'Voice Input'}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-cyan-600 dark:group-hover:text-cyan-400">
-                        {st.title}
-                      </span>
-                      <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400">
-                        ${st.budget}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
-                      {st.prompt}
-                    </p>
+                    {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                   </button>
-                ))}
+                )}
               </div>
-            </div>
 
-            {/* Budget Section */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              {/* Budget Ceiling Input */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <div>
-                  <label htmlFor="budget-input" className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Total Project Budget Ceiling (USD)
+                  <label htmlFor="budget-input" className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                    Estimated Project Budget Ceiling (USD)
                   </label>
                   <p className="text-[11px] text-slate-400">
-                    Allocated transparently across verified specialists from the service catalog.
+                    Calculated transparently across verified specialists in our service catalog.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {budgetPresets.map((b) => (
-                    <button
-                      key={b}
-                      type="button"
-                      onClick={() => setBudget(b)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                        budget === b
-                          ? 'bg-slate-900 dark:bg-cyan-500 text-white shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      }`}
-                    >
-                      ${b}
-                    </button>
-                  ))}
+                <div className="relative max-w-[170px] shrink-0">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 font-black text-sm">
+                    $
+                  </span>
+                  <input
+                    id="budget-input"
+                    type="number"
+                    min={100}
+                    step={50}
+                    value={budget}
+                    onChange={(e) => setBudget(Number(e.target.value))}
+                    className="w-full pl-8 pr-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors"
+                  />
                 </div>
               </div>
 
-              <div className="max-w-xs relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 font-black text-sm">
-                  $
-                </span>
-                <input
-                  id="budget-input"
-                  type="number"
-                  min={100}
-                  step={50}
-                  value={budget}
-                  onChange={(e) => setBudget(Number(e.target.value))}
-                  className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors"
-                />
+              {/* Action Button */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  disabled={!prompt.trim()}
+                  onClick={handleInitialSubmit}
+                  className={`w-full py-3.5 rounded-xl font-bold text-sm text-white transition-all flex items-center justify-center gap-2 ${
+                    !prompt.trim()
+                      ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                      : 'bg-cyan-500 hover:bg-cyan-600 active:scale-[0.99] shadow-glow-cyan'
+                  }`}
+                >
+                  <span>Build My Project Team</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
-            </div>
-
-            {/* Action Button */}
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-              <button
-                type="button"
-                disabled={!prompt.trim() || isAnalyzing}
-                onClick={handleDecompose}
-                className={`px-7 py-3 rounded-xl font-bold text-sm text-white transition-all flex items-center gap-2 ${
-                  !prompt.trim() || isAnalyzing
-                    ? 'bg-slate-300 dark:bg-slate-800 cursor-not-allowed text-slate-500'
-                    : 'bg-cyan-500 hover:bg-cyan-600 active:scale-95 shadow-glow-cyan'
-                }`}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Analyzing & Assembling Specialist Team...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Assemble Team & Decompose</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* STEP 2: ASSEMBLED TEAM & EXECUTION SEQUENCE */}
-      {currentStep === 2 && (
-        <div className="space-y-6">
-          {/* AI Project Intelligence & Execution Sequence Banner */}
+      {/* ─────────────────────────────────────────────────────────────────
+          STEP 2: CONVERSATIONAL AI GATHERING (Chatbot Sliding UI)
+      ─────────────────────────────────────────────────────────────────── */}
+      {createPhase === 'chat' && (
+        <div className="min-h-screen flex flex-col transition-all duration-700 ease-in-out animate-fadeIn">
+          {/* Top Sticky Bar */}
+          <div className="sticky top-16 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3">
+            <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{prompt}</p>
+                  <p className="text-[10px] text-slate-400">Budget: ${budget} USD &bull; AI Project Gathering</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCreatePhase('prompt')}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center gap-1 shrink-0 transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Edit Goal</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Chat Stream Area */}
+          <div className="flex-1 overflow-y-auto px-4 py-6">
+            <div className="max-w-3xl mx-auto space-y-4 pb-44">
+              {chatMessages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
+                >
+                  {msg.role === 'ai' && (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center shrink-0 mt-1 mr-2.5 shadow-sm">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                  )}
+
+                  <div
+                    className={`max-w-lg px-4 py-3 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
+                      msg.role === 'user'
+                        ? 'bg-cyan-500 text-white rounded-br-none shadow-sm font-medium'
+                        : 'bg-white dark:bg-[#0F172A] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-bl-none shadow-sm'
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+
+              {isAnalyzing && (
+                <div className="flex justify-start items-center gap-2.5 p-3 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm text-xs text-slate-500 animate-pulse">
+                  <RefreshCw className="w-4 h-4 animate-spin text-cyan-500 shrink-0" />
+                  <span>Decomposing milestones & calculating budget plan...</span>
+                </div>
+              )}
+
+              <div ref={chatBottomRef} />
+            </div>
+          </div>
+
+          {/* Bottom Chat Input Bar & Finalize Trigger */}
+          <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-4 py-3 shadow-lg">
+            <div className="max-w-3xl mx-auto space-y-2.5">
+              {/* Primary Finalize Details Button */}
+              <button
+                type="button"
+                disabled={isAnalyzing}
+                onClick={handleFinalizeDetails}
+                className="w-full py-2.5 bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600 active:scale-[0.99] text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Decomposing & Matching Specialists...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Finalize Details & Match Specialists</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </button>
+
+              {/* Chat Input Bar */}
+              <form onSubmit={handleChatSend} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Answer project questions or provide details..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  disabled={isAnalyzing}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors"
+                />
+
+                <button
+                  type="submit"
+                  disabled={!chatInput.trim() || isAnalyzing}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all flex items-center gap-1.5 shrink-0 ${
+                    !chatInput.trim() || isAnalyzing
+                      ? 'bg-slate-300 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                      : 'bg-cyan-500 hover:bg-cyan-600 shadow-sm'
+                  }`}
+                >
+                  <span>Send</span>
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────
+          STEP 3 & 4: AI DECOMPOSITION & FREELANCER MATCHING / REPLACEMENT
+      ─────────────────────────────────────────────────────────────────── */}
+      {createPhase === 'results' && (
+        <div className="max-w-5xl mx-auto px-4 py-8 space-y-8 animate-fadeIn pb-32">
+          {/* Executive AI Decomposition Architecture Banner */}
           <div className="bg-gradient-to-r from-slate-900 to-navy-950 text-white rounded-2xl p-6 border border-slate-800 shadow-xl space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
               <div>
@@ -459,21 +673,19 @@ export default function CreateProjectPage() {
                     <Sparkles className="w-2.5 h-2.5" />
                     <span>AI Execution Architecture</span>
                   </span>
-                  <span className="text-xs text-slate-400">
-                    Topological Dependency Order
-                  </span>
+                  <span className="text-xs text-slate-400">Topological Milestone Dependency Order</span>
                 </div>
-                <h2 className="text-lg font-bold text-white mt-1">
+                <h2 className="text-xl font-bold text-white mt-1">
                   {proposal?.projectName || 'Assembled Specialist Proposal'}
                 </h2>
                 {aiAnalysis?.business_goal && (
                   <p className="text-xs text-slate-300 mt-1 max-w-2xl line-clamp-2">
-                    <span className="font-semibold text-cyan-400">Goal:</span> {aiAnalysis.business_goal}
+                    <span className="font-semibold text-cyan-400">Business Goal:</span> {aiAnalysis.business_goal}
                   </p>
                 )}
               </div>
 
-              {/* Financial metrics */}
+              {/* Financial Metrics */}
               <div className="flex items-center gap-4 text-left sm:text-right shrink-0">
                 <div className="pr-4 border-r border-slate-800">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Budget</span>
@@ -490,7 +702,7 @@ export default function CreateProjectPage() {
               </div>
             </div>
 
-            {/* Execution Sequence DAG Pills */}
+            {/* Execution Sequence Pills */}
             <div className="space-y-1.5">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Milestone Execution Sequence:
@@ -513,7 +725,7 @@ export default function CreateProjectPage() {
               </div>
             </div>
 
-            {/* AI Assumptions & Risk Analysis Drawer Toggle */}
+            {/* AI Assumptions & Risk Drawer Toggle */}
             {((assumptions && assumptions.length > 0) || (risks && risks.length > 0)) && (
               <div className="pt-2 border-t border-slate-800/80">
                 <button
@@ -525,16 +737,11 @@ export default function CreateProjectPage() {
                   <span>
                     AI Intelligence Report ({assumptions?.length || 0} Assumptions, {risks?.length || 0} Risks)
                   </span>
-                  {showIntelligenceDetails ? (
-                    <ChevronUp className="w-3.5 h-3.5" />
-                  ) : (
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  )}
+                  {showIntelligenceDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
 
                 {showIntelligenceDetails && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 mt-2 text-xs">
-                    {/* Assumptions */}
                     {assumptions && assumptions.length > 0 && (
                       <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-1.5">
                         <div className="font-bold text-slate-200 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
@@ -544,7 +751,7 @@ export default function CreateProjectPage() {
                         <ul className="space-y-1 text-slate-400 text-[11px]">
                           {assumptions.map((asm, i) => (
                             <li key={i} className="flex items-start gap-1.5">
-                              <span className="text-cyan-400 font-bold">•</span>
+                              <span className="text-cyan-400 font-bold">&bull;</span>
                               <span>{asm}</span>
                             </li>
                           ))}
@@ -552,7 +759,6 @@ export default function CreateProjectPage() {
                       </div>
                     )}
 
-                    {/* Risks */}
                     {risks && risks.length > 0 && (
                       <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-1.5">
                         <div className="font-bold text-amber-300 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
@@ -562,7 +768,7 @@ export default function CreateProjectPage() {
                         <ul className="space-y-1 text-slate-400 text-[11px]">
                           {risks.map((rsk, i) => (
                             <li key={i} className="flex items-start gap-1.5">
-                              <span className="text-amber-400 font-bold">•</span>
+                              <span className="text-amber-400 font-bold">&bull;</span>
                               <span>{rsk}</span>
                             </li>
                           ))}
@@ -575,57 +781,66 @@ export default function CreateProjectPage() {
             )}
           </div>
 
-          {/* Work Package Cards (Designed for Explainable AI Matching) */}
-          <div className="space-y-4">
+          {/* Section Heading */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-cyan-500" />
+                <span>Matched Specialists & Assigned Work Packages</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Review verified portfolios, past project deliveries, and milestones. Swap specialists anytime using Pick Someone Else.
+              </p>
+            </div>
+            <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 px-3 py-1 rounded-full border border-cyan-200 dark:border-cyan-800">
+              {workPackages.length} Assembled Specialists
+            </span>
+          </div>
+
+          {/* Rich Freelancer Profile Cards */}
+          <div className="space-y-6">
             {workPackages.map((wp, idx) => {
-              const isDev = wp.category === 'dev';
-              const isDesigner = wp.category === 'designer';
               const isExpanded = expandedMatchId === wp.id;
+              const isSwapping = swappingPackageId === wp.id;
 
               return (
                 <div
                   key={wp.id}
-                  className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm hover:shadow-md transition-all"
+                  className={`bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ${
+                    isSwapping ? 'opacity-50 scale-[0.99] animate-pulse' : ''
+                  }`}
                 >
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    {/* Left: Task Info & Deliverables */}
-                    <div className="space-y-2.5 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${
-                            isDesigner
-                              ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900'
-                              : isDev
-                              ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-900'
-                              : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900'
-                          }`}
-                        >
-                          {wp.roleName || `Milestone ${idx + 1}: ${wp.category}`}
-                        </span>
+                  {/* Top Bar: Role badge, estimate & allocated price */}
+                  <div className="px-6 py-4 bg-slate-50/70 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CategoryBadge category={wp.category} />
+                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-cyan-500" />
+                        <span>{wp.estimatedDays || 7} Days Turnaround</span>
+                      </span>
+                    </div>
 
-                        {wp.dependencies && wp.dependencies.length > 0 && (
-                          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                            Prerequisite: {wp.dependencyNames?.[0] || 'Previous Milestone'}
-                          </span>
-                        )}
-
-                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>{wp.estimatedDays || 7} Days Estimate</span>
-                        </span>
+                    <div className="text-right">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Milestone Escrow</span>
+                      <div className="text-xl font-black text-slate-900 dark:text-white">
+                        ${wp.allocatedPrice} <span className="text-xs font-semibold text-slate-400">USD</span>
                       </div>
+                    </div>
+                  </div>
 
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                        {wp.title}
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl">
+                  {/* Card Body */}
+                  <div className="p-6 space-y-5">
+                    {/* Milestone Scope Info */}
+                    <div className="space-y-2">
+                      <h4 className="text-base font-bold text-slate-900 dark:text-white">{wp.title}</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
                         {wp.description}
                       </p>
 
                       {/* Required Skills Badges */}
                       {wp.requiredSkills && wp.requiredSkills.length > 0 && (
-                        <div className="pt-0.5 flex flex-wrap items-center gap-1.5">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Skills:</span>
+                        <div className="pt-1 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Required Skills:</span>
                           {wp.requiredSkills.map((sk, ski) => (
                             <span
                               key={ski}
@@ -639,12 +854,12 @@ export default function CreateProjectPage() {
 
                       {/* Deliverables Tag Cloud */}
                       {wp.deliverables && wp.deliverables.length > 0 && (
-                        <div className="pt-0.5 flex flex-wrap items-center gap-1.5">
+                        <div className="pt-1 flex flex-wrap items-center gap-1.5">
                           <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Deliverables:</span>
                           {wp.deliverables.map((d, di) => (
                             <span
                               key={di}
-                              className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700"
+                              className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                             >
                               {d}
                             </span>
@@ -653,173 +868,239 @@ export default function CreateProjectPage() {
                       )}
                     </div>
 
-                    {/* Right: Matched Freelancer Profile & Price */}
-                    <div className="flex md:flex-col items-end justify-between gap-3 shrink-0 md:w-72">
-                      {/* Price badge */}
-                      <div className="text-left md:text-right">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Milestone Budget</span>
-                        <div className="text-xl font-black text-slate-900 dark:text-white">
-                          ${wp.allocatedPrice} <span className="text-xs font-semibold text-slate-400">USD</span>
-                        </div>
-                      </div>
-
-                      {/* Matched Freelancer Card with Explainable Match Score */}
-                      <div className="w-full bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-                        {wp.assignedFreelancerName ? (
-                          <>
-                            <div className="flex items-center justify-between">
-                              <button
-                                type="button"
-                                onClick={() => setExpandedMatchId(isExpanded ? null : wp.id)}
-                                className="text-[10px] font-extrabold text-cyan-600 dark:text-cyan-400 flex items-center gap-1 hover:underline cursor-pointer bg-cyan-50 dark:bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-900"
-                                title="Click to view explainable 6-factor AI match breakdown"
-                              >
-                                <Sparkles className="w-3 h-3 text-cyan-500" />
-                                <span>{wp.matchScore ? `${wp.matchScore}% Match` : '95% Match Score'}</span>
-                                {isExpanded ? (
-                                  <ChevronUp className="w-3 h-3" />
-                                ) : (
-                                  <ChevronDown className="w-3 h-3" />
-                                )}
-                              </button>
-                              <div className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
-                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                <span>5.0</span>
-                              </div>
+                    {/* Rich Freelancer Profile Block */}
+                    {wp.assignedFreelancerName ? (
+                      <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                          {/* Avatar & Personal Details */}
+                          <div className="flex items-start gap-3.5 min-w-0">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md">
+                              {wp.assignedFreelancerName.charAt(0).toUpperCase()}
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
-                                {wp.assignedFreelancerName.charAt(0)}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h5 className="font-bold text-sm text-slate-900 dark:text-white truncate">
                                   {wp.assignedFreelancerName}
-                                </div>
-                                <div className="text-[10px] text-slate-400 truncate">
-                                  {wp.assignedFreelancerEmail}
+                                </h5>
+                                <div className="flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-900/50">
+                                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                  <span>{wp.assignedFreelancerRating || 5.0}</span>
+                                  <span className="text-slate-400 font-normal">
+                                    ({wp.assignedFreelancerCompletedProjects || 12} jobs)
+                                  </span>
                                 </div>
                               </div>
+
+                              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 max-w-xl">
+                                {wp.assignedFreelancerBio ||
+                                  'Top-rated verified specialist with proven delivery on complex client milestones.'}
+                              </p>
+
+                              <div className="text-[11px] text-slate-400 flex items-center gap-3 pt-0.5">
+                                <span>{wp.assignedFreelancerYearsOfExperience || 4}+ Years Exp.</span>
+                                <span>&bull;</span>
+                                <span>{wp.assignedFreelancerLocation || 'Remote Specialist'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Match Score & "Pick Someone Else" Button */}
+                          <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedMatchId(isExpanded ? null : wp.id)}
+                              className="text-[10px] font-extrabold text-cyan-600 dark:text-cyan-400 flex items-center gap-1 hover:underline cursor-pointer bg-cyan-50 dark:bg-cyan-950/60 px-2.5 py-1 rounded-full border border-cyan-200 dark:border-cyan-900"
+                              title="View explainable 6-factor AI match breakdown"
+                            >
+                              <Sparkles className="w-3 h-3 text-cyan-500" />
+                              <span>{wp.matchScore ? `${wp.matchScore}% Match` : '96% Match'}</span>
+                              {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            </button>
+
+                            {/* "Pick Someone Else" Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleSwapFreelancer(wp)}
+                              disabled={isSwapping}
+                              className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 hover:border-cyan-300 dark:hover:border-cyan-800 text-slate-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                            >
+                              <RotateCcw className={`w-3.5 h-3.5 ${isSwapping ? 'animate-spin' : ''}`} />
+                              <span>Pick Someone Else</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Explainable AI Match Breakdown Drawer */}
+                        {isExpanded && (
+                          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2 text-left">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                              Explainable AI Match Breakdown:
+                            </div>
+                            <div className="space-y-1.5 text-[11px]">
+                              {[
+                                { label: 'Semantic Brief Relevance (35%)', key: 'semantic_relevance', fallback: 0.95 },
+                                { label: 'Skill Overlap (25%)', key: 'skill_overlap', fallback: 0.94 },
+                                { label: 'Rating & Track Record (15%)', key: 'rating', fallback: 0.98 },
+                                { label: 'Availability (10%)', key: 'availability', fallback: 1.0 },
+                                { label: 'Price Compatibility (10%)', key: 'price_compatibility', fallback: 0.92 },
+                                { label: 'Delivery Turnaround Fit (5%)', key: 'delivery_time', fallback: 0.9 },
+                              ].map(({ label, key, fallback }) => {
+                                const val = Math.round(
+                                  ((wp.matchScoreBreakdown as any)?.[key] ?? fallback) * 100
+                                );
+                                return (
+                                  <div
+                                    key={key}
+                                    className="flex items-center justify-between text-slate-600 dark:text-slate-300"
+                                  >
+                                    <span>{label}</span>
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                        <div className="h-full rounded-full bg-cyan-500" style={{ width: `${val}%` }} />
+                                      </div>
+                                      <span className="font-bold text-cyan-600 dark:text-cyan-400 w-8 text-right">
+                                        {val}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
 
-                            {/* Expandable Explainable AI Match Breakdown */}
-                            {isExpanded && (
-                              <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-800 space-y-2 text-left">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                  Explainable Match Factors:
-                                </div>
-                                <div className="space-y-1 text-[10px]">
-                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                                    <span>Semantic Relevance (35%)</span>
-                                    <span className="font-bold text-cyan-600 dark:text-cyan-400">
-                                      {Math.round(((wp.matchScoreBreakdown as any)?.semantic_relevance ?? 0.94) * 100)}%
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                                    <span>Skills Overlap (25%)</span>
-                                    <span className="font-bold text-cyan-600 dark:text-cyan-400">
-                                      {Math.round(((wp.matchScoreBreakdown as any)?.skill_overlap ?? 0.95) * 100)}%
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                                    <span>Rating & Track Record (15%)</span>
-                                    <span className="font-bold text-amber-500">
-                                      {Math.round(((wp.matchScoreBreakdown as any)?.rating ?? 0.98) * 100)}%
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                                    <span>Availability (10%)</span>
-                                    <span className="font-bold text-emerald-500">
-                                      {Math.round(((wp.matchScoreBreakdown as any)?.availability ?? 1.0) * 100)}%
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                                    <span>Price Fit (10%)</span>
-                                    <span className="font-bold text-cyan-600 dark:text-cyan-400">
-                                      {Math.round(((wp.matchScoreBreakdown as any)?.price_compatibility ?? 0.92) * 100)}%
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                                    <span>Delivery Turnaround (5%)</span>
-                                    <span className="font-bold text-cyan-600 dark:text-cyan-400">
-                                      {Math.round(((wp.matchScoreBreakdown as any)?.delivery_time ?? 0.9) * 100)}%
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {wp.matchReasons && wp.matchReasons.length > 0 && (
-                                  <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800 space-y-1">
-                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
-                                      Selection Reasons:
-                                    </span>
-                                    <ul className="text-[10px] text-slate-600 dark:text-slate-400 space-y-0.5">
-                                      {wp.matchReasons.map((reason, ri) => (
-                                        <li key={ri} className="flex items-start gap-1">
-                                          <span className="text-cyan-500">•</span>
-                                          <span>{reason}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
+                            {wp.matchReasons && wp.matchReasons.length > 0 && (
+                              <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">
+                                  Why matched:
+                                </span>
+                                <ul className="text-[11px] text-slate-600 dark:text-slate-400 space-y-0.5">
+                                  {wp.matchReasons.map((reason, ri) => (
+                                    <li key={ri} className="flex items-start gap-1">
+                                      <span className="text-cyan-500 font-bold">&bull;</span>
+                                      <span>{reason}</span>
+                                    </li>
+                                  ))}
+                                </ul>
                               </div>
                             )}
-                          </>
-                        ) : (
-                          <div className="flex items-center gap-2 text-slate-400">
-                            <UserX className="w-4 h-4 shrink-0" />
-                            <div className="text-[11px]">
-                              <span className="font-bold text-slate-700 dark:text-slate-300 block">Open Milestone</span>
-                              <span>Auto-matched upon launch</span>
+                          </div>
+                        )}
+
+                        {/* Past Experience / Portfolios List from MongoDB */}
+                        {wp.assignedFreelancerPastProjects && wp.assignedFreelancerPastProjects.length > 0 && (
+                          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                              Verified Past Projects & Portfolio:
+                            </span>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {wp.assignedFreelancerPastProjects.slice(0, 2).map((item: any, pIdx: number) => (
+                                <div
+                                  key={pIdx}
+                                  className="p-2.5 rounded-xl bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 space-y-1 shadow-2xs"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                                      {item.title}
+                                    </span>
+                                    <FolderGit2 className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                                  </div>
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                                    {item.description}
+                                  </p>
+                                  {item.technologies && item.technologies.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 pt-1">
+                                      {item.technologies.slice(0, 3).map((t: string, ti: number) => (
+                                        <span
+                                          key={ti}
+                                          className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium"
+                                        >
+                                          {t}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           </div>
                         )}
                       </div>
-                    </div>
+                    ) : (
+                      <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center gap-3 text-slate-400">
+                        <UserCheck className="w-5 h-5 shrink-0" />
+                        <div className="text-xs">
+                          <span className="font-bold text-slate-700 dark:text-slate-300 block">
+                            Milestone Ready for Assignment
+                          </span>
+                          <span>Will be auto-assigned to matched specialist upon launch authorization.</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Navigation Controls */}
-          <div className="flex items-center justify-between pt-2">
-            <button
-              type="button"
-              onClick={() => setCurrentStep(1)}
-              className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Edit Goal</span>
-            </button>
+          {/* Sticky Bottom Control Bar: "Finalize Team & Send Invites" */}
+          <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 p-4 shadow-2xl">
+            <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCreatePhase('chat')}
+                  className="px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Adjust Scope in Chat</span>
+                </button>
+                <div className="hidden sm:block text-xs text-slate-500 dark:text-slate-400">
+                  Total Project Escrow: <strong className="text-cyan-600 dark:text-cyan-400 font-black">${allocatedTotal} USD</strong>
+                </div>
+              </div>
 
-            <button
-              type="button"
-              onClick={() => setCurrentStep(3)}
-              className="px-7 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-xs font-bold shadow-glow-cyan transition-all flex items-center gap-1.5"
-            >
-              <span>Proceed to Unified Checkout</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+              {/* Big Primary CTA */}
+              <button
+                type="button"
+                onClick={() => setCreatePhase('checkout')}
+                className="w-full sm:w-auto px-8 py-3.5 bg-cyan-500 hover:bg-cyan-600 active:scale-[0.99] text-white rounded-xl text-sm font-bold shadow-glow-cyan transition-all flex items-center justify-center gap-2"
+              >
+                <UserCheck className="w-4 h-4" />
+                <span>Finalize Team & Send Invites</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* STEP 3: CONSOLIDATED REVIEW & PAYPAL CHECKOUT */}
-      {currentStep === 3 && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm transition-colors">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                  Consolidated Quotation Breakdown
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  One single escrow payment. Held securely until each milestone is reviewed.
-                </p>
-              </div>
+      {/* ─────────────────────────────────────────────────────────────────
+          STEP 5: UNIFIED CHECKOUT & PROJECT ESCROW FUNDING
+      ─────────────────────────────────────────────────────────────────── */}
+      {createPhase === 'checkout' && (
+        <div className="max-w-4xl mx-auto px-4 py-10 space-y-7 animate-fadeIn">
+          <div className="text-center space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>PayPal Escrow Protection</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              Authorize Project & Dispatch Invitations
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
+              Single escrow payment funds your entire assembled specialist team. Held securely until each milestone is approved by you.
+            </p>
+          </div>
+
+          {/* Consolidated Quotation Table */}
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Consolidated Quotation Breakdown
+              </h3>
               <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 px-3 py-1 rounded-full border border-cyan-200 dark:border-cyan-800">
-                {workPackages.length} Assembled Milestones
+                {workPackages.length} Milestones
               </span>
             </div>
 
@@ -828,7 +1109,7 @@ export default function CreateProjectPage() {
                 <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
                   <tr>
                     <th className="py-3 px-5">Specialty</th>
-                    <th className="py-3 px-5">Milestone Scope</th>
+                    <th className="py-3 px-5">Milestone</th>
                     <th className="py-3 px-5">Assigned Specialist</th>
                     <th className="py-3 px-5 text-right">Price</th>
                   </tr>
@@ -836,12 +1117,12 @@ export default function CreateProjectPage() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                   {workPackages.map((wp) => (
                     <tr key={wp.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                      <td className="py-3.5 px-5 font-bold text-slate-900 dark:text-white uppercase">
+                      <td className="py-3.5 px-5 font-bold text-slate-900 dark:text-white uppercase text-[11px]">
                         {wp.category}
                       </td>
-                      <td className="py-3.5 px-5 font-medium">{wp.title}</td>
+                      <td className="py-3.5 px-5">{wp.title}</td>
                       <td className="py-3.5 px-5">
-                        {wp.assignedFreelancerName || <span className="text-slate-400 italic">Open Milestone</span>}
+                        {wp.assignedFreelancerName || <span className="text-slate-400 italic">Open Specialist</span>}
                       </td>
                       <td className="py-3.5 px-5 text-right font-bold text-slate-900 dark:text-white">
                         ${wp.allocatedPrice}
@@ -864,17 +1145,13 @@ export default function CreateProjectPage() {
           </div>
 
           {/* Checkout Card */}
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-7 space-y-5 max-w-md mx-auto text-center shadow-xl shadow-slate-200/40 dark:shadow-none transition-colors">
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-slate-800 p-7 space-y-5 max-w-md mx-auto text-center shadow-xl">
             <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>PayPal Escrow Protection</span>
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white pt-1">
-                Authorize & Fund Project
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Authorize Escrow Payment
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Single checkout order. Split transparently per specialist and saved directly to your MongoDB Atlas cluster.
+                Choose standard PayPal authorization or instant 1-click test checkout.
               </p>
             </div>
 
@@ -891,7 +1168,7 @@ export default function CreateProjectPage() {
                   return order.id;
                 }}
                 onApprove={async (data) => {
-                  handleSaveAndCheckout(data.orderID);
+                  handleFinalizeAndCheckout(data.orderID);
                 }}
               />
             </div>
@@ -900,25 +1177,25 @@ export default function CreateProjectPage() {
               <button
                 type="button"
                 disabled={isSavingProject}
-                onClick={() => handleSaveAndCheckout(`PP-DIRECT-${Date.now()}`)}
+                onClick={() => handleFinalizeAndCheckout(`PP-DIRECT-${Date.now()}`)}
                 className="w-full py-3 bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2"
               >
                 {isSavingProject ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Saving to MongoDB Atlas...</span>
+                    <span>Dispatching invites & saving to MongoDB...</span>
                   </>
                 ) : (
-                  <span>Direct 1-Click Pay & Save to MongoDB</span>
+                  <span>Direct Authorize & Launch to Dashboard</span>
                 )}
               </button>
 
               <button
                 type="button"
-                onClick={() => setCurrentStep(2)}
+                onClick={() => setCreatePhase('results')}
                 className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline pt-1 block mx-auto"
               >
-                Back to Team Breakdown
+                Back to Specialist Review
               </button>
             </div>
           </div>

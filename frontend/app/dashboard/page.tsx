@@ -28,6 +28,15 @@ import {
 import { WorkPackage, ProjectProposal, IAiProgressSummary, IAiCounterofferAnalysis } from '@/types';
 import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
 
+function isWaitingForTeam(project: any): boolean {
+  if (!project.workPackages || project.workPackages.length === 0) return false;
+  const hasInvited = project.workPackages.some(
+    (wp: any) => wp.inviteStatus === 'invited' || !wp.inviteStatus
+  );
+  const hasAccepted = project.workPackages.some((wp: any) => wp.inviteStatus === 'accepted');
+  return hasInvited && !hasAccepted;
+}
+
 export default function MerchantDashboardPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -503,14 +512,21 @@ export default function MerchantDashboardPage() {
             <div className="flex items-center gap-4">
               <button
                 type="button"
+                disabled={isWaitingForTeam(currentProject)}
+                title={isWaitingForTeam(currentProject) ? 'Chat unlocks when a specialist accepts' : undefined}
                 onClick={() => {
+                  if (isWaitingForTeam(currentProject)) return;
                   setActiveChatProject({
                     id: currentProjectId,
                     name: currentProject.projectName,
                   });
                   setChatOpen(true);
                 }}
-                className="px-4 py-2.5 bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all ${
+                  isWaitingForTeam(currentProject)
+                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60'
+                    : 'bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600 text-white'
+                }`}
               >
                 <MessageSquare className="w-4 h-4" />
                 <span>Team Chat Room</span>
@@ -660,6 +676,50 @@ export default function MerchantDashboardPage() {
               />
             </div>
           </div>
+
+          {/* Waiting Room Banner */}
+          {isWaitingForTeam(currentProject) && (
+            <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="relative shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-amber-500 animate-pulse" />
+                  </div>
+                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 animate-ping" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-amber-900 dark:text-amber-300">Waiting for Your Team to Accept</h4>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400">Invitations have been sent. Specialists will respond shortly.</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(currentProject as any).workPackages?.map((wp: any) => (
+                  <div
+                    key={wp.id}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold border ${
+                      wp.inviteStatus === 'accepted'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900'
+                        : wp.inviteStatus === 'declined'
+                        ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900'
+                        : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      wp.inviteStatus === 'accepted' ? 'bg-emerald-500' :
+                      wp.inviteStatus === 'declined' ? 'bg-rose-500' :
+                      'bg-amber-400 animate-pulse'
+                    }`} />
+                    <span className="uppercase">{wp.category}</span>
+                    <span className="font-normal opacity-70">
+                      {wp.inviteStatus === 'accepted' ? '✓ Accepted' :
+                       wp.inviteStatus === 'declined' ? '✗ Declined' :
+                       '• Awaiting'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

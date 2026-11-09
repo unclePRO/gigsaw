@@ -93,6 +93,15 @@ export interface WorkPackage {
   matchScore?: number;
   matchScoreBreakdown?: IAiScoreBreakdown;
   matchReasons?: string[];
+  // Rich Freelancer Profile Data
+  assignedFreelancerBio?: string;
+  assignedFreelancerSkills?: string[];
+  assignedFreelancerRating?: number;
+  assignedFreelancerCompletedProjects?: number;
+  assignedFreelancerPastProjects?: IPastProject[];
+  assignedFreelancerYearsOfExperience?: number;
+  assignedFreelancerHourlyRate?: number;
+  assignedFreelancerLocation?: string;
 }
 
 export interface IAiAnalysis {

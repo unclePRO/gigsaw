@@ -1,21 +1,34 @@
 import { create } from 'zustand';
 import { WorkPackage, ProjectProposal, IAiAnalysis } from '@/types';
 
+export interface ChatMessage {
+  role: 'ai' | 'user';
+  content: string;
+}
+
+export type CreatePhase = 'prompt' | 'chat' | 'results' | 'checkout';
+
 interface ProjectState {
+  // Existing fields - DO NOT REMOVE
   prompt: string;
   budget: number;
   isAnalyzing: boolean;
-  currentStep: 1 | 2 | 3;
+  currentStep: 1 | 2 | 3; // kept for backward compatibility
   workPackages: WorkPackage[];
   proposal: ProjectProposal | null;
   paymentStatus: 'idle' | 'processing' | 'success' | 'failed';
   paypalOrderId: string | null;
-  // Extended AI metadata
   aiAnalysis: IAiAnalysis | null;
   dependencyPlan: Record<string, string[]> | null;
   assumptions: string[];
   risks: string[];
 
+  // NEW fields for conversational flow
+  createPhase: CreatePhase;
+  chatMessages: ChatMessage[];
+  selectedFreelancers: Record<string, any>; // keyed by work package id
+
+  // Existing actions
   setPrompt: (prompt: string) => void;
   setBudget: (budget: number) => void;
   setCurrentStep: (step: 1 | 2 | 3) => void;
@@ -30,6 +43,12 @@ interface ProjectState {
   updatePackagePrice: (packageId: string, newPrice: number) => void;
   setPaymentStatus: (status: 'idle' | 'processing' | 'success' | 'failed', orderId?: string) => void;
   resetDraft: () => void;
+
+  // NEW actions
+  setCreatePhase: (phase: CreatePhase) => void;
+  addChatMessage: (message: ChatMessage) => void;
+  setSelectedFreelancer: (packageId: string, freelancer: any) => void;
+  resetChat: () => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -45,6 +64,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   dependencyPlan: null,
   assumptions: [],
   risks: [],
+  createPhase: 'prompt',
+  chatMessages: [],
+  selectedFreelancers: {},
 
   setPrompt: (prompt) => set({ prompt }),
   setBudget: (budget) => set({ budget }),
@@ -97,6 +119,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ paymentStatus, paypalOrderId: paypalOrderId || null });
   },
 
+  setCreatePhase: (createPhase) => set({ createPhase }),
+
+  addChatMessage: (message) =>
+    set((state) => ({ chatMessages: [...state.chatMessages, message] })),
+
+  setSelectedFreelancer: (packageId, freelancer) =>
+    set((state) => ({
+      selectedFreelancers: { ...state.selectedFreelancers, [packageId]: freelancer },
+    })),
+
+  resetChat: () => set({ chatMessages: [], createPhase: 'prompt' }),
+
   resetDraft: () => {
     set({
       prompt: '',
@@ -111,6 +145,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       dependencyPlan: null,
       assumptions: [],
       risks: [],
+      createPhase: 'prompt',
+      chatMessages: [],
+      selectedFreelancers: {},
     });
   },
 }));

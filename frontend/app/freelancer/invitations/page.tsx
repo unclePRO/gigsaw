@@ -256,6 +256,49 @@ export default function FreelancerInvitationsPage() {
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{pkg.description}</p>
                 </div>
 
+                {/* Extended project context */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {(project as any).merchantPrompt && (
+                    <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Project Brief</span>
+                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3">{(project as any).merchantPrompt}</p>
+                    </div>
+                  )}
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                    {pkg.requiredSkills && pkg.requiredSkills.length > 0 && (
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Required Skills</span>
+                        <div className="flex flex-wrap gap-1">
+                          {pkg.requiredSkills.map((sk: string, i: number) => (
+                            <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-900/40">
+                              {sk}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {pkg.deliverables && pkg.deliverables.length > 0 && (
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Deliverables</span>
+                        <ul className="space-y-0.5">
+                          {pkg.deliverables.slice(0, 3).map((d: string, i: number) => (
+                            <li key={i} className="text-[10px] text-slate-500 dark:text-slate-400 flex items-start gap-1">
+                              <span className="text-cyan-500 font-bold mt-0.5">•</span>
+                              <span>{d}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {pkg.estimatedDays && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                        <span className="font-bold text-slate-700 dark:text-slate-300">Timeline:</span>
+                        <span>{pkg.estimatedDays} days estimated</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
