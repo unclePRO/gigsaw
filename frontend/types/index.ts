@@ -115,7 +115,10 @@ export interface IAiAnalysis {
 
 export interface IAiBudgetAllocation {
   service_category: string;
-  allocated_amount: string | number;
+  allocated_amount?: string | number;
+  recommended_amount?: string | number;
+  trusted_baseline?: string | number;
+  rationale?: string;
   percentage?: number;
 }
 
