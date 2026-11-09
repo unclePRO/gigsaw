@@ -156,16 +156,16 @@ export default function CreateProjectPage() {
     loadFreelancers();
   }, []);
 
-  // Auto-scroll chat
+  // Auto-scroll chat — only fires when new messages arrive, NOT on phase switch
   useEffect(() => {
-    if (createPhase === 'chat') {
+    if (createPhase === 'chat' && chatMessages.length > 0) {
       chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [chatMessages, createPhase]);
+  }, [chatMessages]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Scroll to top on every phase change
+  // Scroll to top on every phase change (instant so it always wins)
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
     // Reset animation states when returning to prompt
     if (createPhase === 'prompt') {
       setHeroVisible(true);
@@ -470,7 +470,7 @@ export default function CreateProjectPage() {
       ─────────────────────────────────────────────────────────────────── */}
       {(createPhase === 'prompt' || isTransitioning) && (
         <div
-          className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-12 overflow-hidden"
+          className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-12"
           style={{ pointerEvents: isTransitioning ? 'none' : 'auto' }}
         >
           <div className="w-full max-w-2xl space-y-7">
@@ -494,12 +494,12 @@ export default function CreateProjectPage() {
               </p>
             </div>
 
-            {/* Main Centered Chatbox — slides down when transitioning */}
+            {/* Main Centered Chatbox — fades + shrinks when transitioning */}
             <div
               className={`bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-6 sm:p-7 space-y-5 transition-all duration-500 ease-in-out ${
                 cardSlidingDown
-                  ? 'translate-y-[60vh] scale-95 opacity-0'
-                  : 'translate-y-0 scale-100 opacity-100'
+                  ? 'scale-95 opacity-0'
+                  : 'scale-100 opacity-100'
               }`}
             >
               <div className="relative">
