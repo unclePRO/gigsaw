@@ -166,11 +166,12 @@ export default function CreateProjectPage() {
   // Scroll to top on every phase change (instant so it always wins)
   useEffect(() => {
     window.scrollTo(0, 0);
-    // Reset animation states when returning to prompt
+    // Always clear transitioning flag when phase settles
+    setIsTransitioning(false);
+    // Reset hero/card animation states when returning to prompt
     if (createPhase === 'prompt') {
       setHeroVisible(true);
       setCardSlidingDown(false);
-      setIsTransitioning(false);
     }
   }, [createPhase]);
 
