@@ -8,7 +8,15 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from gigsaw_ai.api.routes import freelancer_assistant, health, matching, projects, proposals
+from gigsaw_ai.api.routes import (
+    chat_room,
+    freelancer_assistant,
+    health,
+    matching,
+    projects,
+    proposals,
+    scoping,
+)
 from gigsaw_ai.core.config import Settings, get_settings
 from gigsaw_ai.core.exceptions import GigSawAIError
 from gigsaw_ai.core.logging import configure_logging
@@ -25,9 +33,12 @@ from gigsaw_ai.services.budget_planner import BudgetPlanner
 from gigsaw_ai.services.counteroffer_assistant import CounterofferAssistant
 from gigsaw_ai.services.dependency_planner import DependencyPlanner
 from gigsaw_ai.services.freelancer_matcher import FreelancerMatcher
+from gigsaw_ai.services.invitation_assistant import InvitationAssistant
 from gigsaw_ai.services.invoice_assistant import InvoiceAssistant
 from gigsaw_ai.services.project_analyzer import ProjectAnalyzer
+from gigsaw_ai.services.project_chat_room_assistant import ProjectChatRoomAssistant
 from gigsaw_ai.services.project_monitor import ProjectMonitor
+from gigsaw_ai.services.project_scoping_assistant import ProjectScopingAssistant
 from gigsaw_ai.services.proposal_generator import ProposalGenerator
 from gigsaw_ai.services.task_decomposer import TaskDecomposer
 
@@ -46,6 +57,9 @@ class ApplicationContainer:
     counteroffer_assistant: CounterofferAssistant
     invoice_assistant: InvoiceAssistant
     project_monitor: ProjectMonitor
+    project_scoping_assistant: ProjectScopingAssistant
+    project_chat_room_assistant: ProjectChatRoomAssistant
+    invitation_assistant: InvitationAssistant
     database_status: dict[str, str]
     mongo: MongoDatabase | None = None
 
@@ -74,13 +88,44 @@ async def build_container(settings: Settings) -> ApplicationContainer:
         await portfolio_store.connect()
         mongo_status = "connected-backend-mongoose" if settings.mongodb_schema_mode == "backend_mongoose" else "connected"
         status = {"mongodb": mongo_status, "chromadb": "initialized"}
+
     retriever = FreelancerRetriever(portfolio_store, freelancer_repository)
+    project_analyzer = ProjectAnalyzer(llm)
+    task_decomposer = TaskDecomposer(llm)
+    dependency_planner = DependencyPlanner()
+    budget_planner = BudgetPlanner(service_repository)
+    freelancer_matcher = FreelancerMatcher(freelancer_repository, retriever)
+    proposal_generator = ProposalGenerator()
+    counteroffer_assistant = CounterofferAssistant()
+    invoice_assistant = InvoiceAssistant()
+    project_monitor = ProjectMonitor()
+
+    project_scoping_assistant = ProjectScopingAssistant(
+        llm=llm,
+        project_analyzer=project_analyzer,
+        task_decomposer=task_decomposer,
+        dependency_planner=dependency_planner,
+        budget_planner=budget_planner,
+    )
+    project_chat_room_assistant = ProjectChatRoomAssistant(llm=llm)
+    invitation_assistant = InvitationAssistant(service_repository=service_repository, llm=llm)
+
     return ApplicationContainer(
-        settings=settings, project_analyzer=ProjectAnalyzer(llm), task_decomposer=TaskDecomposer(llm),
-        dependency_planner=DependencyPlanner(), budget_planner=BudgetPlanner(service_repository),
-        freelancer_matcher=FreelancerMatcher(freelancer_repository, retriever), proposal_generator=ProposalGenerator(),
-        counteroffer_assistant=CounterofferAssistant(), invoice_assistant=InvoiceAssistant(), project_monitor=ProjectMonitor(),
-        database_status=status, mongo=mongo,
+        settings=settings,
+        project_analyzer=project_analyzer,
+        task_decomposer=task_decomposer,
+        dependency_planner=dependency_planner,
+        budget_planner=budget_planner,
+        freelancer_matcher=freelancer_matcher,
+        proposal_generator=proposal_generator,
+        counteroffer_assistant=counteroffer_assistant,
+        invoice_assistant=invoice_assistant,
+        project_monitor=project_monitor,
+        project_scoping_assistant=project_scoping_assistant,
+        project_chat_room_assistant=project_chat_room_assistant,
+        invitation_assistant=invitation_assistant,
+        database_status=status,
+        mongo=mongo,
     )
 
 
@@ -98,8 +143,10 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     configure_logging()
     app = FastAPI(
-        title="GigSaw AI Service", version="0.1.0", lifespan=lifespan,
-        description="AI analysis and recommendation service. It never authenticates users or executes payments.",
+        title="GigSaw AI Service",
+        version="0.1.0",
+        lifespan=lifespan,
+        description="AI analysis and recommendation service supporting merchant conversational creation, freelancer matching, and project chat room facilitation.",
     )
     app.add_middleware(
         CORSMiddleware,
@@ -110,7 +157,9 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(projects.router, prefix="/api/v1")
+    app.include_router(scoping.router, prefix="/api/v1")
     app.include_router(matching.router, prefix="/api/v1")
+    app.include_router(chat_room.router, prefix="/api/v1")
     app.include_router(proposals.router, prefix="/api/v1")
     app.include_router(freelancer_assistant.router, prefix="/api/v1")
 
