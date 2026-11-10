@@ -15,10 +15,26 @@ import {
 
 const AI_BASE_URL = process.env.NEXT_PUBLIC_AI_MICROSERVICE_URL || 'http://localhost:8001';
 
-async function fetchFromAi<T>(path: string, options: RequestInit = {}): Promise<T | null> {
+export class AiClientError extends Error {
+  status: number;
+  retryable?: boolean;
+  retryAfterSeconds?: number;
+  payload?: any;
+
+  constructor(message: string, status: number = 500, payload?: any) {
+    super(message);
+    this.name = 'AiClientError';
+    this.status = status;
+    this.payload = payload;
+    this.retryable = payload?.retryable ?? (status === 503);
+    this.retryAfterSeconds = payload?.retry_after_seconds ?? 5;
+  }
+}
+
+async function fetchFromAi<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${AI_BASE_URL}${path}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 4500);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
     const res = await fetch(url, {
@@ -32,15 +48,36 @@ async function fetchFromAi<T>(path: string, options: RequestInit = {}): Promise<
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      console.warn(`[AI Client] Error calling ${path}: HTTP ${res.status}`);
-      return null;
+      let errorBody: any = null;
+      try {
+        errorBody = await res.json();
+      } catch {}
+      const errMsg =
+        errorBody?.message ||
+        errorBody?.detail ||
+        (res.status === 503
+          ? 'AI assistant is temporarily busy or unavailable. Please wait a few seconds and retry.'
+          : `AI Microservice Error (HTTP ${res.status})`);
+      console.warn(`[AI Client] Error calling ${path}: HTTP ${res.status} - ${errMsg}`);
+      throw new AiClientError(errMsg, res.status, errorBody);
     }
 
     return (await res.json()) as T;
   } catch (err: any) {
     clearTimeout(timeoutId);
-    console.warn(`[AI Client] Failed to reach ${path}:`, err.message || err);
-    return null;
+    if (err instanceof AiClientError) {
+      throw err;
+    }
+    if (err.name === 'AbortError') {
+      throw new AiClientError(
+        'AI assistant request timed out. Please wait a few seconds and retry.',
+        504
+      );
+    }
+    throw new AiClientError(
+      err.message || 'AI assistant is temporarily busy or unavailable. Please wait a few seconds and retry.',
+      503
+    );
   }
 }
 
@@ -92,6 +129,7 @@ export interface ProjectScopingChatRequest {
   current_budget?: number;
   currency?: string;
   extracted_spec?: Record<string, string>;
+  project_name?: string;
 }
 
 export interface ProjectScopingChatResponse {
@@ -103,6 +141,10 @@ export interface ProjectScopingChatResponse {
   is_ready_to_finalize: boolean;
   ready_for_decomposition: boolean;
   recommended_action: 'continue_asking' | 'ready_to_finalize';
+  project_name?: string | null;
+  current_budget?: string | number | null;
+  currency?: string;
+  budget_changed?: boolean;
 }
 
 export interface ProjectScopingFinalizeRequest {
@@ -120,9 +162,16 @@ export interface ProjectScopingFinalizeResponse {
   enriched_brief: string;
   detected_services: string[];
   suggested_budget?: number;
+  budget?: string | number | null;
   currency: string;
   extracted_spec: Record<string, string>;
   analysis_result?: ProjectAnalyzeResponse | null;
+  freelancer_matches?: Array<{
+    work_package_id: string;
+    service_category: string;
+    allocated_amount?: string | number | null;
+    match_result: FreelancerMatchResponse;
+  }>;
 }
 
 export interface FreelancerSwapRequest {
@@ -353,7 +402,7 @@ export const aiClient = {
   /**
    * Interactive conversational scoping chat for merchant create flow
    */
-  async scopingChat(params: ProjectScopingChatRequest): Promise<ProjectScopingChatResponse | null> {
+  async scopingChat(params: ProjectScopingChatRequest): Promise<ProjectScopingChatResponse> {
     return fetchFromAi<ProjectScopingChatResponse>('/api/v1/projects/scoping/chat', {
       method: 'POST',
       body: JSON.stringify({
@@ -369,7 +418,7 @@ export const aiClient = {
   /**
    * Finalize scoping conversation and automatically trigger project decomposition
    */
-  async scopingFinalize(params: ProjectScopingFinalizeRequest): Promise<ProjectScopingFinalizeResponse | null> {
+  async scopingFinalize(params: ProjectScopingFinalizeRequest): Promise<ProjectScopingFinalizeResponse> {
     return fetchFromAi<ProjectScopingFinalizeResponse>('/api/v1/projects/scoping/finalize', {
       method: 'POST',
       body: JSON.stringify({
@@ -406,7 +455,7 @@ export const aiClient = {
   /**
    * Facilitate integrated group project chat room (kickoff, summarize, action items)
    */
-  async chatRoomAssist(params: ProjectChatRoomAssistRequest): Promise<ProjectChatRoomAssistResponse | null> {
+  async chatRoomAssist(params: ProjectChatRoomAssistRequest): Promise<ProjectChatRoomAssistResponse> {
     return fetchFromAi<ProjectChatRoomAssistResponse>('/api/v1/chat-room/assist', {
       method: 'POST',
       body: JSON.stringify(params),

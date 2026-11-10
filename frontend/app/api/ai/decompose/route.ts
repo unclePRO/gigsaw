@@ -18,23 +18,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    const words = cleanPrompt.split(' ').slice(0, 5).join(' ');
-    const projectName =
-      words.length > 0
-        ? `${words.charAt(0).toUpperCase() + words.slice(1)} Project`
-        : 'New Launch Project';
+    let projectName = `${cleanPrompt.slice(0, 40)} Launch`;
 
-    // 1. Try Python FastAPI AI Microservice via central aiClient
+    // 1. Try Python FastAPI AI Microservice via central aiClient scopingFinalize
     let aiPackages: WorkPackage[] | null = null;
     let aiProposal: ProjectProposal | null = null;
 
     try {
-      const data = await aiClient.analyzeProject({
-        customer_request: cleanPrompt,
+      const finalizeRes = await aiClient.scopingFinalize({
+        initial_goal: cleanPrompt,
+        messages: [],
         budget,
         currency: 'USD',
-        project_name: projectName,
+        auto_decompose: true,
       });
+
+      const data = finalizeRes?.analysis_result;
+      if (finalizeRes?.project_name) {
+        projectName = finalizeRes.project_name;
+      }
 
       if (data && Array.isArray(data.work_packages) && data.work_packages.length > 0) {
         await connectToDatabase();

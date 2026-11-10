@@ -86,6 +86,7 @@ export default function CreateProjectPage() {
     setCreatePhase,
     chatMessages,
     addChatMessage,
+    resetChat,
     setSelectedFreelancer,
   } = useProjectStore();
 
@@ -99,6 +100,7 @@ export default function CreateProjectPage() {
   const [chatInput, setChatInput] = useState('');
 
   // Conversational Scoping AI State
+  const [projectName, setProjectName] = useState<string>('');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([
     'Minimalist & Modern',
@@ -259,6 +261,7 @@ export default function CreateProjectPage() {
       // AI initiates the conversation as Project Manager
       if (chatMessages.length === 0) {
         setIsAiThinking(true);
+        setSaveError(null);
         try {
           const res = await fetch('/api/ai/scoping/chat', {
             method: 'POST',
@@ -267,14 +270,21 @@ export default function CreateProjectPage() {
               initial_goal: prompt.trim(),
               messages: [],
               current_budget: budget,
+              project_name: projectName || undefined,
             }),
           });
           const data = await res.json();
-          if (data.success && data.reply) {
+          if (res.ok && data.success && data.reply) {
             addChatMessage({
               role: 'ai',
               content: `Hi ${session?.user?.name || 'there'}! I'm your AI Project Manager. I've captured your primary goal:\n\n"${prompt.trim()}"\n\n${data.reply}`,
             });
+            if (data.project_name) {
+              setProjectName(data.project_name);
+            }
+            if (data.current_budget != null || data.budget_changed) {
+              setBudget(Number(data.current_budget));
+            }
             if (data.suggested_replies && data.suggested_replies.length > 0) {
               setSuggestedReplies(data.suggested_replies);
             }
@@ -288,17 +298,12 @@ export default function CreateProjectPage() {
               setIsReadyToFinalize(true);
             }
           } else {
-            addChatMessage({
-              role: 'ai',
-              content: `Hi ${session?.user?.name || 'there'}! I'm your AI Project Manager. I've captured your primary goal:\n\n"${prompt.trim()}"\n\nWhat is the theme or brand aesthetic you have in mind? (e.g., minimalist modern, artisan boutique, corporate tech)`,
-            });
-            setSuggestedReplies(['Minimalist & Modern', 'Artisan Boutique', 'Bold & Vibrant', 'Corporate Professional']);
+            // Propagate 503 retry error without faking replies
+            const errMsg = data.message || data.error || 'AI assistant is temporarily busy or unavailable. Please wait a few seconds and retry.';
+            setSaveError(errMsg);
           }
-        } catch {
-          addChatMessage({
-            role: 'ai',
-            content: `Hi ${session?.user?.name || 'there'}! I'm your AI Project Manager. I've captured your primary goal:\n\n"${prompt.trim()}"\n\nWhat is the theme or brand aesthetic you have in mind?`,
-          });
+        } catch (err: any) {
+          setSaveError(err.message || 'Failed to reach AI assistant. Please wait a few seconds and retry.');
         } finally {
           setIsAiThinking(false);
         }
@@ -317,6 +322,7 @@ export default function CreateProjectPage() {
     setChatInput('');
     setSuggestedReplies([]);
     setIsAiThinking(true);
+    setSaveError(null);
 
     try {
       // Map to ScopingChatMessage format for API
@@ -333,15 +339,22 @@ export default function CreateProjectPage() {
           messages: apiMessages,
           current_budget: budget,
           extracted_spec: extractedSpec,
+          project_name: projectName || undefined,
         }),
       });
 
       const data = await res.json();
-      if (data.success && data.reply) {
+      if (res.ok && data.success && data.reply) {
         addChatMessage({
           role: 'ai',
           content: data.reply,
         });
+        if (data.project_name) {
+          setProjectName(data.project_name);
+        }
+        if (data.current_budget != null || data.budget_changed) {
+          setBudget(Number(data.current_budget));
+        }
         if (data.suggested_replies && data.suggested_replies.length > 0) {
           setSuggestedReplies(data.suggested_replies);
         }
@@ -355,49 +368,49 @@ export default function CreateProjectPage() {
           setIsReadyToFinalize(true);
         }
       } else {
-        addChatMessage({
-          role: 'ai',
-          content: "Got it! Whenever you are ready, click Finalize Details & Match Specialists to run our decomposition and match top specialists.",
-        });
-        setIsReadyToFinalize(true);
+        // Propagate 503 retry error without faking replies or forcing ready_to_finalize
+        const errMsg = data.message || data.error || 'AI assistant is temporarily busy or unavailable. Please wait a few seconds and retry.';
+        setSaveError(errMsg);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Scoping chat error:', e);
-      addChatMessage({
-        role: 'ai',
-        content: "I've noted these details! You can click Finalize Details & Match Specialists whenever you're ready to review the matched team.",
-      });
-      setIsReadyToFinalize(true);
+      setSaveError(e.message || 'Network error communicating with AI assistant.');
     } finally {
       setIsAiThinking(false);
     }
   };
 
-  // STEP 2 -> STEP 3: AI Decomposition & Freelancer Matching
+  // STEP 2 -> STEP 3: AI Finalize Scoping & Freelancer Matching
   const handleFinalizeDetails = async () => {
     setAnalyzing(true);
     setSaveError(null);
 
-    // Extract only merchant's responses to clarify the goal
-    const merchantNotes = chatMessages
-      .filter((m) => m.role === 'user')
-      .map((m) => m.content.trim())
-      .filter(Boolean)
-      .join('. ');
-
-    const enrichedPrompt = merchantNotes
-      ? `${prompt.trim()}. Details: ${merchantNotes}`
-      : prompt.trim();
+    const apiMessages = chatMessages.map((m) => ({
+      role: m.role === 'ai' ? ('assistant' as const) : ('user' as const),
+      content: m.content,
+    }));
 
     try {
-      const res = await fetch('/api/ai/decompose', {
+      const res = await fetch('/api/ai/scoping/finalize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: enrichedPrompt, budget }),
+        body: JSON.stringify({
+          initial_goal: prompt.trim(),
+          messages: apiMessages,
+          extracted_spec: extractedSpec,
+          budget,
+          project_name: projectName || undefined,
+        }),
       });
 
       const data = await res.json();
-      if (data.success && data.workPackages) {
+      if (res.ok && data.success && data.workPackages) {
+        if (data.projectName) {
+          setProjectName(data.projectName);
+        }
+        if (data.budget != null) {
+          setBudget(Number(data.budget));
+        }
         setWorkPackages(data.workPackages, data.proposal);
         setAiMetadata({
           aiAnalysis: data.aiAnalysis,
@@ -430,11 +443,11 @@ export default function CreateProjectPage() {
 
         setCreatePhase('results');
       } else {
-        setSaveError(data.error || 'Failed to decompose project.');
+        setSaveError(data.message || data.error || 'Failed to finalize and decompose project.');
       }
     } catch (err: any) {
-      console.error('Decomposition error:', err);
-      setSaveError(err.message || 'Network error during AI decomposition.');
+      console.error('Finalize decomposition error:', err);
+      setSaveError(err.message || 'Network error during AI finalization.');
     } finally {
       setAnalyzing(false);
     }
@@ -510,7 +523,7 @@ export default function CreateProjectPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          projectName: proposal?.projectName || `${prompt.slice(0, 30)} Project`,
+          projectName: projectName || proposal?.projectName || `${prompt.slice(0, 30)} Project`,
           merchantPrompt: prompt,
           totalBudget: budget,
           allocatedTotal: workPackages.reduce((s, w) => s + w.allocatedPrice, 0),
@@ -711,8 +724,22 @@ export default function CreateProjectPage() {
 
               <button
                 type="button"
-                onClick={() => setCreatePhase('prompt')}
-                className="text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center gap-1 shrink-0 transition-colors"
+                onClick={() => {
+                  resetChat();
+                  setProjectName('');
+                  setExtractedSpec({});
+                  setCompletenessScore(0.25);
+                  setSuggestedReplies([
+                    'Minimalist & Modern',
+                    'Artisan Boutique',
+                    'Have logo & copy ready',
+                    'Need design from scratch',
+                  ]);
+                  setIsReadyToFinalize(false);
+                  setSaveError(null);
+                  setCreatePhase('prompt');
+                }}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Edit Goal</span>

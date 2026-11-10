@@ -76,7 +76,7 @@ export interface WorkPackage {
   assignedFreelancerName?: string;
   assignedFreelancerEmail?: string;
   inviteStatus?: 'invited' | 'accepted' | 'declined';
-  status: 'Pending' | 'In Progress' | 'Completed' | 'Revision Requested';
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Revision Requested' | 'Cancelled';
   deliverableLink?: string;
   deliverableNotes?: string;
   progressUpdates?: IProgressUpdate[];
@@ -167,7 +167,7 @@ export interface ProjectProposal {
   savings: number;
   workPackages: WorkPackage[];
   messages?: IChatMessage[];
-  status: 'draft' | 'funded' | 'completed';
+  status: 'draft' | 'funded' | 'completed' | 'cancelled';
   paypalOrderId?: string;
   createdAt: string;
   // Extended AI metadata
