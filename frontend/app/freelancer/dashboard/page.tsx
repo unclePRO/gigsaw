@@ -22,6 +22,9 @@ import {
   Printer,
   Copy,
   Check,
+  Award,
+  Flag,
+  ArrowRight,
 } from 'lucide-react';
 import { WorkPackage, ProjectProposal, IAiInvoiceDraft } from '@/types';
 import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
@@ -37,6 +40,10 @@ export default function FreelancerDashboardPage() {
   const [deliverableNotes, setDeliverableNotes] = useState('');
   const [submittedMessage, setSubmittedMessage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // End Project & Closure state
+  const [endingProject, setEndingProject] = useState(false);
+  const [endProjectMessage, setEndProjectMessage] = useState<string | null>(null);
 
   // Progress update state
   const [progressText, setProgressText] = useState('');
@@ -147,6 +154,32 @@ export default function FreelancerDashboardPage() {
       console.error('Failed to submit deliverable to MongoDB:', err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEndProject = async () => {
+    if (!currentProjectId || !currentGig || endingProject) return;
+    setEndingProject(true);
+    try {
+      const res = await fetch(`/api/projects/${currentProjectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          packageId: currentGig.pkg.id,
+          closureRequested: true,
+          status: 'Completed',
+        }),
+      });
+
+      if (res.ok) {
+        setEndProjectMessage('Project end requested! The merchant has been prompted on their dashboard to submit your rating and review.');
+        setTimeout(() => setEndProjectMessage(null), 6000);
+        fetchProjects();
+      }
+    } catch (err) {
+      console.error('Failed to end project:', err);
+    } finally {
+      setEndingProject(false);
     }
   };
 
@@ -449,12 +482,120 @@ Note: ${invoiceDraft.payment_note}`;
             )}
           </div>
 
+          {/* End Project & Review Status Card */}
+          {currentGig.pkg.status === 'Completed' && (
+            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border-2 border-emerald-500/30 p-6 space-y-4 shadow-sm transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      Milestone Deliverable Approved
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      The merchant has verified and accepted your deliverable for this milestone.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {currentGig.pkg.deliverableLink && (
+                    <a
+                      href={currentGig.pkg.deliverableLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-cyan-600 dark:text-cyan-400 hover:underline text-xs font-bold inline-flex items-center gap-1.5"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>View Accepted Deliverable</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {endProjectMessage && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span>{endProjectMessage}</span>
+                </div>
+              )}
+
+              {/* Review Submitted State */}
+              {currentGig.pkg.reviewSubmitted ? (
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-emerald-500" />
+                      <span>Project Concluded & Review Received</span>
+                    </span>
+                    <div className="flex items-center gap-1 text-amber-500 font-extrabold text-sm">
+                      <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      <span>{currentGig.pkg.reviewRating}.0 / 5.0</span>
+                    </div>
+                  </div>
+                  {currentGig.pkg.reviewText && (
+                    <p className="text-xs text-slate-700 dark:text-slate-300 italic bg-white dark:bg-slate-950 p-3 rounded-lg border border-slate-200/80 dark:border-slate-850">
+                      "{currentGig.pkg.reviewText}"
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                    <span>Reviewed by {currentGig.project.merchantName}</span>
+                    <Link
+                      href="/freelancer/profile"
+                      className="text-cyan-600 dark:text-cyan-400 hover:underline font-bold inline-flex items-center gap-1"
+                    >
+                      <span>View on your public profile</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                </div>
+              ) : currentGig.pkg.closureRequested ? (
+                /* Closure Requested - Awaiting Merchant Review */
+                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>
+                      <strong className="font-bold">Project Closure Requested:</strong> You have initiated closure for this project. The merchant has been prompted on their dashboard to provide a 5-star rating and written review.
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-bold text-[10px] uppercase tracking-wider shrink-0">
+                    Awaiting Review
+                  </span>
+                </div>
+              ) : (
+                /* Ready to End Project Action Button */
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Conclude Milestone & Request Review</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Ready to finalize? Click End Project to request your official rating and testimonial from the merchant.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleEndProject}
+                    disabled={endingProject}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-md shrink-0 flex items-center gap-2"
+                  >
+                    <Flag className="w-4 h-4" />
+                    <span>{endingProject ? 'Concluding...' : 'End Project & Request Review'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Submit Deliverable Form */}
           <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Submit Deliverable for Review</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                {currentGig.pkg.status === 'Completed' ? 'Milestone Deliverable Link' : 'Submit Deliverable for Review'}
+              </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                When ready, provide your deliverable link (GitHub repo, Figma prototype, staging URL). The merchant can review and approve it.
+                {currentGig.pkg.status === 'Completed'
+                  ? 'Your accepted deliverable link on record for this milestone.'
+                  : 'When ready, provide your deliverable link (GitHub repo, Figma prototype, staging URL). The merchant can review and approve it.'}
               </p>
             </div>
 
@@ -499,7 +640,7 @@ Note: ${invoiceDraft.payment_note}`;
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5" />
-                    <span>Submit Deliverable</span>
+                    <span>{currentGig.pkg.status === 'Completed' ? 'Update Deliverable Link' : 'Submit Deliverable'}</span>
                   </>
                 )}
               </button>

@@ -40,6 +40,11 @@ export interface IWorkPackage {
   assignedFreelancerYearsOfExperience?: number;
   assignedFreelancerHourlyRate?: number;
   assignedFreelancerLocation?: string;
+  closureRequested?: boolean;
+  reviewSubmitted?: boolean;
+  reviewRating?: number;
+  reviewText?: string;
+  reviewedAt?: Date;
 }
 
 export interface IProjectDocument extends Document {
@@ -137,6 +142,11 @@ const WorkPackageSchema = new Schema<IWorkPackage>({
   assignedFreelancerYearsOfExperience: { type: Number },
   assignedFreelancerHourlyRate: { type: Number },
   assignedFreelancerLocation: { type: String },
+  closureRequested: { type: Boolean, default: false },
+  reviewSubmitted: { type: Boolean, default: false },
+  reviewRating: { type: Number },
+  reviewText: { type: String },
+  reviewedAt: { type: Date },
 });
 
 const ProjectSchema = new Schema<IProjectDocument>(
@@ -168,6 +178,10 @@ const ProjectSchema = new Schema<IProjectDocument>(
 // Indexes for querying projects by merchant and assigned freelancers
 ProjectSchema.index({ merchantId: 1, createdAt: -1 });
 ProjectSchema.index({ 'workPackages.assignedFreelancerId': 1 });
+
+if (process.env.NODE_ENV !== 'production' && mongoose.models.Project) {
+  delete (mongoose.models as any).Project;
+}
 
 export const ProjectModel: Model<IProjectDocument> =
   mongoose.models.Project || mongoose.model<IProjectDocument>('Project', ProjectSchema);
