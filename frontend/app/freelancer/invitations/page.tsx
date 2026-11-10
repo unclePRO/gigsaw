@@ -97,11 +97,7 @@ export default function FreelancerInvitationsPage() {
         router.push('/dashboard');
         return;
       }
-      if (u?.isProfileComplete === false) {
-        router.push('/freelancer/profile?setup=required');
-        return;
-      }
-      // Re-verify against MongoDB profile in case session cache is fresh or incomplete
+      // Re-verify against MongoDB profile (source of truth)
       fetch('/api/freelancer/profile')
         .then((res) => res.json())
         .then((data) => {
