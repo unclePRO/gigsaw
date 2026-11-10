@@ -1009,7 +1009,7 @@ export default function CreateProjectPage() {
                                   </div>
                                 ) : (
                                   <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
-                                    New Specialist
+                                    No Rating
                                   </span>
                                 )}
                               </div>

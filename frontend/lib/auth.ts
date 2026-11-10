@@ -47,12 +47,17 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = (user as any).id;
         token.role = (user as any).role;
         token.category = (user as any).category;
         token.isProfileComplete = (user as any).isProfileComplete;
+      }
+      if (trigger === 'update' && session) {
+        if (session.isProfileComplete !== undefined) {
+          token.isProfileComplete = Boolean(session.isProfileComplete);
+        }
       }
       return token;
     },

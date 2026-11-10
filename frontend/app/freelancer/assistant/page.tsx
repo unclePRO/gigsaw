@@ -19,10 +19,6 @@ export default function FreelancerAssistantPage() {
         router.push('/dashboard');
         return;
       }
-      if (u?.isProfileComplete === false) {
-        router.push('/freelancer/profile?setup=required');
-        return;
-      }
       fetch('/api/freelancer/profile')
         .then((res) => res.json())
         .then((data) => {
