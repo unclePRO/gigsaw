@@ -21,11 +21,13 @@ export async function GET(req: NextRequest) {
 
     if (email) {
       if (role === 'freelancer') {
-        // Find projects where this freelancer is assigned to any work package
+        const userCat = (session?.user as any)?.category;
+        // Find projects where this freelancer is assigned to any work package or matched by category
         query = {
           $or: [
             { 'workPackages.assignedFreelancerEmail': email.toLowerCase() },
             { 'workPackages.assignedFreelancerId': (session?.user as any)?.id },
+            ...(userCat ? [{ 'workPackages.category': userCat }] : []),
           ],
         };
       } else {

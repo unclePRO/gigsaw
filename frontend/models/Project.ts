@@ -14,7 +14,7 @@ export interface IWorkPackage {
   assignedFreelancerName?: string;
   assignedFreelancerEmail?: string;
   inviteStatus?: 'invited' | 'accepted' | 'declined';
-  status: 'Pending' | 'In Progress' | 'Completed' | 'Revision Requested';
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Revision Requested' | 'Cancelled';
   deliverableLink?: string;
   deliverableNotes?: string;
   progressUpdates?: IProgressUpdate[];
@@ -58,7 +58,7 @@ export interface IProjectDocument extends Document {
   savings: number;
   workPackages: IWorkPackage[];
   messages: IChatMessage[];
-  status: 'draft' | 'funded' | 'completed';
+  status: 'draft' | 'funded' | 'completed' | 'cancelled';
   paypalOrderId?: string;
   aiAnalysis?: any;
   dependencyPlan?: any;
@@ -111,7 +111,7 @@ const WorkPackageSchema = new Schema<IWorkPackage>({
   },
   status: {
     type: String,
-    enum: ['Pending', 'In Progress', 'Completed', 'Revision Requested'],
+    enum: ['Pending', 'In Progress', 'Completed', 'Revision Requested', 'Cancelled'],
     default: 'Pending',
   },
   deliverableLink: { type: String },
@@ -163,7 +163,7 @@ const ProjectSchema = new Schema<IProjectDocument>(
     messages: [ChatMessageSchema],
     status: {
       type: String,
-      enum: ['draft', 'funded', 'completed'],
+      enum: ['draft', 'funded', 'completed', 'cancelled'],
       default: 'draft',
     },
     paypalOrderId: { type: String },
