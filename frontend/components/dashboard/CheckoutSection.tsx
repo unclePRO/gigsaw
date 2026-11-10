@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Layers,
   Sparkles,
+  Info,
 } from 'lucide-react';
 import { ProjectProposal, WorkPackage } from '@/types';
 
@@ -329,6 +330,17 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
           </div>
           <p className="text-[11px] text-slate-400 max-w-sm">
             Log in once with PayPal to approve the complete ${totalToFund.toLocaleString()} USD budget. PayPal will automatically split the funds to each specialist while securing escrow protection.
+          </p>
+        </div>
+
+        {/* Sandbox Credentials Guide */}
+        <div className="w-full max-w-md bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 rounded-xl p-3 text-[11px] text-blue-950 dark:text-blue-200 space-y-1">
+          <div className="flex items-center gap-1.5 font-bold text-blue-700 dark:text-blue-300">
+            <Info className="w-3.5 h-3.5 shrink-0" />
+            <span>Sandbox Credentials To Use In Popup</span>
+          </div>
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
+            In the PayPal popup, log in with your <strong>Sandbox Personal (Buyer)</strong> account from <span className="font-mono text-cyan-600 dark:text-cyan-400">developer.paypal.com &rarr; Testing Tools &rarr; Sandbox Accounts</span> (e.g. <span className="font-mono">sb-buyer...</span>). Do not use real personal PayPal credentials.
           </p>
         </div>
 
