@@ -1,12 +1,38 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Bot, FileText, Copy, Receipt } from 'lucide-react';
 
 export default function FreelancerAssistantPage() {
-  const { data: session } = useSession();
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const user = session?.user as any;
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login?callbackUrl=/freelancer/assistant');
+    } else if (status === 'authenticated') {
+      const u = session?.user as any;
+      if (u?.role === 'merchant') {
+        router.push('/dashboard');
+        return;
+      }
+      if (u?.isProfileComplete === false) {
+        router.push('/freelancer/profile?setup=required');
+        return;
+      }
+      fetch('/api/freelancer/profile')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.profile && !data.profile.isProfileComplete) {
+            router.push('/freelancer/profile?setup=required');
+          }
+        })
+        .catch(() => {});
+    }
+  }, [status, session, router]);
 
   const [prompt, setPrompt] = useState(
     'Generate an itemized milestone quotation for full-stack web development with responsive frontend and API integration, total $600.'

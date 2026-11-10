@@ -91,8 +91,27 @@ export default function FreelancerInvitationsPage() {
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login?callbackUrl=/freelancer/invitations');
+    } else if (status === 'authenticated') {
+      const u = session?.user as any;
+      if (u?.role === 'merchant') {
+        router.push('/dashboard');
+        return;
+      }
+      if (u?.isProfileComplete === false) {
+        router.push('/freelancer/profile?setup=required');
+        return;
+      }
+      // Re-verify against MongoDB profile in case session cache is fresh or incomplete
+      fetch('/api/freelancer/profile')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.profile && !data.profile.isProfileComplete) {
+            router.push('/freelancer/profile?setup=required');
+          }
+        })
+        .catch(() => {});
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
   const fetchInvitations = useCallback(async () => {
     setLoading(true);

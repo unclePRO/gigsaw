@@ -31,6 +31,7 @@ export interface IUser {
   indicativeProjectPrice?: number;
   location?: string;
   priceBasis?: 'hour' | 'project';
+  isProfileComplete?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -59,6 +59,29 @@ export async function PUT(req: NextRequest) {
 
     await connectToDatabase();
 
+    const existingUser = await UserModel.findOne({ email: session.user.email.toLowerCase() });
+    if (!existingUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const finalTitle = title !== undefined ? title : existingUser.title;
+    const finalBio = bio !== undefined ? bio : existingUser.bio;
+    const finalHourlyRate = hourlyRate !== undefined ? Number(hourlyRate) : existingUser.hourlyRate;
+    const finalSkills = Array.isArray(skills) ? skills : existingUser.skills;
+    const finalYears = yearsOfExperience !== undefined ? Number(yearsOfExperience) : existingUser.yearsOfExperience;
+    const finalDeliveryDays = typicalDeliveryDays !== undefined ? Number(typicalDeliveryDays) : existingUser.typicalDeliveryDays;
+    const finalLocation = location !== undefined ? location : existingUser.location;
+
+    const isComplete = Boolean(
+      finalTitle && String(finalTitle).trim().length > 0 &&
+      finalBio && String(finalBio).trim().length > 0 &&
+      finalHourlyRate && Number(finalHourlyRate) > 0 &&
+      finalSkills && finalSkills.length > 0 &&
+      finalYears !== undefined && finalYears !== null && !isNaN(Number(finalYears)) && Number(finalYears) >= 0 &&
+      finalDeliveryDays !== undefined && finalDeliveryDays !== null && !isNaN(Number(finalDeliveryDays)) && Number(finalDeliveryDays) >= 1 &&
+      finalLocation && String(finalLocation).trim().length > 0
+    );
+
     const updatedUser = await UserModel.findOneAndUpdate(
       { email: session.user.email.toLowerCase() },
       {
@@ -78,6 +101,7 @@ export async function PUT(req: NextRequest) {
           }),
           ...(location !== undefined && { location }),
           ...(priceBasis !== undefined && { priceBasis }),
+          isProfileComplete: isComplete,
         },
       },
       { new: true }
@@ -85,7 +109,7 @@ export async function PUT(req: NextRequest) {
       .select('-password')
       .lean();
 
-    return NextResponse.json({ success: true, profile: updatedUser });
+    return NextResponse.json({ success: true, profile: updatedUser, isProfileComplete: isComplete });
   } catch (error: any) {
     console.error('Error updating freelancer profile:', error);
     return NextResponse.json(

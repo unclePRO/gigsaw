@@ -49,15 +49,16 @@ export async function POST(req: NextRequest) {
       password: hashedPassword,
       role,
       category: role === 'freelancer' ? category : undefined,
-      title: title || (role === 'freelancer' ? `${category?.toUpperCase()} Specialist` : 'Business Owner'),
-      hourlyRate: Number(hourlyRate) || 50,
+      title: title || '',
+      hourlyRate: hourlyRate != null && Number(hourlyRate) > 0 ? Number(hourlyRate) : undefined,
       bio: bio || '',
       paypalEmail: paypalEmail || normalizedEmail,
       skills: Array.isArray(skills) ? skills : [],
-      rating: 5.0,
+      rating: 0,
       completedProjects: 0,
       pastProjects: [],
       availability: 'available',
+      isProfileComplete: role === 'merchant' ? true : false,
     });
 
     return NextResponse.json(
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
           email: newUser.email,
           role: newUser.role,
           category: newUser.category,
+          isProfileComplete: newUser.isProfileComplete,
         },
       },
       { status: 201 }

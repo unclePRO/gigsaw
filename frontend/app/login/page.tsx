@@ -57,7 +57,20 @@ function LoginFormContent() {
       if (res?.error) {
         setError(res.error);
       } else {
-        router.push('/dashboard');
+        // Fetch session to determine role and profile status
+        const sessionRes = await fetch('/api/auth/session');
+        const sessionData = await sessionRes.json();
+        const user = sessionData?.user;
+
+        if (user?.role === 'freelancer') {
+          if (!user?.isProfileComplete) {
+            router.push('/freelancer/profile?setup=required');
+          } else {
+            router.push('/freelancer/dashboard');
+          }
+        } else {
+          router.push('/dashboard');
+        }
         router.refresh();
       }
     } catch (err: any) {
@@ -111,7 +124,7 @@ function LoginFormContent() {
 
       if (!loginRes?.error) {
         if (role === 'freelancer') {
-          router.push('/freelancer/dashboard');
+          router.push('/freelancer/profile?setup=required');
         } else {
           router.push('/dashboard');
         }
