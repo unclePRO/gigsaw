@@ -80,7 +80,7 @@ const ChatMessageSchema = new Schema<IChatMessage>(
     senderId: { type: String, required: true },
     senderName: { type: String, required: true },
     senderEmail: { type: String, required: true },
-    senderRole: { type: String, enum: ['merchant', 'freelancer'], required: true },
+    senderRole: { type: String, enum: ['merchant', 'freelancer', 'ai_assistant'], required: true },
     message: { type: String, required: true },
     timestamp: { type: String, required: true },
   },

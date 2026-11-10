@@ -40,9 +40,53 @@ export default function FreelancerInvitationsPage() {
   const [counterofferNotes, setCounterofferNotes] = useState<string>('');
   const [isSubmittingCounter, setIsSubmittingCounter] = useState<boolean>(false);
 
+  // AI Invitation Feasibility Review State
+  const [aiReviews, setAiReviews] = useState<Record<string, any>>({});
+  const [loadingAiReview, setLoadingAiReview] = useState<string | null>(null);
+  const [expandedAiReview, setExpandedAiReview] = useState<string | null>(null);
+
   const user = session?.user as any;
   const userEmail = user?.email?.toLowerCase();
   const userCategory = user?.category || 'dev';
+
+  const fetchAiReview = async (project: any, pkg: any) => {
+    const key = `${(project as any)._id || project.id}-${pkg.id}`;
+    if (expandedAiReview === key) {
+      setExpandedAiReview(null);
+      return;
+    }
+    setExpandedAiReview(key);
+
+    if (aiReviews[key] || loadingAiReview === key) return;
+
+    setLoadingAiReview(key);
+    try {
+      const res = await fetch('/api/ai/invitations/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          freelancer_id: (session?.user as any)?.id || 'fl-1',
+          project_name: project.projectName,
+          merchant_name: project.merchantName,
+          work_package_title: pkg.title,
+          service_category: pkg.category,
+          description: pkg.description,
+          deliverables: pkg.deliverables || [],
+          allocated_price: pkg.allocatedPrice,
+          estimated_days: pkg.estimatedDays || 7,
+          currency: 'USD',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAiReviews((prev) => ({ ...prev, [key]: data }));
+      }
+    } catch (e) {
+      console.error('Failed to load AI review:', e);
+    } finally {
+      setLoadingAiReview(null);
+    }
+  };
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -299,6 +343,80 @@ export default function FreelancerInvitationsPage() {
                   </div>
                 </div>
 
+                {/* AI Invitation Feasibility Drawer */}
+                {expandedAiReview === `${projId}-${pkg.id}` && (
+                  <div className="p-4 bg-gradient-to-r from-cyan-950/20 to-blue-950/20 border border-cyan-500/30 rounded-xl space-y-3 animate-fadeIn text-xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-cyan-500/20">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-cyan-400" />
+                        <span className="font-bold text-slate-900 dark:text-white text-xs">
+                          AI Feasibility & Rate Assessment
+                        </span>
+                      </div>
+                      {aiReviews[`${projId}-${pkg.id}`] && (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                          aiReviews[`${projId}-${pkg.id}`].feasibility_assessment === 'high'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        }`}>
+                          {aiReviews[`${projId}-${pkg.id}`].feasibility_score}% Feasible ({aiReviews[`${projId}-${pkg.id}`].feasibility_assessment})
+                        </span>
+                      )}
+                    </div>
+
+                    {loadingAiReview === `${projId}-${pkg.id}` ? (
+                      <div className="flex items-center gap-2 py-2 text-slate-400">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-500" />
+                        <span>Analyzing milestone scope and market compensation...</span>
+                      </div>
+                    ) : aiReviews[`${projId}-${pkg.id}`] ? (
+                      <div className="space-y-2.5">
+                        <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                          {aiReviews[`${projId}-${pkg.id}`].market_rate_evaluation}
+                        </p>
+
+                        {aiReviews[`${projId}-${pkg.id}`].pros?.length > 0 && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Advantages:</span>
+                            {aiReviews[`${projId}-${pkg.id}`].pros.map((p: string, pi: number) => (
+                              <div key={pi} className="flex items-start gap-1.5 text-slate-600 dark:text-slate-300 text-[11px]">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0 mt-0.5" />
+                                <span>{p}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_amount && (
+                          <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-[11px]">
+                            <span className="text-amber-800 dark:text-amber-300">
+                              AI suggests counteroffering at <strong>${aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_amount} USD</strong> ({aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_days} days)
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCounterofferModal({
+                                  projectId: projId,
+                                  packageId: pkg.id,
+                                  originalPrice: pkg.allocatedPrice,
+                                  originalDays: pkg.estimatedDays || 7,
+                                  title: pkg.title,
+                                });
+                                setProposedAmount(Number(aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_amount));
+                                setProposedDays(Number(aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_days || pkg.estimatedDays || 7));
+                                setCounterofferNotes(aiReviews[`${projId}-${pkg.id}`].counteroffer_rationale || 'Suggested market-rate adjustment.');
+                              }}
+                              className="px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px]"
+                            >
+                              Apply Suggestion
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -306,6 +424,16 @@ export default function FreelancerInvitationsPage() {
                   </span>
 
                   <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+                    {/* AI Advisor Button */}
+                    <button
+                      type="button"
+                      onClick={() => fetchAiReview(project, pkg)}
+                      className="px-3 py-2 border border-cyan-300 dark:border-cyan-800 bg-cyan-50/80 dark:bg-cyan-950/50 hover:bg-cyan-100 dark:hover:bg-cyan-900/70 text-cyan-700 dark:text-cyan-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-2xs"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
+                      <span>{expandedAiReview === `${projId}-${pkg.id}` ? 'Hide AI Review' : 'AI Feasibility Review'}</span>
+                    </button>
+
                     {pkg.quotationStatus === 'counteroffer' ? (
                       <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-amber-500" />

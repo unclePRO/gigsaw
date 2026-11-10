@@ -108,12 +108,13 @@ export async function POST(
       );
     }
 
+    const isAi = Boolean(body.isAiAssistant);
     const newMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      senderId: (session.user as any).id || session.user.email,
-      senderName: session.user.name || 'User',
-      senderEmail: session.user.email,
-      senderRole: ((session.user as any).role || 'freelancer') as 'merchant' | 'freelancer',
+      senderId: isAi ? 'ai-coordinator' : ((session.user as any).id || session.user.email),
+      senderName: isAi ? 'AI Coordinator' : (session.user.name || 'User'),
+      senderEmail: isAi ? 'ai@gigsaw.local' : session.user.email,
+      senderRole: isAi ? 'ai_assistant' : (((session.user as any).role || 'freelancer') as 'merchant' | 'freelancer'),
       message: message.trim(),
       timestamp: new Date().toISOString(),
     };
