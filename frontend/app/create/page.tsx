@@ -31,7 +31,6 @@ import {
   RotateCcw,
   Check,
 } from 'lucide-react';
-import { PayPalButtons } from '@paypal/react-paypal-js';
 import { useProjectStore } from '@/store/useProjectStore';
 import { WorkPackage } from '@/types';
 
@@ -513,8 +512,8 @@ export default function CreateProjectPage() {
     }
   };
 
-  // STEP 5: Finalize Team & Send Invites -> Escrow & Project Creation
-  const handleFinalizeAndCheckout = async (orderId: string) => {
+  // STEP 5: Dispatch Invitations & Save Project in Draft / Pending State
+  const handleLaunchAndSendInvites = async () => {
     setIsSavingProject(true);
     setSaveError(null);
 
@@ -528,8 +527,12 @@ export default function CreateProjectPage() {
           totalBudget: budget,
           allocatedTotal: workPackages.reduce((s, w) => s + w.allocatedPrice, 0),
           savings: Math.max(0, budget - workPackages.reduce((s, w) => s + w.allocatedPrice, 0)),
-          workPackages,
-          paypalOrderId: orderId,
+          workPackages: workPackages.map((w) => ({
+            ...w,
+            inviteStatus: 'invited',
+            status: 'Pending',
+          })),
+          status: 'draft',
           merchantId: (session?.user as any)?.id,
           merchantName: session?.user?.name || 'Merchant',
           merchantEmail: session?.user?.email || 'merchant@example.com',
@@ -546,9 +549,14 @@ export default function CreateProjectPage() {
       }
 
       resetDraft();
-      router.push('/dashboard');
+      const targetId = data.project?._id || data.project?.id;
+      if (targetId) {
+        router.push(`/dashboard/${targetId}`);
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
-      console.error('Error funding project:', err);
+      console.error('Error dispatching project invites:', err);
       setSaveError(err.message || 'Error saving project to database.');
     } finally {
       setIsSavingProject(false);
@@ -1218,142 +1226,25 @@ export default function CreateProjectPage() {
                 </div>
               </div>
 
-              {/* Big Primary CTA */}
-              <button
-                type="button"
-                onClick={() => setCreatePhase('checkout')}
-                className="w-full sm:w-auto px-8 py-3.5 bg-cyan-500 hover:bg-cyan-600 active:scale-[0.99] text-white rounded-xl text-sm font-bold shadow-glow-cyan transition-all flex items-center justify-center gap-2"
-              >
-                <UserCheck className="w-4 h-4" />
-                <span>Finalize Team & Send Invites</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────
-          STEP 5: UNIFIED CHECKOUT & PROJECT ESCROW FUNDING
-      ─────────────────────────────────────────────────────────────────── */}
-      {createPhase === 'checkout' && (
-        <div className="max-w-4xl mx-auto px-4 py-10 space-y-7 animate-fadeIn">
-          <div className="text-center space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>PayPal Escrow Protection</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-              Authorize Project & Dispatch Invitations
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
-              Single escrow payment funds your entire assembled specialist team. Held securely until each milestone is approved by you.
-            </p>
-          </div>
-
-          {/* Consolidated Quotation Table */}
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Consolidated Quotation Breakdown
-              </h3>
-              <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 px-3 py-1 rounded-full border border-cyan-200 dark:border-cyan-800">
-                {workPackages.length} Milestones
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
-                  <tr>
-                    <th className="py-3 px-5">Specialty</th>
-                    <th className="py-3 px-5">Milestone</th>
-                    <th className="py-3 px-5">Assigned Specialist</th>
-                    <th className="py-3 px-5 text-right">Price</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                  {workPackages.map((wp) => (
-                    <tr key={wp.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                      <td className="py-3.5 px-5 font-bold text-slate-900 dark:text-white uppercase text-[11px]">
-                        {wp.category}
-                      </td>
-                      <td className="py-3.5 px-5">{wp.title}</td>
-                      <td className="py-3.5 px-5">
-                        {wp.assignedFreelancerName || <span className="text-slate-400 italic">Open Specialist</span>}
-                      </td>
-                      <td className="py-3.5 px-5 text-right font-bold text-slate-900 dark:text-white">
-                        ${wp.allocatedPrice}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-slate-50/80 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 font-bold text-slate-900 dark:text-white">
-                  <tr>
-                    <td colSpan={3} className="py-3.5 px-5 text-slate-500 dark:text-slate-400 text-right">
-                      Consolidated Project Escrow Total:
-                    </td>
-                    <td className="py-3.5 px-5 text-right text-base text-cyan-600 dark:text-cyan-400 font-black">
-                      ${allocatedTotal} USD
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-
-          {/* Checkout Card */}
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-slate-800 p-7 space-y-5 max-w-md mx-auto text-center shadow-xl">
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Authorize Escrow Payment
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Choose standard PayPal authorization or instant 1-click test checkout.
-              </p>
-            </div>
-
-            <div className="pt-2 min-h-[140px] flex items-center justify-center">
-              <PayPalButtons
-                style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 44 }}
-                createOrder={async () => {
-                  const res = await fetch('/api/paypal/create-order', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ items: workPackages, totalBudget: budget }),
-                  });
-                  const order = await res.json();
-                  return order.id;
-                }}
-                onApprove={async (data) => {
-                  handleFinalizeAndCheckout(data.orderID);
-                }}
-              />
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+              {/* Big Primary CTA: Launch & Dispatch Invites */}
               <button
                 type="button"
                 disabled={isSavingProject}
-                onClick={() => handleFinalizeAndCheckout(`PP-DIRECT-${Date.now()}`)}
-                className="w-full py-3 bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2"
+                onClick={handleLaunchAndSendInvites}
+                className="w-full sm:w-auto px-8 py-3.5 bg-cyan-500 hover:bg-cyan-600 active:scale-[0.99] text-white rounded-xl text-sm font-bold shadow-glow-cyan transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isSavingProject ? (
                   <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Dispatching invites & saving to MongoDB...</span>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Dispatching invites & saving project...</span>
                   </>
                 ) : (
-                  <span>Direct Authorize & Launch to Dashboard</span>
+                  <>
+                    <UserCheck className="w-4 h-4" />
+                    <span>Dispatch Milestone Invites & Launch Project</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
                 )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCreatePhase('results')}
-                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline pt-1 block mx-auto"
-              >
-                Back to Specialist Review
               </button>
             </div>
           </div>

@@ -318,6 +318,8 @@ export default function MerchantDashboardPage() {
                             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                             : proj.status === 'READY_TO_FUND'
                             ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                            : proj.status === 'draft'
+                            ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20'
                             : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
                         }`}
                       >
@@ -327,6 +329,8 @@ export default function MerchantDashboardPage() {
                           ? 'Completed'
                           : proj.status === 'READY_TO_FUND'
                           ? 'Ready to Fund'
+                          : proj.status === 'draft'
+                          ? 'Invites Sent'
                           : 'Funded & Active'}
                       </span>
                       <span className="text-[11px] text-slate-400">

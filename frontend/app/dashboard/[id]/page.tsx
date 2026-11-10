@@ -607,6 +607,8 @@ export default function MerchantProjectWorkspacePage() {
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                   : project.status === 'READY_TO_FUND'
                   ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                  : project.status === 'draft'
+                  ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20'
                   : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
               }`}
             >
@@ -615,7 +617,9 @@ export default function MerchantProjectWorkspacePage() {
                 : isCompleted
                 ? 'Completed'
                 : project.status === 'READY_TO_FUND'
-                ? 'Ready to Fund (Checkout Required)'
+                ? 'Ready to Fund (All Freelancers Accepted)'
+                : project.status === 'draft'
+                ? 'Awaiting Specialist Acceptance'
                 : 'Funded & Active'}
             </span>
             <span className="text-xs font-semibold text-slate-400">
@@ -684,7 +688,44 @@ export default function MerchantProjectWorkspacePage() {
         </div>
       )}
 
-      {/* STEP 1: PayPal Multi-Seller Checkout Section rendered when status is READY_TO_FUND */}
+      {/* Waiting Room: Shown when project is draft / awaiting specialist acceptance */}
+      {project.status === 'draft' && (
+        <div className="p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl space-y-3 text-xs text-indigo-950 dark:text-indigo-200">
+          <div className="flex items-center gap-2 font-bold text-sm text-indigo-900 dark:text-indigo-100">
+            <Clock className="w-4 h-4 text-indigo-500 animate-spin" />
+            <span>Milestone Invites Sent &bull; Awaiting Specialist Confirmation</span>
+          </div>
+          <p className="text-slate-600 dark:text-slate-300">
+            Invitations have been dispatched to your matched specialists. As soon as all specialists accept their invitations, the PayPal Multi-Seller Escrow payment module will appear here so you can fund the project to begin.
+          </p>
+          <div className="flex flex-wrap gap-2.5 pt-1">
+            {project.workPackages.map((wp) => (
+              <span
+                key={wp.id}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold border flex items-center gap-2 ${
+                  wp.inviteStatus === 'accepted'
+                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                    : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                {wp.inviteStatus === 'accepted' ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                ) : (
+                  <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                )}
+                <span>
+                  <strong className="font-bold">{wp.assignedFreelancerName || 'Specialist'}</strong> ({wp.title}):{' '}
+                  <span className={wp.inviteStatus === 'accepted' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-amber-600 dark:text-amber-400 font-bold'}>
+                    {wp.inviteStatus === 'accepted' ? 'Accepted' : 'Invited (Pending)'}
+                  </span>
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* STEP 1: PayPal Multi-Seller Checkout Section rendered ONLY when status is READY_TO_FUND */}
       {project.status === 'READY_TO_FUND' && (
         <CheckoutSection
           project={project}
