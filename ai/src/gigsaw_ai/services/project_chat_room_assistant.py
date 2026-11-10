@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import Any
-
-from gigsaw_ai.llm.gemini_client import GeminiClient
+from gigsaw_ai.core.exceptions import ProviderError
+from gigsaw_ai.llm.gemini_client import STANDARD_PROVIDER_RETRY_MESSAGE, GeminiClient
 from gigsaw_ai.schemas.chat_room import (
     ActionItem,
     ProjectChatRoomAssistRequest,
@@ -24,7 +23,7 @@ class ProjectChatRoomAssistant:
         if action == "kickoff":
             team_str = ", ".join(freelancer_names)
             msg = (
-                f"👋 Welcome to the project room for {request.project_name}! "
+                f"Welcome to the project room for {request.project_name}! "
                 f"I am your AI Project Coordinator. {request.merchant_name} has connected with {team_str}. "
                 f"All milestones and milestone payments are securely held in PayPal Escrow until deliverables are reviewed. "
                 f"Please confirm kick-off availability and let's begin collaboration!"
@@ -47,7 +46,7 @@ class ProjectChatRoomAssistant:
             )
             return ProjectChatRoomAssistResponse(
                 action="summarize",
-                message="Here is the latest executive summary of project conversation and milestone decisions.",
+                message=summary_text,
                 summary=summary_text,
                 action_items=[],
             )
@@ -60,16 +59,20 @@ class ProjectChatRoomAssistant:
                     items.append(ActionItem(task=m.text[:100], assignee=m.sender, status="in_progress"))
             if not items:
                 items = [
-                    ActionItem(task="Deliver first milestone preview", assignee=freelancer_names[0] if freelancer_names else "Specialist", status="pending")
+                    ActionItem(
+                        task="Deliver first milestone preview",
+                        assignee=freelancer_names[0] if freelancer_names else "Specialist",
+                        status="pending",
+                    )
                 ]
+            formatted_lines = "\n".join(f"- {item.assignee}: {item.task} [{item.status}]" for item in items)
             return ProjectChatRoomAssistResponse(
                 action="action_items",
-                message=f"Identified {len(items)} current action item(s) from recent room chat.",
+                message=f"Action Items ({len(items)}):\n{formatted_lines}",
                 action_items=items,
                 summary=f"{len(items)} pending actions tracked.",
             )
 
-        # Mediate scope
         return ProjectChatRoomAssistResponse(
             action="mediate_scope",
             message=(
@@ -81,23 +84,23 @@ class ProjectChatRoomAssistant:
         )
 
     async def assist(self, request: ProjectChatRoomAssistRequest) -> ProjectChatRoomAssistResponse:
-        demo = self._demo_response(request)
         if self.llm.settings.is_demo:
-            return demo
+            return self._demo_response(request)
 
+        context = {
+            "project_name": request.project_name,
+            "merchant_name": request.merchant_name,
+            "members": [m.model_dump() for m in request.members],
+            "messages": [m.model_dump() for m in request.messages[-15:]],
+            "action": request.action,
+        }
         try:
-            context = {
-                "project_name": request.project_name,
-                "merchant_name": request.merchant_name,
-                "members": [m.model_dump() for m in request.members],
-                "messages": [m.model_dump() for m in request.messages],
-                "action": request.action,
-            }
             return await self.llm.generate_structured(
                 "chat_room_assist",
                 context,
                 ProjectChatRoomAssistResponse,
-                demo,
             )
-        except Exception:
-            return demo
+        except ProviderError:
+            raise
+        except Exception as exc:
+            raise ProviderError(STANDARD_PROVIDER_RETRY_MESSAGE) from exc

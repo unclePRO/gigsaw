@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
+from gigsaw_ai.core.exceptions import ProviderError
 from gigsaw_ai.database.repositories.interfaces import ServiceRepository
-from gigsaw_ai.llm.gemini_client import GeminiClient
+from gigsaw_ai.llm.gemini_client import STANDARD_PROVIDER_RETRY_MESSAGE, GeminiClient
 from gigsaw_ai.schemas.invitations import (
     FreelancerInvitationReviewRequest,
     FreelancerInvitationReviewResponse,
@@ -18,9 +18,12 @@ class InvitationAssistant:
         self.service_repository = service_repository
         self.llm = llm
 
+    async def _get_catalog_item(self, service_category: str):
+        catalog_items = await self.service_repository.get_by_categories([service_category])
+        return catalog_items[0] if catalog_items else None
+
     async def _demo_review(self, request: FreelancerInvitationReviewRequest) -> FreelancerInvitationReviewResponse:
-        catalog_items = await self.service_repository.get_by_categories([request.service_category])
-        catalog_item = catalog_items[0] if catalog_items else None
+        catalog_item = await self._get_catalog_item(request.service_category)
 
         baseline = catalog_item.baseline_price if catalog_item else Decimal("500")
         min_p = catalog_item.minimum_price if catalog_item else Decimal("250")
@@ -77,28 +80,39 @@ class InvitationAssistant:
         )
 
     async def review(self, request: FreelancerInvitationReviewRequest) -> FreelancerInvitationReviewResponse:
-        demo = await self._demo_review(request)
         if self.llm is None or self.llm.settings.is_demo:
-            return demo
+            return await self._demo_review(request)
 
+        catalog_item = await self._get_catalog_item(request.service_category)
+        context = {
+            "freelancer_id": request.freelancer_id,
+            "project_name": request.project_name,
+            "merchant_name": request.merchant_name,
+            "work_package_title": request.work_package_title,
+            "service_category": request.service_category,
+            "description": request.description,
+            "deliverables": request.deliverables,
+            "allocated_price": str(request.allocated_price),
+            "estimated_days": request.estimated_days,
+            "currency": request.currency,
+            "catalog_pricing": (
+                {
+                    "baseline_price": str(catalog_item.baseline_price),
+                    "minimum_price": str(catalog_item.minimum_price),
+                    "maximum_price": str(catalog_item.maximum_price),
+                    "currency": catalog_item.currency,
+                }
+                if catalog_item
+                else None
+            ),
+        }
         try:
-            context = {
-                "freelancer_id": request.freelancer_id,
-                "project_name": request.project_name,
-                "merchant_name": request.merchant_name,
-                "work_package_title": request.work_package_title,
-                "service_category": request.service_category,
-                "description": request.description,
-                "deliverables": request.deliverables,
-                "allocated_price": str(request.allocated_price),
-                "estimated_days": request.estimated_days,
-                "currency": request.currency,
-            }
             return await self.llm.generate_structured(
                 "invitation_review",
                 context,
                 FreelancerInvitationReviewResponse,
-                demo,
             )
-        except Exception:
-            return demo
+        except ProviderError:
+            raise
+        except Exception as exc:
+            raise ProviderError(STANDARD_PROVIDER_RETRY_MESSAGE) from exc

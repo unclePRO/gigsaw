@@ -1,10 +1,17 @@
 import asyncio
+from unittest.mock import AsyncMock
 
+import pytest
+
+from gigsaw_ai.core.config import Settings
+from gigsaw_ai.core.exceptions import ProviderError
+from gigsaw_ai.llm.gemini_client import STANDARD_PROVIDER_RETRY_MESSAGE
 from gigsaw_ai.schemas.chat_room import (
     ProjectChatRoomAssistRequest,
     RoomMember,
     RoomMessage,
 )
+from gigsaw_ai.services.project_chat_room_assistant import ProjectChatRoomAssistant
 
 
 def test_chat_room_kickoff(container):
@@ -50,3 +57,22 @@ def test_chat_room_summarize_and_actions(container):
     res_actions = asyncio.run(container.project_chat_room_assistant.assist(req_actions))
     assert res_actions.action == "action_items"
     assert len(res_actions.action_items) >= 1
+
+
+def test_chat_room_raises_standardized_error_when_gemini_fails():
+    fake_llm = type("FakeLLM", (), {})()
+    fake_llm.settings = Settings(ai_provider="gemini", gemini_api_key="test-key")
+    fake_llm.generate_structured = AsyncMock(side_effect=ProviderError(STANDARD_PROVIDER_RETRY_MESSAGE))
+    assistant = ProjectChatRoomAssistant(llm=fake_llm)
+
+    with pytest.raises(ProviderError) as exc_info:
+        asyncio.run(
+            assistant.assist(
+                ProjectChatRoomAssistRequest(
+                    project_name="Bakery Storefront",
+                    merchant_name="Alice",
+                    action="summarize",
+                )
+            )
+        )
+    assert "retry" in str(exc_info.value).lower()

@@ -24,6 +24,10 @@ class GeminiEmbeddingFunction:
         except Exception as exc:
             raise ProviderError("Gemini embedding request failed.") from exc
 
+    def embed_query(self, input: list[str]) -> list[list[float]]:
+        """ChromaDB 1.x invokes `embed_query` for similarity search queries."""
+        return self.__call__(input)
+
     @staticmethod
     def name() -> str:
         """ChromaDB 1.x requires a stable embedding-function name."""
@@ -32,3 +36,22 @@ class GeminiEmbeddingFunction:
     def get_config(self) -> dict[str, str]:
         # Never serialize the API key into Chroma metadata.
         return {"model": self.model}
+
+    @staticmethod
+    def is_legacy() -> bool:
+        return False
+
+    @staticmethod
+    def default_space() -> str:
+        return "l2"
+
+    @staticmethod
+    def supported_spaces() -> list[str]:
+        return ["cosine", "l2", "ip"]
+
+    @staticmethod
+    def validate_config(config: dict) -> None:
+        return
+
+    def validate_config_update(self, old_config: dict, new_config: dict) -> None:
+        return

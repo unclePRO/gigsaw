@@ -18,7 +18,7 @@ from gigsaw_ai.api.routes import (
     scoping,
 )
 from gigsaw_ai.core.config import Settings, get_settings
-from gigsaw_ai.core.exceptions import GigSawAIError
+from gigsaw_ai.core.exceptions import GigSawAIError, ProviderError
 from gigsaw_ai.core.logging import configure_logging
 from gigsaw_ai.database.chroma import ChromaPortfolioStore, InMemoryPortfolioStore
 from gigsaw_ai.database.mongo import MongoDatabase
@@ -160,8 +160,23 @@ def create_app() -> FastAPI:
     app.include_router(scoping.router, prefix="/api/v1")
     app.include_router(matching.router, prefix="/api/v1")
     app.include_router(chat_room.router, prefix="/api/v1")
+    app.include_router(chat_room.alias_router, prefix="/api/v1")
     app.include_router(proposals.router, prefix="/api/v1")
     app.include_router(freelancer_assistant.router, prefix="/api/v1")
+
+    @app.exception_handler(ProviderError)
+    async def provider_error(_request: Request, exc: ProviderError) -> JSONResponse:
+        return JSONResponse(
+            status_code=503,
+            headers={"Retry-After": "5"},
+            content={
+                "error": "ai_service_unavailable",
+                "message": str(exc),
+                "detail": str(exc),
+                "retryable": True,
+                "retry_after_seconds": 5,
+            },
+        )
 
     @app.exception_handler(GigSawAIError)
     async def handled_error(_request: Request, exc: GigSawAIError) -> JSONResponse:
