@@ -116,5 +116,9 @@ export function sanitizeUserForAi(user: Partial<IUserDocument> | any) {
   };
 }
 
+if (process.env.NODE_ENV !== 'production' && mongoose.models.User) {
+  delete (mongoose.models as any).User;
+}
+
 export const UserModel: Model<IUserDocument> =
   mongoose.models.User || mongoose.model<IUserDocument>('User', UserSchema);

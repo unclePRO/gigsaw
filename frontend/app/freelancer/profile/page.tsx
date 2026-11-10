@@ -104,7 +104,16 @@ export default function FreelancerProfilePage() {
         .then((data) => {
           if (data.success && data.profile) {
             const p = data.profile;
-            const isComp = Boolean(p.isProfileComplete);
+            const isFormActuallyComplete = Boolean(
+              (p.title && String(p.title).trim().length > 0) &&
+              (p.bio && String(p.bio).trim().length > 0) &&
+              (typeof p.hourlyRate === 'number' && p.hourlyRate > 0) &&
+              (Array.isArray(p.skills) && p.skills.length > 0) &&
+              (p.yearsOfExperience !== undefined && p.yearsOfExperience !== null && Number(p.yearsOfExperience) >= 0) &&
+              (p.typicalDeliveryDays !== undefined && p.typicalDeliveryDays !== null && Number(p.typicalDeliveryDays) >= 1) &&
+              (p.location && String(p.location).trim().length > 0)
+            );
+            const isComp = Boolean(p.isProfileComplete || isFormActuallyComplete);
             setIsProfileComplete(isComp);
             if (isComp && isSetupParam) {
               router.replace('/freelancer/profile');

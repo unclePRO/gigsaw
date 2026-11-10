@@ -23,7 +23,27 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, profile: user });
+    // Determine actual profile completeness from required fields
+    const isComplete = Boolean(
+      user.isProfileComplete ||
+      (
+        user.title && String(user.title).trim().length > 0 &&
+        user.bio && String(user.bio).trim().length > 0 &&
+        user.hourlyRate && Number(user.hourlyRate) > 0 &&
+        Array.isArray(user.skills) && user.skills.length > 0 &&
+        user.yearsOfExperience !== undefined && user.yearsOfExperience !== null && Number(user.yearsOfExperience) >= 0 &&
+        user.typicalDeliveryDays !== undefined && user.typicalDeliveryDays !== null && Number(user.typicalDeliveryDays) >= 1 &&
+        user.location && String(user.location).trim().length > 0
+      )
+    );
+
+    // Self-heal: If all fields are filled but flag was not set, sync MongoDB
+    if (isComplete && !user.isProfileComplete) {
+      await UserModel.updateOne({ _id: user._id }, { $set: { isProfileComplete: true } });
+      user.isProfileComplete = true;
+    }
+
+    return NextResponse.json({ success: true, profile: { ...user, isProfileComplete: isComplete } });
   } catch (error: any) {
     console.error('Error fetching freelancer profile:', error);
     return NextResponse.json(
