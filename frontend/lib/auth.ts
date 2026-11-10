@@ -76,6 +76,17 @@ export const authOptions: NextAuthOptions = {
         if (session.isProfileComplete !== undefined) {
           token.isProfileComplete = Boolean(session.isProfileComplete);
         }
+      } else if (token?.email && token?.role === 'freelancer' && !token?.isProfileComplete) {
+        // Self-heal stale JWT if database already has profile completed
+        try {
+          await connectToDatabase();
+          const dbUser = await UserModel.findOne({ email: (token.email as string).toLowerCase() })
+            .select('isProfileComplete')
+            .lean();
+          if (dbUser?.isProfileComplete) {
+            token.isProfileComplete = true;
+          }
+        } catch {}
       }
       return token;
     },
