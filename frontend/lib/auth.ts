@@ -41,6 +41,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           role: user.role,
           category: user.category,
+          isProfileComplete: Boolean(user.isProfileComplete),
         } as any;
       },
     }),
@@ -51,6 +52,7 @@ export const authOptions: NextAuthOptions = {
         token.id = (user as any).id;
         token.role = (user as any).role;
         token.category = (user as any).category;
+        token.isProfileComplete = (user as any).isProfileComplete;
       }
       return token;
     },
@@ -59,6 +61,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
         (session.user as any).category = token.category;
+        (session.user as any).isProfileComplete = token.isProfileComplete;
       }
       return session;
     },

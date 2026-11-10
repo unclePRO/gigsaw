@@ -149,7 +149,7 @@ export const Navbar: React.FC = () => {
                 </Link>
                 <Link
                   href="/freelancer/profile"
-                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
+                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 relative ${
                     pathname === '/freelancer/profile'
                       ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 font-bold'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
@@ -157,6 +157,9 @@ export const Navbar: React.FC = () => {
                 >
                   <User className="w-3.5 h-3.5" />
                   <span>Portfolio</span>
+                  {user?.isProfileComplete === false && (
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Profile Setup Required" />
+                  )}
                 </Link>
               </>
             )

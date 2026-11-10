@@ -473,13 +473,13 @@ export default function CreateProjectPage() {
               assignedFreelancerEmail: fl.email,
               assignedFreelancerBio: fl.bio || '',
               assignedFreelancerSkills: fl.skills || wp.requiredSkills || [],
-              assignedFreelancerRating: fl.rating || 5.0,
+              assignedFreelancerRating: fl.rating ?? 0,
               assignedFreelancerCompletedProjects: fl.completedProjects || 0,
               assignedFreelancerPastProjects: fl.pastProjects || [],
               assignedFreelancerYearsOfExperience: fl.yearsOfExperience || 0,
-              assignedFreelancerHourlyRate: fl.hourlyRate || 50,
-              assignedFreelancerLocation: fl.location || 'Remote',
-              matchScore: fl.matchScore || 94,
+              assignedFreelancerHourlyRate: fl.hourlyRate,
+              assignedFreelancerLocation: fl.location || '',
+              matchScore: fl.matchScore,
               matchScoreBreakdown: fl.matchScoreBreakdown,
               matchReasons: fl.matchReasons,
             };
@@ -999,15 +999,19 @@ export default function CreateProjectPage() {
                                 <h5 className="font-bold text-sm text-slate-900 dark:text-white truncate">
                                   {wp.assignedFreelancerName}
                                 </h5>
-                                <div className="flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-900/50">
-                                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                  <span>{wp.assignedFreelancerRating || 5.0}</span>
-                                  {Boolean(wp.assignedFreelancerCompletedProjects && wp.assignedFreelancerCompletedProjects > 0) && (
+                                {typeof wp.assignedFreelancerRating === 'number' && wp.assignedFreelancerRating > 0 && (wp.assignedFreelancerCompletedProjects ?? 0) > 0 ? (
+                                  <div className="flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-900/50">
+                                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                    <span>{wp.assignedFreelancerRating.toFixed(1)}</span>
                                     <span className="text-slate-400 font-normal">
                                       ({wp.assignedFreelancerCompletedProjects} jobs)
                                     </span>
-                                  )}
-                                </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
+                                    New Specialist
+                                  </span>
+                                )}
                               </div>
 
                               {wp.assignedFreelancerBio && (

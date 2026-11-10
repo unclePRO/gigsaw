@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   User,
   Star,
@@ -21,30 +21,34 @@ import {
   Calendar,
   Sparkles,
   ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { IPastProject, FreelancerCategory } from '@/types';
 
 export default function FreelancerProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isSetupParam = searchParams.get('setup') === 'required';
   const { data: session, status } = useSession();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
 
-  // Form states
+  // Form states - Strictly NO mock data defaults
   const [title, setTitle] = useState('');
   const [bio, setBio] = useState('');
-  const [hourlyRate, setHourlyRate] = useState<number>(50);
-  const [indicativeProjectPrice, setIndicativeProjectPrice] = useState<number>(500);
-  const [yearsOfExperience, setYearsOfExperience] = useState<number>(4);
-  const [typicalDeliveryDays, setTypicalDeliveryDays] = useState<number>(7);
-  const [location, setLocation] = useState('Remote / Global');
+  const [hourlyRate, setHourlyRate] = useState<number | ''>('');
+  const [indicativeProjectPrice, setIndicativeProjectPrice] = useState<number | ''>('');
+  const [yearsOfExperience, setYearsOfExperience] = useState<number | ''>('');
+  const [typicalDeliveryDays, setTypicalDeliveryDays] = useState<number | ''>('');
+  const [location, setLocation] = useState('');
   const [priceBasis, setPriceBasis] = useState<'hour' | 'project'>('hour');
   const [paypalEmail, setPaypalEmail] = useState('');
   const [category, setCategory] = useState<FreelancerCategory>('dev');
-  const [rating, setRating] = useState<number>(5.0);
+  const [rating, setRating] = useState<number>(0);
   const [completedProjects, setCompletedProjects] = useState<number>(0);
   const [availability, setAvailability] = useState<'available' | 'busy'>('available');
 
@@ -78,16 +82,31 @@ export default function FreelancerProfilePage() {
             const p = data.profile;
             setTitle(p.title || '');
             setBio(p.bio || '');
-            setHourlyRate(p.hourlyRate || 50);
-            setIndicativeProjectPrice(p.indicativeProjectPrice || 500);
-            setYearsOfExperience(p.yearsOfExperience || 4);
-            setTypicalDeliveryDays(p.typicalDeliveryDays || 7);
-            setLocation(p.location || 'Remote / Global');
+            setHourlyRate(
+              typeof p.hourlyRate === 'number' && p.hourlyRate > 0 ? p.hourlyRate : ''
+            );
+            setIndicativeProjectPrice(
+              typeof p.indicativeProjectPrice === 'number' && p.indicativeProjectPrice > 0
+                ? p.indicativeProjectPrice
+                : ''
+            );
+            setYearsOfExperience(
+              typeof p.yearsOfExperience === 'number' && p.yearsOfExperience >= 0
+                ? p.yearsOfExperience
+                : ''
+            );
+            setTypicalDeliveryDays(
+              typeof p.typicalDeliveryDays === 'number' && p.typicalDeliveryDays >= 1
+                ? p.typicalDeliveryDays
+                : ''
+            );
+            setLocation(p.location || '');
             setPriceBasis(p.priceBasis || 'hour');
             setPaypalEmail(p.paypalEmail || p.email || '');
             setCategory(p.category || 'dev');
-            setRating(p.rating || 5.0);
-            setCompletedProjects(p.completedProjects || 0);
+            setRating(typeof p.rating === 'number' ? p.rating : 0);
+            setCompletedProjects(typeof p.completedProjects === 'number' ? p.completedProjects : 0);
+            setIsProfileComplete(Boolean(p.isProfileComplete));
             setSkills(Array.isArray(p.skills) ? p.skills : []);
             setPastProjects(Array.isArray(p.pastProjects) ? p.pastProjects : []);
             setAvailability(p.availability || 'available');
@@ -143,34 +162,75 @@ export default function FreelancerProfilePage() {
   };
 
   const handleSaveProfile = async () => {
-    setSaving(true);
     setMessage(null);
     setError(null);
+
+    // Strict validation to ensure genuine, complete profile
+    if (!title.trim()) {
+      setError('Professional Title is required.');
+      return;
+    }
+    if (!bio.trim()) {
+      setError('Bio & Experience overview is required.');
+      return;
+    }
+    if (hourlyRate === '' || Number(hourlyRate) <= 0) {
+      setError('Please provide a valid hourly rate greater than $0.');
+      return;
+    }
+    if (yearsOfExperience === '' || Number(yearsOfExperience) < 0) {
+      setError('Please provide your years of experience (0 or more).');
+      return;
+    }
+    if (typicalDeliveryDays === '' || Number(typicalDeliveryDays) < 1) {
+      setError('Please provide typical delivery days (at least 1 day).');
+      return;
+    }
+    if (!location.trim()) {
+      setError('Location / Timezone is required.');
+      return;
+    }
+    if (skills.length === 0) {
+      setError('Please add at least one relevant skill/competency.');
+      return;
+    }
+
+    setSaving(true);
 
     try {
       const res = await fetch('/api/freelancer/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title,
-          bio,
-          hourlyRate,
-          indicativeProjectPrice,
-          yearsOfExperience,
-          typicalDeliveryDays,
-          location,
+          title: title.trim(),
+          bio: bio.trim(),
+          hourlyRate: Number(hourlyRate),
+          indicativeProjectPrice: indicativeProjectPrice !== '' ? Number(indicativeProjectPrice) : undefined,
+          yearsOfExperience: Number(yearsOfExperience),
+          typicalDeliveryDays: Number(typicalDeliveryDays),
+          location: location.trim(),
           priceBasis,
           skills,
           pastProjects,
-          paypalEmail,
+          paypalEmail: paypalEmail.trim() || undefined,
           availability,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
-        setMessage('Profile and portfolio saved to MongoDB Atlas successfully!');
-        setTimeout(() => setMessage(null), 3500);
+        const wasIncomplete = !isProfileComplete || isSetupParam;
+        setIsProfileComplete(Boolean(data.isProfileComplete));
+        if (wasIncomplete) {
+          setMessage('Profile setup complete! Redirecting to your specialist workspace...');
+          setTimeout(() => {
+            router.push('/freelancer/dashboard');
+            router.refresh();
+          }, 1500);
+        } else {
+          setMessage('Profile and portfolio saved to MongoDB Atlas successfully!');
+          setTimeout(() => setMessage(null), 3500);
+        }
       } else {
         setError(data.error || 'Failed to update profile');
       }
@@ -230,6 +290,38 @@ export default function FreelancerProfilePage() {
         </button>
       </div>
 
+      {/* Mandatory Profile Setup Alert Banner */}
+      {(!isProfileComplete || isSetupParam) && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold tracking-tight text-amber-950 dark:text-amber-100">
+                  Profile Setup Required
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-[10px] font-extrabold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  Gate Active
+                </span>
+              </div>
+              <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-1 leading-relaxed">
+                Before you can access your specialist dashboard, accept merchant project invites, or be ranked by our AI matchmaking engine, you must complete all profile fields below (Title, Hourly Rate, Experience, Turnaround, Location, Bio, and Skills).
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleSaveProfile}
+            disabled={saving}
+            className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-md shrink-0 flex items-center gap-1.5"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>Complete Setup</span>
+          </button>
+        </div>
+      )}
+
       {message && (
         <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -244,7 +336,7 @@ export default function FreelancerProfilePage() {
         </div>
       )}
 
-      {/* Ratings & Metrics Banner */}
+      {/* Ratings & Metrics Banner - Real MongoDB Atlas Data Only */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Specialty Domain</span>
@@ -256,25 +348,36 @@ export default function FreelancerProfilePage() {
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Merchant Rating</span>
           <div className="text-xl font-black text-amber-500 flex items-center gap-1.5">
             <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
-            <span>{rating.toFixed(1)} / 5.0</span>
+            <span>{rating > 0 && completedProjects > 0 ? `${rating.toFixed(1)} / 5.0` : 'New Specialist'}</span>
           </div>
-          <span className="text-[11px] text-slate-400">Based on approved deliverables</span>
+          <span className="text-[11px] text-slate-400">
+            {completedProjects > 0 ? `${completedProjects} verified milestone reviews` : 'No reviews yet (Unrated)'}
+          </span>
         </div>
 
         <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed Milestones</span>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">{completedProjects} Finished</div>
-          <span className="text-[11px] text-slate-400">Verified in MongoDB Atlas</span>
+          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+            {completedProjects === 0 ? '0 Finished' : `${completedProjects} Finished`}
+          </div>
+          <span className="text-[11px] text-slate-400">
+            {completedProjects === 0 ? 'Accept milestone invites to begin' : 'Verified in MongoDB Atlas'}
+          </span>
         </div>
       </div>
 
       {/* Basic Info & Rates Card */}
       <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-5 transition-colors">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Professional Details & AI Parameters</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">Professional Details & AI Parameters</h2>
+          <span className="text-[11px] text-slate-400 italic">* All fields required for AI matchmaking</span>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Professional Title</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Professional Title <span className="text-rose-500">*</span>
+            </label>
             <input
               type="text"
               placeholder="e.g. Senior Next.js & Full-Stack Engineer"
@@ -285,14 +388,17 @@ export default function FreelancerProfilePage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Hourly Rate (USD)</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Hourly Rate (USD) <span className="text-rose-500">*</span>
+            </label>
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-slate-400 text-xs font-bold">$</span>
               <input
                 type="number"
-                min={15}
+                min={1}
+                placeholder="e.g. 45"
                 value={hourlyRate}
-                onChange={(e) => setHourlyRate(Number(e.target.value))}
+                onChange={(e) => setHourlyRate(e.target.value === '' ? '' : Number(e.target.value))}
                 className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
             </div>
@@ -302,31 +408,40 @@ export default function FreelancerProfilePage() {
         {/* AI Estimation Parameters */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Years of Experience</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Years of Experience <span className="text-rose-500">*</span>
+            </label>
             <input
               type="number"
-              min={1}
+              min={0}
+              placeholder="e.g. 3"
               value={yearsOfExperience}
-              onChange={(e) => setYearsOfExperience(Number(e.target.value))}
+              onChange={(e) => setYearsOfExperience(e.target.value === '' ? '' : Number(e.target.value))}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Typical Turnaround (Days)</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Typical Turnaround (Days) <span className="text-rose-500">*</span>
+            </label>
             <input
               type="number"
               min={1}
+              placeholder="e.g. 5"
               value={typicalDeliveryDays}
-              onChange={(e) => setTypicalDeliveryDays(Number(e.target.value))}
+              onChange={(e) => setTypicalDeliveryDays(e.target.value === '' ? '' : Number(e.target.value))}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Location / Timezone</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Location / Timezone <span className="text-rose-500">*</span>
+            </label>
             <input
               type="text"
+              placeholder="e.g. New York, NY (EST) or Remote"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500"
@@ -335,10 +450,12 @@ export default function FreelancerProfilePage() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Bio & Experience Overview</label>
+          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            Bio & Experience Overview <span className="text-rose-500">*</span>
+          </label>
           <textarea
             rows={3}
-            placeholder="Highlight your domain experience, specialties, and workflow..."
+            placeholder="Highlight your domain experience, specialties, past achievements, and preferred workflows..."
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             className="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 leading-relaxed"
