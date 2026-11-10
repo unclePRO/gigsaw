@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { aiClient } from '@/lib/aiClient';
+import { aiClient, AiClientError } from '@/lib/aiClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,67 +12,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'project_name is required' }, { status: 400 });
     }
 
-    const aiRes = await aiClient.chatRoomAssist({
-      project_id,
-      project_name,
-      merchant_name: merchant_name || 'Merchant',
-      members: members || [],
-      messages: messages || [],
-      action,
-    });
+    try {
+      const aiRes = await aiClient.chatRoomAssist({
+        project_id,
+        project_name,
+        merchant_name: merchant_name || 'Merchant',
+        members: members || [],
+        messages: messages || [],
+        action,
+      });
 
-    if (aiRes) {
       return NextResponse.json({
         success: true,
         source: 'fastapi_microservice',
         ...aiRes,
       });
+    } catch (err: any) {
+      console.error('[Chat Room AI API] FastAPI error:', err);
+      const status = err instanceof AiClientError ? err.status : 503;
+      const retryAfter = err instanceof AiClientError ? (err.retryAfterSeconds || 5) : 5;
+      return NextResponse.json(
+        {
+          error: 'ai_service_unavailable',
+          message: err.message || 'AI assistant is temporarily busy or unavailable. Please wait a few seconds and retry.',
+          detail: err.message,
+          retryable: true,
+          retry_after_seconds: retryAfter,
+        },
+        {
+          status: status || 503,
+          headers: { 'Retry-After': String(retryAfter) },
+        }
+      );
     }
-
-    // Fallback response if microservice is offline
-    if (action === 'kickoff') {
-      const flNames = (members || [])
-        .filter((m: any) => m.role === 'freelancer')
-        .map((m: any) => m.name);
-      const teamList = flNames.length > 0 ? flNames.join(', ') : 'the assembled specialists';
-
-      return NextResponse.json({
-        success: true,
-        source: 'local_fallback',
-        action: 'kickoff',
-        message: `👋 Welcome to the team room for ${project_name}! ${merchant_name || 'Merchant'} has hired ${teamList}. All milestones are escrow-secured with PayPal. Feel free to introduce yourselves and coordinate deliverable handoffs.`,
-        action_items: flNames.map((n: string) => ({
-          task: `Confirm deliverable schedule and access`,
-          assignee: n,
-          status: 'pending',
-        })),
-        summary: `Project room initialized with ${flNames.length} specialist(s).`,
-      });
-    }
-
-    if (action === 'action_items') {
-      return NextResponse.json({
-        success: true,
-        source: 'local_fallback',
-        action: 'action_items',
-        message: 'Current milestone tasks and pending deliverables:',
-        action_items: [
-          { task: 'Review milestone requirements', assignee: merchant_name || 'Merchant', status: 'pending' },
-          { task: 'Provide initial draft / design mockups', assignee: 'Assigned Specialist', status: 'pending' },
-        ],
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      source: 'local_fallback',
-      action,
-      message: 'Discussion underway. Milestones progress tracked in escrow.',
-      summary: 'Team coordinating deliverables.',
-      action_items: [],
-    });
   } catch (err: any) {
     console.error('[Chat Room AI API] Error:', err);
-    return NextResponse.json({ error: err.message || 'Chat room assistant error' }, { status: 500 });
+    return NextResponse.json(
+      { error: err.message || 'Chat room assistant error' },
+      { status: 500 }
+    );
   }
 }
