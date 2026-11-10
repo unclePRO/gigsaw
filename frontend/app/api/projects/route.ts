@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       allocatedTotal: Number(allocatedTotal) || workPackages.reduce((s: number, w: any) => s + (w.allocatedPrice || 0), 0),
       savings: Number(savings) || 0,
       workPackages,
-      status: body.status || 'draft',
+      status: body.status || 'ON_HOLD',
       paypalOrderId: paypalOrderId || undefined,
       aiAnalysis,
       dependencyPlan,

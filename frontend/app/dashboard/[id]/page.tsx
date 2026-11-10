@@ -31,9 +31,14 @@ import {
   ChevronDown,
   X,
   Send,
+  Users,
+  DollarSign,
+  UserCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { WorkPackage, ProjectProposal, IAiProgressSummary, IAiCounterofferAnalysis } from '@/types';
 import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
+import { EmbeddedProjectChat } from '@/components/chat/EmbeddedProjectChat';
 import { CheckoutSection } from '@/components/dashboard/CheckoutSection';
 
 export default function MerchantProjectWorkspacePage() {
@@ -47,12 +52,16 @@ export default function MerchantProjectWorkspacePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // AI Progress Summary state
+  // Specialist Swap State
+  const [swappingPackageId, setSwappingPackageId] = useState<string | null>(null);
+  const [swapFeedbackMsg, setSwapFeedbackMsg] = useState<string | null>(null);
+
+  // AI Progress Summary state (for funded/active stage)
   const [progressSummary, setProgressSummary] = useState<IAiProgressSummary | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(false);
 
-  // Chat modal state
-  const [chatOpen, setChatOpen] = useState(false);
+  // Standalone chat modal toggle (if merchant prefers modal view)
+  const [chatModalOpen, setChatModalOpen] = useState(false);
 
   // Revision modal state
   const [revisionModalOpen, setRevisionModalOpen] = useState<{
@@ -86,6 +95,9 @@ export default function MerchantProjectWorkspacePage() {
   const [cancelSuccessMsg, setCancelSuccessMsg] = useState<string | null>(null);
 
   const fetchProgressSummary = useCallback(async (proj: ProjectProposal) => {
+    // Only fetch AI progress summary if project is active / funded
+    if (proj.status !== 'FUNDED_IN_PROGRESS' && proj.status !== 'funded') return;
+
     setLoadingProgress(true);
     try {
       const res = await fetch('/api/ai/progress', {
@@ -134,7 +146,9 @@ export default function MerchantProjectWorkspacePage() {
 
       if (projData.success && projData.project) {
         setProject(projData.project);
-        fetchProgressSummary(projData.project);
+        if (projData.project.status === 'FUNDED_IN_PROGRESS' || projData.project.status === 'funded') {
+          fetchProgressSummary(projData.project);
+        }
       } else {
         setError(projData.error || 'Project not found in database');
       }
@@ -162,6 +176,66 @@ export default function MerchantProjectWorkspacePage() {
       fetchProjectDetails();
     }
   }, [status, session, router, projectId, fetchProjectDetails]);
+
+  // Handler for "Find Someone Else" specialist swap
+  const handleSwapSpecialist = async (wp: WorkPackage) => {
+    if (!project) return;
+    setSwappingPackageId(wp.id);
+    setSwapFeedbackMsg(null);
+
+    try {
+      // 1. Request replacement specialist from AI matcher or MongoDB talent pool
+      const swapRes = await fetch('/api/ai/swap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          work_package_id: wp.id,
+          service_category: wp.category,
+          required_skills: wp.requiredSkills || [],
+          brief: wp.description,
+          budget: wp.allocatedPrice,
+          current_freelancer_id: wp.assignedFreelancerId,
+          exclude_freelancer_ids: project.workPackages
+            .map((w) => w.assignedFreelancerId)
+            .filter(Boolean),
+        }),
+      });
+
+      const swapData = await swapRes.json();
+      if (!swapData.success || !swapData.freelancer) {
+        alert(swapData.message || 'No alternative specialists found in this category at this time.');
+        setSwappingPackageId(null);
+        return;
+      }
+
+      // 2. Persist swapped specialist into MongoDB project document
+      const updateRes = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'swap_freelancer',
+          packageId: wp.id,
+          newFreelancer: swapData.freelancer,
+        }),
+      });
+
+      const updateData = await updateRes.json();
+      if (updateData.success && updateData.project) {
+        setProject(updateData.project);
+        setSwapFeedbackMsg(
+          `Replaced ${wp.assignedFreelancerName || 'specialist'} with ${swapData.freelancer.name}. An invitation has been dispatched!`
+        );
+        setTimeout(() => setSwapFeedbackMsg(null), 6000);
+      } else {
+        fetchProjectDetails();
+      }
+    } catch (err: any) {
+      console.error('Failed to swap specialist:', err);
+      alert(err.message || 'Error finding replacement specialist');
+    } finally {
+      setSwappingPackageId(null);
+    }
+  };
 
   const handleUpdateStatus = async (
     targetProjectId: string,
@@ -309,7 +383,7 @@ export default function MerchantProjectWorkspacePage() {
     }
   };
 
-  // AG Grid column definitions
+  // AG Grid column definitions (used only for funded / active stage)
   const columnDefs = useMemo<ColDef<WorkPackage>[]>(() => [
     {
       headerName: 'Milestone Title & Scope',
@@ -551,7 +625,12 @@ export default function MerchantProjectWorkspacePage() {
 
   const isCancelled = project.status === 'cancelled';
   const isCompleted = project.status === 'completed';
+  const isReadyToFund = project.status === 'READY_TO_FUND';
+  const isFundedOrActive = project.status === 'FUNDED_IN_PROGRESS' || project.status === 'funded';
+  const isOnHold = !isFundedOrActive && !isReadyToFund && !isCompleted && !isCancelled;
+
   const totalTasks = project.workPackages.length;
+  const acceptedTasks = project.workPackages.filter((w) => w.inviteStatus === 'accepted').length;
   const completedTasks = project.workPackages.filter((w) => w.status === 'Completed').length;
   const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -573,7 +652,7 @@ export default function MerchantProjectWorkspacePage() {
           </span>
         </div>
 
-        {/* Quick project switcher dropdown if merchant has multiple projects */}
+        {/* Quick project switcher */}
         {allProjects.length > 1 && (
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-slate-400 font-medium">Switch Project:</span>
@@ -596,18 +675,18 @@ export default function MerchantProjectWorkspacePage() {
       </div>
 
       {/* Top Header Card */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
-        <div>
-          <div className="flex items-center gap-2">
+      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors shadow-sm">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
             <span
-              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+              className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
                 isCancelled
                   ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
                   : isCompleted
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                  : project.status === 'READY_TO_FUND'
+                  : isReadyToFund
                   ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
-                  : project.status === 'draft'
+                  : isOnHold
                   ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20'
                   : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
               }`}
@@ -616,41 +695,45 @@ export default function MerchantProjectWorkspacePage() {
                 ? 'Project Cancelled'
                 : isCompleted
                 ? 'Completed'
-                : project.status === 'READY_TO_FUND'
-                ? 'Ready to Fund (All Freelancers Accepted)'
-                : project.status === 'draft'
-                ? 'Awaiting Specialist Acceptance'
+                : isReadyToFund
+                ? 'Ready to Fund (All Specialists Accepted)'
+                : isOnHold
+                ? 'Project On Hold (Awaiting Specialist Invites)'
                 : 'Funded & Active'}
             </span>
+
             <span className="text-xs font-semibold text-slate-400">
-              {completedTasks}/{totalTasks} Milestones Complete ({progressPercent}%)
+              {isOnHold || isReadyToFund
+                ? `${acceptedTasks}/${totalTasks} Specialists Accepted`
+                : `${completedTasks}/${totalTasks} Milestones Complete (${progressPercent}%)`}
             </span>
           </div>
 
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             {project.projectName}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl">
             {project.merchantPrompt}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => setChatOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>Team Chat</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-right">
+            <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
+              Total Budget
+            </span>
+            <span className="text-sm font-black text-slate-900 dark:text-white">
+              ${project.totalBudget?.toLocaleString()} USD
+            </span>
+          </div>
 
           {!isCancelled && !isCompleted && (
             <button
               onClick={() => setCancelModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 text-xs font-bold rounded-xl transition-all cursor-pointer"
               title="Cancel project and release escrow"
             >
-              <XCircle className="w-4 h-4" />
+              <XCircle className="w-3.5 h-3.5" />
               <span>Cancel Project</span>
             </button>
           )}
@@ -664,6 +747,13 @@ export default function MerchantProjectWorkspacePage() {
           </button>
         </div>
       </div>
+
+      {swapFeedbackMsg && (
+        <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl text-xs font-semibold text-cyan-800 dark:text-cyan-300 flex items-center gap-2 animate-fadeIn">
+          <RotateCcw className="w-4 h-4 text-cyan-500 shrink-0" />
+          <span>{swapFeedbackMsg}</span>
+        </div>
+      )}
 
       {cancelSuccessMsg && (
         <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs font-semibold text-rose-800 dark:text-rose-300 flex items-center gap-2">
@@ -688,159 +778,357 @@ export default function MerchantProjectWorkspacePage() {
         </div>
       )}
 
-      {/* Waiting Room: Shown when project is draft / awaiting specialist acceptance */}
-      {project.status === 'draft' && (
-        <div className="p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl space-y-3 text-xs text-indigo-950 dark:text-indigo-200">
-          <div className="flex items-center gap-2 font-bold text-sm text-indigo-900 dark:text-indigo-100">
-            <Clock className="w-4 h-4 text-indigo-500 animate-spin" />
-            <span>Milestone Invites Sent &bull; Awaiting Specialist Confirmation</span>
-          </div>
-          <p className="text-slate-600 dark:text-slate-300">
-            Invitations have been dispatched to your matched specialists. As soon as all specialists accept their invitations, the PayPal Multi-Seller Escrow payment module will appear here so you can fund the project to begin.
-          </p>
-          <div className="flex flex-wrap gap-2.5 pt-1">
-            {project.workPackages.map((wp) => (
-              <span
-                key={wp.id}
-                className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold border flex items-center gap-2 ${
-                  wp.inviteStatus === 'accepted'
-                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                    : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                }`}
-              >
-                {wp.inviteStatus === 'accepted' ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                ) : (
-                  <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-                )}
-                <span>
-                  <strong className="font-bold">{wp.assignedFreelancerName || 'Specialist'}</strong> ({wp.title}):{' '}
-                  <span className={wp.inviteStatus === 'accepted' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-amber-600 dark:text-amber-400 font-bold'}>
-                    {wp.inviteStatus === 'accepted' ? 'Accepted' : 'Invited (Pending)'}
-                  </span>
-                </span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* STEP 1: PayPal Multi-Seller Checkout Section rendered ONLY when status is READY_TO_FUND */}
-      {project.status === 'READY_TO_FUND' && (
-        <CheckoutSection
-          project={project}
-          onPaymentSuccess={() => {
-            fetchProjectDetails();
-          }}
-        />
-      )}
-
-      {/* Escrow & Financial Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Project Budget</span>
-          <div className="text-xl font-black text-slate-900 dark:text-white">
-            ${project.totalBudget?.toLocaleString()} USD
-          </div>
-          <span className="text-[11px] text-slate-400">Initial client investment</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Allocated to Specialists</span>
-          <div className="text-xl font-black text-cyan-600 dark:text-cyan-400">
-            ${project.allocatedTotal?.toLocaleString()} USD
-          </div>
-          <span className="text-[11px] text-slate-400">Across {totalTasks} work packages</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Remaining Budget</span>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-            ${project.savings?.toLocaleString() || 0} USD
-          </div>
-          <span className="text-[11px] text-slate-400">Retained reserve buffer</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Escrow Security</span>
-          <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-            <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            <span>{isCancelled ? 'Escrow Released' : 'PayPal Escrow Active'}</span>
-          </div>
-          <span className="text-[11px] text-slate-400">
-            {isCancelled ? 'Project closed' : 'Funds release only upon your approval'}
-          </span>
-        </div>
-      </div>
-
-      {/* AI Dynamic Progress Summary */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-cyan-500" />
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">AI Project Manager Status</h3>
-          </div>
-          <span className="text-[11px] text-slate-400 font-medium">
-            Progress: {completedTasks} of {totalTasks} milestones completed
-          </span>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-          <div
-            className={`h-full transition-all duration-500 ${isCancelled ? 'bg-rose-500' : 'bg-gradient-to-r from-cyan-500 to-emerald-500'}`}
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-
-        {loadingProgress ? (
-          <div className="py-2 text-xs text-slate-400 flex items-center gap-2">
-            <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-500" />
-            <span>Evaluating project progress with Gemini AI...</span>
-          </div>
-        ) : progressSummary ? (
-          <div className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2">
-            <p className="leading-relaxed">{progressSummary.summary}</p>
-            {progressSummary.blocked_tasks && progressSummary.blocked_tasks.length > 0 && (
-              <div className="text-amber-600 dark:text-amber-400 text-[11px] font-semibold flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>Attention: {progressSummary.blocked_tasks.join(', ')}</span>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            All milestones are actively coordinated across your specialist team.
-          </p>
-        )}
-      </div>
-
-      {/* AG Grid Milestones Table */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Milestone Work Packages & Specialist Contracts
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Inspect submitted deliverables, review work packages, and trigger escrow approval.
+      {/* ============================================================== */}
+      {/* STATE 1: PROJECT ON HOLD (Awaiting invites / No cluttered tables) */}
+      {/* ============================================================== */}
+      {isOnHold && (
+        <div className="space-y-6">
+          {/* On Hold Notification Banner */}
+          <div className="p-5 bg-gradient-to-r from-indigo-500/10 via-blue-500/10 to-indigo-500/10 border border-indigo-500/20 rounded-2xl space-y-2 text-xs text-indigo-950 dark:text-indigo-200 shadow-sm">
+            <div className="flex items-center gap-2 font-bold text-sm text-indigo-900 dark:text-indigo-100">
+              <Clock className="w-4 h-4 text-indigo-500 animate-spin" />
+              <span>Project On Hold &bull; Awaiting Specialist Confirmations</span>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+              Your matched specialists have been invited to their respective milestones. The project will remain on hold until every specialist accepts. You can coordinate with them in the team chat right now. If a specialist declines or takes too long, click <strong>&ldquo;Find Someone Else&rdquo;</strong> to instantly swap them with another top AI-matched talent.
             </p>
           </div>
-        </div>
 
-        <div className="ag-theme-alpine w-full h-[400px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-          <AgGridReact
-            rowData={project.workPackages}
-            columnDefs={columnDefs}
-            rowHeight={70}
-            headerHeight={44}
-            defaultColDef={{
-              sortable: true,
-              resizable: true,
+          {/* 2-Column Streamlined Workspace: Team Cart & Invitations (Left) | Embedded Team Chat (Right) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column: People Working & Acceptance Status */}
+            <div className="lg:col-span-6 space-y-4">
+              <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-cyan-500" />
+                    <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                      Invited Specialists Team ({project.workPackages.length})
+                    </h2>
+                  </div>
+                  <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                    {acceptedTasks} of {totalTasks} Accepted
+                  </span>
+                </div>
+
+                <div className="space-y-3.5">
+                  {project.workPackages.map((wp) => {
+                    const isAccepted = wp.inviteStatus === 'accepted';
+                    const isDeclined = wp.inviteStatus === 'declined';
+                    const isSwapping = swappingPackageId === wp.id;
+
+                    return (
+                      <div
+                        key={wp.id}
+                        className={`p-4 rounded-xl border transition-all ${
+                          isAccepted
+                            ? 'bg-emerald-500/5 dark:bg-emerald-950/20 border-emerald-500/30'
+                            : isDeclined
+                            ? 'bg-rose-500/5 dark:bg-rose-950/20 border-rose-500/30'
+                            : 'bg-slate-50/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                                {wp.category}
+                              </span>
+                              <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                {wp.title}
+                              </h3>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                              {wp.description}
+                            </p>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <span className="text-xs font-black text-slate-900 dark:text-white">
+                              ${wp.allocatedPrice?.toLocaleString()} USD
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Specialist Info & Status Row */}
+                        <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                              {(wp.assignedFreelancerName || 'S').charAt(0)}
+                            </div>
+                            <div className="text-[11px]">
+                              <span className="font-bold text-slate-800 dark:text-slate-200">
+                                {wp.assignedFreelancerName || 'Specialist Talent'}
+                              </span>
+                              <span className="text-slate-400 text-[10px] ml-1">
+                                ({wp.assignedFreelancerRating ? `★ ${wp.assignedFreelancerRating.toFixed(1)}` : 'Top Match'})
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* Acceptance Status Badge */}
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                isAccepted
+                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                                  : isDeclined
+                                  ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30'
+                                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                              }`}
+                            >
+                              {isAccepted ? (
+                                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                              ) : isDeclined ? (
+                                <XCircle className="w-3 h-3 text-rose-500" />
+                              ) : (
+                                <Clock className="w-3 h-3 text-amber-500 animate-pulse" />
+                              )}
+                              <span>
+                                {isAccepted ? 'Accepted' : isDeclined ? 'Declined' : 'Invited (Pending)'}
+                              </span>
+                            </span>
+
+                            {/* Find Someone Else Button */}
+                            <button
+                              type="button"
+                              disabled={isSwapping}
+                              onClick={() => handleSwapSpecialist(wp)}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
+                                isDeclined
+                                  ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm animate-pulse'
+                                  : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                              }`}
+                              title="Replace this specialist with another AI-matched candidate"
+                            >
+                              {isSwapping ? (
+                                <>
+                                  <RefreshCw className="w-3 h-3 animate-spin text-cyan-500" />
+                                  <span>Swapping...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <RotateCcw className="w-3 h-3" />
+                                  <span>{isDeclined ? 'Find Alternative' : 'Find Someone Else'}</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Live Embedded Team Chat */}
+            <div className="lg:col-span-6">
+              <EmbeddedProjectChat
+                projectId={projectId}
+                projectName={project.projectName}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* STATE 2: READY TO FUND (The Single Consolidated Checkout)      */}
+      {/* ============================================================== */}
+      {isReadyToFund && (
+        <div className="space-y-6">
+          {/* STEP 2: The Single Multi-Seller Checkout Component */}
+          <CheckoutSection
+            project={project}
+            onPaymentSuccess={() => {
+              fetchProjectDetails();
             }}
           />
+
+          {/* Underneath: Specialist confirmation & Live Team Chat */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="lg:col-span-6 space-y-4">
+              <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-emerald-500" />
+                    <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                      Confirmed Specialists Team
+                    </h2>
+                  </div>
+                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                    100% Ready to Start
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {project.workPackages.map((wp) => (
+                    <div
+                      key={wp.id}
+                      className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20 flex items-center justify-between gap-3"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            {wp.category}
+                          </span>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">
+                            {wp.title}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                          Specialist: <strong className="text-slate-800 dark:text-slate-100">{wp.assignedFreelancerName}</strong> &bull; {wp.assignedFreelancerEmail}
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div className="text-xs font-black text-slate-900 dark:text-white">
+                          ${wp.allocatedPrice?.toLocaleString()} USD
+                        </div>
+                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 justify-end">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Accepted</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-6">
+              <EmbeddedProjectChat
+                projectId={projectId}
+                projectName={project.projectName}
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* STATE 3: FUNDED & IN PROGRESS (The Active Execution Workspace) */}
+      {/* ============================================================== */}
+      {(isFundedOrActive || isCompleted) && (
+        <div className="space-y-6">
+          {/* Escrow & Financial Overview */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Project Budget</span>
+              <div className="text-xl font-black text-slate-900 dark:text-white">
+                ${project.totalBudget?.toLocaleString()} USD
+              </div>
+              <span className="text-[11px] text-slate-400">Initial client investment</span>
+            </div>
+
+            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Allocated to Specialists</span>
+              <div className="text-xl font-black text-cyan-600 dark:text-cyan-400">
+                ${project.allocatedTotal?.toLocaleString()} USD
+              </div>
+              <span className="text-[11px] text-slate-400">Across {totalTasks} work packages</span>
+            </div>
+
+            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Remaining Buffer</span>
+              <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                ${project.savings?.toLocaleString() || 0} USD
+              </div>
+              <span className="text-[11px] text-slate-400">Retained reserve buffer</span>
+            </div>
+
+            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Escrow Security</span>
+              <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                <span>{isCancelled ? 'Escrow Released' : 'PayPal Escrow Active'}</span>
+              </div>
+              <span className="text-[11px] text-slate-400">
+                {isCancelled ? 'Project closed' : 'Funds release only upon your approval'}
+              </span>
+            </div>
+          </div>
+
+          {/* AI Dynamic Progress Summary */}
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-cyan-500" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">AI Project Manager Status</h3>
+              </div>
+              <span className="text-[11px] text-slate-400 font-medium">
+                Progress: {completedTasks} of {totalTasks} milestones completed
+              </span>
+            </div>
+
+            <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 ${isCancelled ? 'bg-rose-500' : 'bg-gradient-to-r from-cyan-500 to-emerald-500'}`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+
+            {loadingProgress ? (
+              <div className="py-2 text-xs text-slate-400 flex items-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-500" />
+                <span>Evaluating project progress with Gemini AI...</span>
+              </div>
+            ) : progressSummary ? (
+              <div className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2">
+                <p className="leading-relaxed">{progressSummary.summary}</p>
+                {progressSummary.blocked_tasks && progressSummary.blocked_tasks.length > 0 && (
+                  <div className="text-amber-600 dark:text-amber-400 text-[11px] font-semibold flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Attention: {progressSummary.blocked_tasks.join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                All milestones are actively coordinated across your specialist team.
+              </p>
+            )}
+          </div>
+
+          {/* AG Grid Milestones Table */}
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  Milestone Work Packages & Deliverables
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Inspect submitted deliverables, review work packages, and trigger escrow approval.
+                </p>
+              </div>
+            </div>
+
+            <div className="ag-theme-alpine w-full h-[380px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+              <AgGridReact
+                rowData={project.workPackages}
+                columnDefs={columnDefs}
+                rowHeight={70}
+                headerHeight={44}
+                defaultColDef={{
+                  sortable: true,
+                  resizable: true,
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Embedded Live Team Chat underneath Milestones */}
+          <EmbeddedProjectChat
+            projectId={projectId}
+            projectName={project.projectName}
+          />
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODALS: Cancel Project, Review/Rating, Revision, Counteroffer   */}
+      {/* ============================================================== */}
 
       {/* Cancel Project Confirmation Modal */}
       {cancelModalOpen && (
@@ -923,7 +1211,6 @@ export default function MerchantProjectWorkspacePage() {
             </div>
 
             <form onSubmit={handleSubmitReview} className="space-y-4">
-              {/* Star Rating Picker */}
               <div className="space-y-1.5 text-center py-2 bg-slate-50/50 dark:bg-slate-900/40 rounded-xl border border-slate-200/80 dark:border-slate-800">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
                   Overall Rating (out of 5 stars)
@@ -957,7 +1244,6 @@ export default function MerchantProjectWorkspacePage() {
                 </div>
               </div>
 
-              {/* Written Review */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
                   Written Review (Will appear on specialist profile)
@@ -1124,13 +1410,13 @@ export default function MerchantProjectWorkspacePage() {
         </div>
       )}
 
-      {/* Team Chat Modal */}
-      {chatOpen && (
+      {/* Standalone Team Chat Modal (if merchant toggles it) */}
+      {chatModalOpen && (
         <ProjectChatModal
           projectId={projectId}
           projectName={project.projectName}
-          isOpen={chatOpen}
-          onClose={() => setChatOpen(false)}
+          isOpen={chatModalOpen}
+          onClose={() => setChatModalOpen(false)}
         />
       )}
     </div>

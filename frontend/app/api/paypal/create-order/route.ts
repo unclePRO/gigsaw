@@ -188,10 +188,51 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(orderPayload),
     });
 
-    const orderData = await orderResponse.json();
+    let orderData = await orderResponse.json();
 
     if (!orderResponse.ok) {
-      console.error('[PayPal Multi-Seller Create Order Error]:', orderResponse.status, orderData);
+      console.warn('[PayPal Multi-Seller Create Order Warning]:', orderResponse.status, orderData);
+
+      // Check if error is due to platform_fees or partner permissions in sandbox
+      const errorStr = JSON.stringify(orderData);
+      const isFeeError =
+        errorStr.includes('PLATFORM_FEES') ||
+        errorStr.includes('PAYEE_ACCOUNT_RESTRICTED') ||
+        errorStr.includes('PERMISSION_DENIED') ||
+        errorStr.includes('NOT_AUTHORIZED');
+
+      if (isFeeError && process.env.ENABLE_PLATFORM_FEES === 'true') {
+        console.warn('[PayPal Create Order] Retrying order creation without platform_fees due to Sandbox account limitation...');
+        const retryPayload = {
+          ...orderPayload,
+          purchase_units: purchase_units.map((u) => {
+            const { payment_instruction, ...rest } = u;
+            return rest;
+          }),
+        };
+
+        const retryResponse = await fetch(`${apiBase}/v2/checkout/orders`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(retryPayload),
+        });
+
+        const retryData = await retryResponse.json();
+        if (retryResponse.ok) {
+          return NextResponse.json({
+            id: retryData.id,
+            status: retryData.status,
+            links: retryData.links,
+            order: retryData,
+            platformFeesFallbackApplied: true,
+          });
+        }
+        orderData = retryData;
+      }
+
       return NextResponse.json(
         {
           error: orderData.message || orderData.name || 'PayPal Order Creation Failed',

@@ -132,9 +132,15 @@ export async function PATCH(
         pkg.assignedFreelancerName = session.user.name || 'Freelancer';
         pkg.assignedFreelancerId = (session.user as any).id;
       }
+      if (project.status === 'READY_TO_FUND') {
+        project.status = 'ON_HOLD';
+      }
     } else {
       pkg.inviteStatus = 'declined';
       pkg.status = 'Pending';
+      if (project.status === 'READY_TO_FUND') {
+        project.status = 'ON_HOLD';
+      }
     }
 
     await project.save();

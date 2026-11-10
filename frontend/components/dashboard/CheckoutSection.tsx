@@ -197,15 +197,20 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
         </div>
       </div>
 
-      {/* Accepted Specialists Breakdown */}
+      {/* Accepted Specialists Breakdown & Magic Split */}
       <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <Users className="w-4 h-4 text-cyan-500" />
-            Accepted Specialists & Payee Breakdown
-          </span>
-          <span className="text-xs text-slate-400">
-            PayPal Multi-Seller `purchase_units` (Intent: CAPTURE)
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-cyan-500" />
+              The Magic Split: Individual Specialist Payees & Platform Cut
+            </span>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              When approved, PayPal automatically disburses individual escrow amounts directly to each specialist's account upfront.
+            </p>
+          </div>
+          <span className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400">
+            {acceptedPackages.length} Payee{acceptedPackages.length > 1 ? 's' : ''} + 5% Platform Fee
           </span>
         </div>
 
@@ -213,22 +218,22 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
           {acceptedPackages.map((wp, idx) => (
             <div
               key={wp.id || idx}
-              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60 flex items-start justify-between gap-3"
+              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60 flex items-start justify-between gap-3 shadow-sm"
             >
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
                     {wp.category}
                   </span>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
                     {wp.title}
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
                   Specialist: <strong className="text-slate-800 dark:text-slate-100">{wp.assignedFreelancerName || 'Assigned Talent'}</strong>
                 </div>
-                <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
-                  <span>Payee:</span>
+                <div className="text-[10px] text-slate-400 font-mono truncate flex items-center gap-1">
+                  <span>PayPal:</span>
                   <span className="text-slate-500 dark:text-slate-400">
                     {wp.assignedFreelancerEmail || 'freelancer@sandbox.paypal.com'}
                   </span>
@@ -246,6 +251,31 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
               </div>
             </div>
           ))}
+
+          {/* Platform fee card */}
+          <div className="p-4 rounded-xl border border-purple-500/20 bg-purple-500/5 dark:bg-purple-950/20 flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/20">
+                  GigSaw Fee
+                </span>
+                <span className="text-xs font-bold text-purple-900 dark:text-purple-200">
+                  5% Platform Commission
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Escrow management, AI mediation, and buyer protection guarantee
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-sm font-black text-purple-700 dark:text-purple-300">
+                ${(totalToFund * 0.05).toFixed(2)}
+              </div>
+              <div className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">
+                Auto-collected
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -289,12 +319,16 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
       {/* PayPal SDK Button Container */}
       <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center space-y-4 shadow-sm">
         <div className="text-center space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-xs font-black uppercase tracking-wider mb-1">
+            <DollarSign className="w-3.5 h-3.5" />
+            <span>Single Checkout &bull; Pay ${totalToFund.toLocaleString()} with PayPal</span>
+          </div>
           <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <span>Secure Multi-Seller Escrow Authorization</span>
           </div>
           <p className="text-[11px] text-slate-400 max-w-sm">
-            Click below to authorize via PayPal Sandbox. Your payment is held in escrow and released only after you review and approve work.
+            Log in once with PayPal to approve the complete ${totalToFund.toLocaleString()} USD budget. PayPal will automatically split the funds to each specialist while securing escrow protection.
           </p>
         </div>
 

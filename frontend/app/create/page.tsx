@@ -532,7 +532,7 @@ export default function CreateProjectPage() {
             inviteStatus: 'invited',
             status: 'Pending',
           })),
-          status: 'draft',
+          status: 'ON_HOLD',
           merchantId: (session?.user as any)?.id,
           merchantName: session?.user?.name || 'Merchant',
           merchantEmail: session?.user?.email || 'merchant@example.com',
