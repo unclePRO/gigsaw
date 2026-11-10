@@ -61,11 +61,19 @@ export async function PATCH(
         }
         pkg.quotationStatus = 'accepted';
         pkg.inviteStatus = 'accepted';
-        pkg.status = 'In Progress';
+        pkg.status = project.status === 'FUNDED_IN_PROGRESS' || project.status === 'funded' ? 'In Progress' : 'Pending';
 
         // Recalculate totals
         project.allocatedTotal = project.workPackages.reduce((s, w) => s + (w.allocatedPrice || 0), 0);
         project.savings = Math.max(0, project.totalBudget - project.allocatedTotal);
+
+        const allAccepted =
+          project.workPackages.length > 0 &&
+          project.workPackages.every((w) => w.inviteStatus === 'accepted');
+
+        if (allAccepted && project.status !== 'funded' && project.status !== 'FUNDED_IN_PROGRESS') {
+          project.status = 'READY_TO_FUND';
+        }
       } else {
         pkg.quotationStatus = 'declined';
       }
@@ -99,12 +107,20 @@ export async function PATCH(
 
     if (action === 'accept') {
       pkg.inviteStatus = 'accepted';
-      pkg.status = 'In Progress';
+      pkg.status = project.status === 'FUNDED_IN_PROGRESS' || project.status === 'funded' ? 'In Progress' : 'Pending';
       // If was unassigned, assign to this freelancer
       if (!pkg.assignedFreelancerEmail) {
         pkg.assignedFreelancerEmail = userEmail;
         pkg.assignedFreelancerName = session.user.name || 'Freelancer';
         pkg.assignedFreelancerId = (session.user as any).id;
+      }
+
+      const allAccepted =
+        project.workPackages.length > 0 &&
+        project.workPackages.every((w) => w.inviteStatus === 'accepted');
+
+      if (allAccepted && project.status !== 'funded' && project.status !== 'FUNDED_IN_PROGRESS') {
+        project.status = 'READY_TO_FUND';
       }
     } else if (action === 'counteroffer') {
       pkg.quotationStatus = 'counteroffer';

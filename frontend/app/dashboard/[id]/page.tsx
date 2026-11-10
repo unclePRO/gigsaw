@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { WorkPackage, ProjectProposal, IAiProgressSummary, IAiCounterofferAnalysis } from '@/types';
 import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
+import { CheckoutSection } from '@/components/dashboard/CheckoutSection';
 
 export default function MerchantProjectWorkspacePage() {
   const router = useRouter();
@@ -604,10 +605,18 @@ export default function MerchantProjectWorkspacePage() {
                   ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
                   : isCompleted
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                  : project.status === 'READY_TO_FUND'
+                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
                   : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
               }`}
             >
-              {isCancelled ? 'Project Cancelled' : isCompleted ? 'Completed' : 'Funded & Active'}
+              {isCancelled
+                ? 'Project Cancelled'
+                : isCompleted
+                ? 'Completed'
+                : project.status === 'READY_TO_FUND'
+                ? 'Ready to Fund (Checkout Required)'
+                : 'Funded & Active'}
             </span>
             <span className="text-xs font-semibold text-slate-400">
               {completedTasks}/{totalTasks} Milestones Complete ({progressPercent}%)
@@ -673,6 +682,16 @@ export default function MerchantProjectWorkspacePage() {
             <strong className="font-bold">Project Cancelled:</strong> This project was cancelled by the merchant. Milestones have been closed and remaining escrow funds released.
           </div>
         </div>
+      )}
+
+      {/* STEP 1: PayPal Multi-Seller Checkout Section rendered when status is READY_TO_FUND */}
+      {project.status === 'READY_TO_FUND' && (
+        <CheckoutSection
+          project={project}
+          onPaymentSuccess={() => {
+            fetchProjectDetails();
+          }}
+        />
       )}
 
       {/* Escrow & Financial Overview */}

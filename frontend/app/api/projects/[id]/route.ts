@@ -22,6 +22,16 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    // Dynamic self-heal: if all freelancer invites are accepted, update to READY_TO_FUND
+    if (
+      project.workPackages?.length > 0 &&
+      project.workPackages.every((w: any) => w.inviteStatus === 'accepted') &&
+      (project.status === 'draft' || !project.status)
+    ) {
+      project.status = 'READY_TO_FUND';
+      await ProjectModel.updateOne({ _id: project._id }, { $set: { status: 'READY_TO_FUND' } });
+    }
+
     return NextResponse.json({ success: true, project });
   } catch (error: any) {
     console.error('Error fetching project by ID:', error);

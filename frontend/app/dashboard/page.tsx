@@ -115,7 +115,12 @@ export default function MerchantDashboardPage() {
       proj.projectName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       proj.merchantPrompt?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const isProjectActive = proj.status === 'funded' || proj.status === 'draft' || !proj.status;
+    const isProjectActive =
+      proj.status === 'funded' ||
+      proj.status === 'FUNDED_IN_PROGRESS' ||
+      proj.status === 'READY_TO_FUND' ||
+      proj.status === 'draft' ||
+      !proj.status;
     const isProjectCompleted = proj.status === 'completed';
     const isProjectCancelled = proj.status === 'cancelled';
 
@@ -311,10 +316,18 @@ export default function MerchantDashboardPage() {
                             ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
                             : isCompleted
                             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                            : proj.status === 'READY_TO_FUND'
+                            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
                             : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
                         }`}
                       >
-                        {isCancelled ? 'Cancelled' : isCompleted ? 'Completed' : 'Funded & Active'}
+                        {isCancelled
+                          ? 'Cancelled'
+                          : isCompleted
+                          ? 'Completed'
+                          : proj.status === 'READY_TO_FUND'
+                          ? 'Ready to Fund'
+                          : 'Funded & Active'}
                       </span>
                       <span className="text-[11px] text-slate-400">
                         Launched {proj.createdAt ? new Date(proj.createdAt).toLocaleDateString() : 'Recently'}
@@ -340,13 +353,23 @@ export default function MerchantDashboardPage() {
                         Cancel Project
                       </button>
                     )}
-                    <Link
-                      href={`/dashboard/${pId}`}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-xl transition-all shadow-sm"
-                    >
-                      <span>Open Workspace</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    {proj.status === 'READY_TO_FUND' ? (
+                      <Link
+                        href={`/dashboard/${pId}`}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-all shadow-md animate-pulse"
+                      >
+                        <span>Authorize Escrow</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/dashboard/${pId}`}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-xl transition-all shadow-sm"
+                      >
+                        <span>Open Workspace</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
                   </div>
                 </div>
 

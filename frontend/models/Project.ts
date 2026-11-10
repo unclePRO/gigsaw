@@ -58,7 +58,7 @@ export interface IProjectDocument extends Document {
   savings: number;
   workPackages: IWorkPackage[];
   messages: IChatMessage[];
-  status: 'draft' | 'funded' | 'completed' | 'cancelled';
+  status: 'draft' | 'READY_TO_FUND' | 'funded' | 'FUNDED_IN_PROGRESS' | 'completed' | 'cancelled';
   paypalOrderId?: string;
   aiAnalysis?: any;
   dependencyPlan?: any;
@@ -163,7 +163,7 @@ const ProjectSchema = new Schema<IProjectDocument>(
     messages: [ChatMessageSchema],
     status: {
       type: String,
-      enum: ['draft', 'funded', 'completed', 'cancelled'],
+      enum: ['draft', 'READY_TO_FUND', 'funded', 'FUNDED_IN_PROGRESS', 'completed', 'cancelled'],
       default: 'draft',
     },
     paypalOrderId: { type: String },
