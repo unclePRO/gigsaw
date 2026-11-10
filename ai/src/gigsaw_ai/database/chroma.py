@@ -84,7 +84,10 @@ class ChromaPortfolioStore:
         if self.collection is None:
             raise ConfigurationError("ChromaDB is not initialized.")
         try:
-            result = self.collection.query(query_texts=[query], n_results=limit, include=["distances", "metadatas"])
+            count = self.collection.count()
+            if count == 0:
+                return []
+            result = self.collection.query(query_texts=[query], n_results=min(limit, count), include=["distances", "metadatas"])
             metadata = result.get("metadatas", [[]])[0]
             distances = result.get("distances", [[]])[0]
             return [

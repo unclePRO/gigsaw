@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import re
 from decimal import Decimal
-from typing import Any
+from typing import Literal
 
-from gigsaw_ai.llm.gemini_client import GeminiClient
-from gigsaw_ai.schemas.projects import ProjectAnalyzeRequest, ProjectAnalyzeResponse
+from pydantic import Field
+
+from gigsaw_ai.core.exceptions import ProviderError
+from gigsaw_ai.llm.gemini_client import STANDARD_PROVIDER_RETRY_MESSAGE, GeminiClient
+from gigsaw_ai.schemas.common import SchemaModel
+from gigsaw_ai.schemas.projects import ProjectAnalyzeRequest, ProjectAnalyzeResponse, ProjectBudget
 from gigsaw_ai.schemas.scoping import (
-    ChatMessage,
     ProjectScopingChatRequest,
     ProjectScopingChatResponse,
     ProjectScopingFinalizeRequest,
@@ -23,33 +26,28 @@ from gigsaw_ai.services.project_analyzer import (
 from gigsaw_ai.services.task_decomposer import TaskDecomposer
 
 
-STANDARD_CLARIFYING_FLOW = [
-    {
-        "field": "brand_theme",
-        "question": "What is the theme or brand aesthetic you have in mind? (e.g., minimalist modern, artisan boutique, bold & vibrant)",
-        "suggestions": ["Minimalist & Modern", "Artisan Boutique & Cozy", "Bold & Vibrant", "Corporate Professional"],
-    },
-    {
-        "field": "existing_assets",
-        "question": "Do you already have digital assets (like logos, photography, copy, menus) or should our design specialists build them from scratch?",
-        "suggestions": ["Have logo & copy ready", "Need everything designed from scratch", "Have food photos & menus", "Starting fresh"],
-    },
-    {
-        "field": "target_turnaround",
-        "question": "What is your target launch turnaround time (in weeks or days)?",
-        "suggestions": ["1 to 2 weeks (Rush Sprint)", "3 to 4 weeks (Standard)", "6 to 8 weeks (Comprehensive)", "Flexible launch date"],
-    },
-    {
-        "field": "tech_stack",
-        "question": "Are there any specific tech stack or platform integrations needed (e.g., Next.js, Stripe, Shopify, Online Ordering)?",
-        "suggestions": ["Next.js & Custom Web", "Shopify Storefront", "Online Menu & Ordering", "Recommend best tech stack"],
-    },
-    {
-        "field": "references",
-        "question": "Is there any specific reference website or competitor whose vibe you want to match?",
-        "suggestions": ["Modern upscale look", "Local neighborhood feel", "Clean SaaS layout", "Open to creative concepts"],
-    },
-]
+class _SpecAttribute(SchemaModel):
+    """Explicit key/value pair so Gemini response_schema never strips dict properties."""
+
+    key: str
+    value: str
+
+
+class _GeminiScopingChatOutput(SchemaModel):
+    reply: str
+    clarifying_question: str | None = None
+    suggested_replies: list[str] = Field(default_factory=list)
+    extracted_spec: list[_SpecAttribute] = Field(default_factory=list)
+    completeness_score: float = Field(ge=0.0, le=1.0)
+    is_ready_to_finalize: bool = False
+    ready_for_decomposition: bool = False
+    recommended_action: Literal["continue_asking", "ready_to_finalize"] = "continue_asking"
+
+
+class _GeminiScopingFinalizeOutput(SchemaModel):
+    project_name: str
+    enriched_brief: str
+    detected_services: list[str] = Field(min_length=1)
 
 
 class ProjectScopingAssistant:
@@ -69,78 +67,59 @@ class ProjectScopingAssistant:
         self.dependency_planner = dependency_planner
         self.budget_planner = budget_planner
 
-    def _demo_chat(self, request: ProjectScopingChatRequest) -> ProjectScopingChatResponse:
-        user_turns = [m for m in request.messages if m.role == "user"]
-        turn_count = len(user_turns)
-        spec = dict(request.extracted_spec)
-
-        # Extract basic hints from latest user input
-        if user_turns:
-            latest = user_turns[-1].content.lower()
-            if "minimal" in latest or "modern" in latest or "artisan" in latest or "cozy" in latest or "bold" in latest:
-                spec["brand_theme"] = latest
-            if "logo" in latest or "photo" in latest or "scratch" in latest or "ready" in latest:
-                spec["existing_assets"] = latest
-            if "week" in latest or "month" in latest or "day" in latest or "sprint" in latest:
-                spec["target_turnaround"] = latest
-            if "next" in latest or "react" in latest or "shopify" in latest or "order" in latest:
-                spec["tech_stack"] = latest
-
-        # Calculate completeness score based on turns and collected spec
-        score = min(1.0, round(0.25 + (turn_count * 0.2) + (len(spec) * 0.1), 2))
-        is_ready = turn_count >= 3 or score >= 0.75
-
-        if is_ready:
-            return ProjectScopingChatResponse(
-                reply="Excellent! I have gathered all necessary details regarding your brand vision, deliverables, and timeline. Click 'Finalize Details' to review the AI team decomposition and budget breakdown.",
-                clarifying_question=None,
-                suggested_replies=["Finalize Details & Build Team", "Review Requirements", "Add More Details"],
-                extracted_spec=spec,
-                completeness_score=score,
-                is_ready_to_finalize=True,
-                ready_for_decomposition=True,
-                recommended_action="ready_to_finalize",
+    async def chat(self, request: ProjectScopingChatRequest) -> ProjectScopingChatResponse:
+        if self.llm.settings.is_demo:
+            raise ProviderError(
+                "Gemini API is required for conversational scoping chat. Set AI_PROVIDER=gemini and retry."
             )
 
-        # Select next question from standard flow
-        step_index = min(turn_count, len(STANDARD_CLARIFYING_FLOW) - 1)
-        next_step = STANDARD_CLARIFYING_FLOW[step_index]
-
-        return ProjectScopingChatResponse(
-            reply=next_step["question"],
-            clarifying_question=next_step["question"],
-            suggested_replies=next_step["suggestions"],
-            extracted_spec=spec,
-            completeness_score=score,
-            is_ready_to_finalize=False,
-            ready_for_decomposition=False,
-            recommended_action="continue_asking",
-        )
-
-    async def chat(self, request: ProjectScopingChatRequest) -> ProjectScopingChatResponse:
-        demo = self._demo_chat(request)
-        if self.llm.settings.is_demo:
-            return demo
-
+        context = {
+            "initial_goal": request.initial_goal,
+            "messages": [m.model_dump() for m in request.messages],
+            "current_budget": str(request.current_budget) if request.current_budget is not None else None,
+            "currency": request.currency,
+            "extracted_spec": request.extracted_spec,
+        }
         try:
-            context = {
-                "initial_goal": request.initial_goal,
-                "messages": [m.model_dump() for m in request.messages],
-                "current_budget": str(request.current_budget) if request.current_budget is not None else None,
-                "currency": request.currency,
-                "extracted_spec": request.extracted_spec,
-            }
             res = await self.llm.generate_structured(
                 "project_scoping_chat",
                 context,
-                ProjectScopingChatResponse,
-                demo,
+                _GeminiScopingChatOutput,
             )
-            return res
-        except Exception:
-            return demo
+        except ProviderError:
+            raise
+        except Exception as exc:
+            raise ProviderError(STANDARD_PROVIDER_RETRY_MESSAGE) from exc
 
-    def _synthesize_brief(self, request: ProjectScopingFinalizeRequest) -> tuple[str, str, list[str]]:
+        merged_spec = dict(request.extracted_spec)
+        for item in res.extracted_spec:
+            key = item.key.strip()
+            val = item.value.strip()
+            if key and val:
+                merged_spec[key] = val
+
+        is_ready = bool(
+            res.is_ready_to_finalize
+            or res.ready_for_decomposition
+            or res.recommended_action == "ready_to_finalize"
+        )
+        action: Literal["continue_asking", "ready_to_finalize"] = (
+            "ready_to_finalize" if is_ready else "continue_asking"
+        )
+        clarifying_q = None if is_ready else (res.clarifying_question or res.reply)
+
+        return ProjectScopingChatResponse(
+            reply=res.reply,
+            clarifying_question=clarifying_q,
+            suggested_replies=res.suggested_replies,
+            extracted_spec=merged_spec,
+            completeness_score=res.completeness_score,
+            is_ready_to_finalize=is_ready,
+            ready_for_decomposition=is_ready,
+            recommended_action=action,
+        )
+
+    def _synthesize_demo_brief(self, request: ProjectScopingFinalizeRequest) -> tuple[str, str, list[str]]:
         goal = request.initial_goal.strip()
         spec_parts = [f"Primary Goal: {goal}."]
         for k, v in request.extracted_spec.items():
@@ -149,22 +128,47 @@ class ProjectScopingAssistant:
         user_messages = [m.content for m in request.messages if m.role == "user"]
         combined_text = (goal + " " + " ".join(user_messages)).lower()
 
-        detected = [category for category, aliases in SERVICE_ALIASES.items() if any(alias in combined_text for alias in aliases)]
+        detected = [
+            category
+            for category, aliases in SERVICE_ALIASES.items()
+            if any(alias in combined_text for alias in aliases)
+        ]
         if not detected:
-            if "web" in combined_text or "site" in combined_text or "app" in combined_text:
-                detected.append("website development")
-            if "logo" in combined_text or "brand" in combined_text:
-                detected.append("logo and branding")
-            if not detected:
-                detected = ["website development", "graphic design"]
+            cleaned = re.sub(r"^(i need|looking for|hire|want|build|create)\s+(a|an|some)?\s*", "", goal.lower()).strip()
+            detected = [cleaned[:60] if cleaned else "custom service"]
 
         detected = canonical_service_categories(detected)
-        title = request.project_name or f"{goal.capitalize()} Launch"
+        title = request.project_name or f"{goal[:60].capitalize()} Launch"
         enriched_brief = " ".join(spec_parts) + f" Target Deliverables: {', '.join(detected)}."
         return title, enriched_brief, detected
 
     async def finalize(self, request: ProjectScopingFinalizeRequest) -> ProjectScopingFinalizeResponse:
-        title, enriched_brief, detected = self._synthesize_brief(request)
+        if self.llm.settings.is_demo:
+            title, enriched_brief, detected = self._synthesize_demo_brief(request)
+        else:
+            context = {
+                "initial_goal": request.initial_goal,
+                "messages": [m.model_dump() for m in request.messages],
+                "extracted_spec": request.extracted_spec,
+                "budget": str(request.budget) if request.budget is not None else None,
+                "currency": request.currency,
+                "project_name": request.project_name,
+            }
+            try:
+                synthesized = await self.llm.generate_structured(
+                    "project_scoping_finalize",
+                    context,
+                    _GeminiScopingFinalizeOutput,
+                )
+            except ProviderError:
+                raise
+            except Exception as exc:
+                raise ProviderError(STANDARD_PROVIDER_RETRY_MESSAGE) from exc
+
+            title = request.project_name or synthesized.project_name
+            enriched_brief = synthesized.enriched_brief
+            detected = canonical_service_categories(synthesized.detected_services)
+
         budget = request.budget or Decimal("1200")
 
         analysis_result: ProjectAnalyzeResponse | None = None
@@ -180,7 +184,6 @@ class ProjectScopingAssistant:
             plan = self.dependency_planner.create_plan(packages)
             budget_plan = await self.budget_planner.plan(analysis.required_services, budget, request.currency)
 
-            from gigsaw_ai.schemas.projects import ProjectBudget
             budget_obj = ProjectBudget(
                 amount=budget,
                 currency=request.currency,

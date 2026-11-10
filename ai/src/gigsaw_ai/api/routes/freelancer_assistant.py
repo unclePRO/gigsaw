@@ -16,5 +16,6 @@ async def invoice_draft(request: InvoiceDraftRequest, container=Depends(get_cont
 
 
 @router.post("/invitation-review", response_model=FreelancerInvitationReviewResponse, summary="Analyze incoming project invitation feasibility")
+@router.post("/invitation/review", response_model=FreelancerInvitationReviewResponse, summary="Analyze incoming project invitation feasibility (slash path)")
 async def invitation_review(request: FreelancerInvitationReviewRequest, container=Depends(get_container)) -> FreelancerInvitationReviewResponse:
     return await container.invitation_assistant.review(request)
