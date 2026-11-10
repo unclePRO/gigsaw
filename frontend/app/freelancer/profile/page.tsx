@@ -22,8 +22,10 @@ import {
   Sparkles,
   ShieldCheck,
   AlertTriangle,
+  MessageSquare,
+  X,
 } from 'lucide-react';
-import { IPastProject, FreelancerCategory } from '@/types';
+import { IPastProject, FreelancerCategory, IReview } from '@/types';
 
 const SUGGESTED_LANGUAGES_AND_SKILLS = [
   'TypeScript',
@@ -88,6 +90,27 @@ export default function FreelancerProfilePage() {
   const [newProjUrl, setNewProjUrl] = useState('');
   const [newProjTech, setNewProjTech] = useState('');
   const [newProjDate, setNewProjDate] = useState('');
+
+  // Written Reviews Modal State
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
+  const [reviewsList, setReviewsList] = useState<IReview[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+
+  const handleOpenReviewsModal = async () => {
+    setShowReviewsModal(true);
+    setLoadingReviews(true);
+    try {
+      const res = await fetch('/api/reviews');
+      if (res.ok) {
+        const data = await res.json();
+        setReviewsList(data.reviews || []);
+      }
+    } catch (err) {
+      console.error('Failed to load reviews:', err);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
 
   // Authentication check
   useEffect(() => {
@@ -358,15 +381,25 @@ export default function FreelancerProfilePage() {
           <span className="text-[11px] text-cyan-600 dark:text-cyan-400 font-bold">Verified for {category} milestones</span>
         </div>
 
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-2 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Merchant Rating</span>
           <div className="text-xl font-black text-amber-500 flex items-center gap-1.5">
             <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
             <span>{rating > 0 && completedProjects > 0 ? `${rating.toFixed(1)} / 5.0` : 'No Rating'}</span>
           </div>
-          <span className="text-[11px] text-slate-400">
-            {completedProjects > 0 ? `${completedProjects} verified milestone reviews` : 'No reviews yet'}
-          </span>
+          <div className="flex items-center justify-between pt-0.5">
+            <span className="text-[11px] text-slate-400">
+              {completedProjects > 0 ? `${completedProjects} verified review${completedProjects > 1 ? 's' : ''}` : 'No reviews yet'}
+            </span>
+            <button
+              type="button"
+              onClick={handleOpenReviewsModal}
+              className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 hover:underline inline-flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <MessageSquare className="w-3 h-3" />
+              <span>See Written Reviews</span>
+            </button>
+          </div>
         </div>
 
         <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
@@ -764,6 +797,92 @@ export default function FreelancerProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Written Reviews Modal */}
+      {showReviewsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                  <Star className="w-5 h-5 fill-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Client Reviews & Ratings</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {rating > 0 ? `Overall Rating: ${rating.toFixed(1)} / 5.0 (${completedProjects} review${completedProjects > 1 ? 's' : ''})` : 'No client reviews yet'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReviewsModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3.5 pr-1">
+              {loadingReviews ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400">
+                  <RefreshCw className="w-5 h-5 animate-spin text-cyan-500" />
+                  <span className="text-xs">Loading verified merchant reviews...</span>
+                </div>
+              ) : reviewsList.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 space-y-2">
+                  <MessageSquare className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
+                  <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">No written reviews yet</p>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    When merchants approve your completed deliverables and submit feedback, their ratings and written reviews will appear here.
+                  </p>
+                </div>
+              ) : (
+                reviewsList.map((rev) => (
+                  <div
+                    key={rev._id}
+                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span>{rev.merchantName || 'Merchant'}</span>
+                          {rev.projectName && (
+                            <span className="text-[10px] font-normal text-slate-400">&bull; {rev.projectName}</span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-medium">
+                          {rev.packageTitle}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20 text-amber-500 text-xs font-bold shrink-0">
+                        <Star className="w-3.5 h-3.5 fill-amber-400" />
+                        <span>{rev.rating}.0</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 italic leading-relaxed">
+                      &ldquo;{rev.reviewText}&rdquo;
+                    </p>
+                    <div className="text-[10px] text-slate-400 pt-1">
+                      {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowReviewsModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

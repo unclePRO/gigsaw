@@ -24,6 +24,8 @@ import {
   ShieldAlert,
   ArrowRight,
   Info,
+  Star,
+  Award,
 } from 'lucide-react';
 import { WorkPackage, ProjectProposal, IAiProgressSummary, IAiCounterofferAnalysis } from '@/types';
 import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
@@ -63,6 +65,53 @@ export default function MerchantDashboardPage() {
     loading: boolean;
   } | null>(null);
   const [isDecidingCounter, setIsDecidingCounter] = useState<boolean>(false);
+
+  // Review & Rating Modal state
+  const [reviewModalPackage, setReviewModalPackage] = useState<{
+    projectId: string;
+    package: WorkPackage;
+  } | null>(null);
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [reviewText, setReviewText] = useState<string>('');
+  const [submittingReview, setSubmittingReview] = useState<boolean>(false);
+  const [reviewSuccessMsg, setReviewSuccessMsg] = useState<string | null>(null);
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewModalPackage || !reviewText.trim()) return;
+
+    setSubmittingReview(true);
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: reviewModalPackage.projectId,
+          packageId: reviewModalPackage.package.id,
+          rating: reviewRating,
+          reviewText: reviewText.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setReviewSuccessMsg(`Review and ${reviewRating}-star rating saved to MongoDB! Milestone completed.`);
+        setTimeout(() => setReviewSuccessMsg(null), 5000);
+        setReviewModalPackage(null);
+        setReviewText('');
+        setReviewRating(5);
+        fetchProjects();
+      } else {
+        alert(data.error || 'Failed to submit review');
+      }
+    } catch (err: any) {
+      console.error('Error submitting review:', err);
+      alert(err.message || 'Error submitting review');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -394,7 +443,7 @@ export default function MerchantDashboardPage() {
     },
     {
       headerName: 'Actions',
-      width: 180,
+      width: 220,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
         const wp = params.data;
         if (!wp || !currentProjectId) return null;
@@ -402,26 +451,44 @@ export default function MerchantDashboardPage() {
 
         return (
           <div className="flex items-center gap-1.5 py-2.5">
-            <button
-              onClick={() => handleUpdateStatus(currentProjectId, wp.id, 'Completed')}
-              disabled={isCompleted}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                isCompleted
-                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-              }`}
-            >
-              {isCompleted ? 'Approved' : 'Approve'}
-            </button>
+            {!isCompleted ? (
+              <button
+                onClick={async () => {
+                  await handleUpdateStatus(currentProjectId, wp.id, 'Completed');
+                  setReviewModalPackage({ projectId: currentProjectId, package: wp });
+                }}
+                className="px-3 py-1 rounded-xl text-xs font-bold transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1"
+                title="Approve deliverable and rate specialist"
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Approve & Review</span>
+              </button>
+            ) : wp.reviewSubmitted ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-xl border border-amber-200 dark:border-amber-900/40">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                <span>{wp.reviewRating}/5 Reviewed</span>
+              </span>
+            ) : (
+              <button
+                onClick={() => setReviewModalPackage({ projectId: currentProjectId, package: wp })}
+                className="px-3 py-1 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-sm flex items-center gap-1 transition-all animate-pulse"
+                title="Rate specialist and submit review"
+              >
+                <Star className="w-3 h-3 fill-white" />
+                <span>Rate & Review</span>
+              </button>
+            )}
 
-            <button
-              onClick={() =>
-                setRevisionModalOpen({ projectId: currentProjectId, packageId: wp.id })
-              }
-              className="px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-            >
-              Revision
-            </button>
+            {!isCompleted && (
+              <button
+                onClick={() =>
+                  setRevisionModalOpen({ projectId: currentProjectId, packageId: wp.id })
+                }
+                className="px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+              >
+                Revision
+              </button>
+            )}
           </div>
         );
       },
@@ -538,6 +605,44 @@ export default function MerchantDashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Review Success Toast */}
+          {reviewSuccessMsg && (
+            <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>{reviewSuccessMsg}</span>
+            </div>
+          )}
+
+          {/* Milestone Closure & Review Pending Alert Banner */}
+          {currentProject.workPackages.some((w) => (w.closureRequested || w.status === 'Completed') && !w.reviewSubmitted) && (
+            <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in">
+              <div className="flex items-center gap-2.5">
+                <Star className="w-5 h-5 text-amber-500 fill-amber-400 shrink-0" />
+                <div>
+                  <div className="font-bold text-amber-900 dark:text-amber-200">
+                    Milestone Completed &mdash; Rate & Review Specialist
+                  </div>
+                  <div className="text-amber-800/90 dark:text-amber-300/90 text-[11px] mt-0.5">
+                    {currentProject.workPackages.find((w) => (w.closureRequested || w.status === 'Completed') && !w.reviewSubmitted)?.assignedFreelancerName} has finished milestone &quot;{currentProject.workPackages.find((w) => (w.closureRequested || w.status === 'Completed') && !w.reviewSubmitted)?.title}&quot;. Please provide a 5-star rating and written review to end this project.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const targetWp = currentProject.workPackages.find((w) => (w.closureRequested || w.status === 'Completed') && !w.reviewSubmitted);
+                  if (targetWp) {
+                    setReviewModalPackage({ projectId: currentProjectId, package: targetWp });
+                  }
+                }}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-xl font-bold shrink-0 shadow-sm transition-all flex items-center gap-1.5 self-start sm:self-auto"
+              >
+                <Star className="w-3.5 h-3.5 fill-white" />
+                <span>Rate & Review Now</span>
+              </button>
+            </div>
+          )}
 
           {/* Specialist Counteroffer Alert Banner */}
           {currentProject.workPackages.some((w) => w.quotationStatus === 'counteroffer') && (
@@ -898,6 +1003,130 @@ export default function MerchantDashboardPage() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rate & Review Specialist Modal */}
+      {reviewModalPackage && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <span>End Project Milestone & Submit Review</span>
+                </span>
+                <h3 className="font-bold text-slate-900 dark:text-white text-base mt-0.5">
+                  Rate & Review: {reviewModalPackage.package.assignedFreelancerName}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewModalPackage(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-1">
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                Milestone: {reviewModalPackage.package.title}
+              </span>
+              <p className="text-slate-500 dark:text-slate-400 text-[11px] line-clamp-1">
+                {reviewModalPackage.package.description}
+              </p>
+              {reviewModalPackage.package.deliverableLink && (
+                <a
+                  href={reviewModalPackage.package.deliverableLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-cyan-600 dark:text-cyan-400 hover:underline font-bold inline-flex items-center gap-1 text-[11px] pt-1"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>View Verified Deliverable</span>
+                </a>
+              )}
+            </div>
+
+            <form onSubmit={handleSubmitReview} className="space-y-4">
+              {/* Star Rating Picker */}
+              <div className="space-y-1.5 text-center py-2 bg-slate-50/50 dark:bg-slate-900/40 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  Overall Rating (out of 5 stars)
+                </label>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(null)}
+                      onClick={() => setReviewRating(star)}
+                      className="p-1 hover:scale-110 active:scale-95 transition-transform"
+                    >
+                      <Star
+                        className={`w-7 h-7 transition-colors ${
+                          star <= (hoverRating ?? reviewRating)
+                            ? 'text-amber-400 fill-amber-400'
+                            : 'text-slate-300 dark:text-slate-700'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[11px] font-bold text-amber-600 dark:text-amber-400 pt-0.5">
+                  {reviewRating === 5 && 'Outstanding Delivery (5 / 5)'}
+                  {reviewRating === 4 && 'Great Work (4 / 5)'}
+                  {reviewRating === 3 && 'Good Delivery (3 / 5)'}
+                  {reviewRating === 2 && 'Fair / Below Expectations (2 / 5)'}
+                  {reviewRating === 1 && 'Needs Improvement (1 / 5)'}
+                </div>
+              </div>
+
+              {/* Written Review */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  Written Review (Will appear on specialist profile)
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Share feedback on communication, quality of deliverables, technical execution, and speed..."
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  className="w-full p-3.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 leading-relaxed"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setReviewModalPackage(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingReview || !reviewText.trim()}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-50 shadow-md transition-all flex items-center gap-1.5"
+                >
+                  {submittingReview ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving Review...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Star className="w-3.5 h-3.5 fill-white" />
+                      <span>Submit Review & End Project</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

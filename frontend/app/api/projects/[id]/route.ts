@@ -9,7 +9,7 @@ export async function PATCH(
   try {
     const { id } = params;
     const body = await req.json();
-    const { packageId, status, deliverableLink, deliverableNotes } = body;
+    const { packageId, status, deliverableLink, deliverableNotes, closureRequested } = body;
 
     if (!packageId) {
       return NextResponse.json({ error: 'packageId is required' }, { status: 400 });
@@ -30,6 +30,7 @@ export async function PATCH(
     if (status) pkg.status = status;
     if (deliverableLink !== undefined) pkg.deliverableLink = deliverableLink;
     if (deliverableNotes !== undefined) pkg.deliverableNotes = deliverableNotes;
+    if (closureRequested !== undefined) pkg.closureRequested = Boolean(closureRequested);
 
     await project.save();
 

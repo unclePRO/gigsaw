@@ -103,6 +103,31 @@ export interface WorkPackage {
   assignedFreelancerYearsOfExperience?: number;
   assignedFreelancerHourlyRate?: number;
   assignedFreelancerLocation?: string;
+  // Project Completion & Review Fields
+  closureRequested?: boolean;
+  reviewSubmitted?: boolean;
+  reviewRating?: number;
+  reviewText?: string;
+  reviewedAt?: string;
+}
+
+export interface IReview {
+  id?: string;
+  _id?: string;
+  freelancerId: string;
+  freelancerName: string;
+  freelancerEmail: string;
+  merchantId: string;
+  merchantName: string;
+  merchantEmail: string;
+  projectId: string;
+  projectName: string;
+  packageId: string;
+  packageTitle: string;
+  category?: FreelancerCategory;
+  rating: number;
+  reviewText: string;
+  createdAt: string | Date;
 }
 
 export interface IAiAnalysis {
