@@ -6,6 +6,8 @@ from gigsaw_ai.schemas.scoping import (
     ProjectScopingChatResponse,
     ProjectScopingFinalizeRequest,
     ProjectScopingFinalizeResponse,
+    ProjectScopingTitleRequest,
+    ProjectScopingTitleResponse,
 )
 
 router = APIRouter(prefix="/projects", tags=["projects-scoping"])
@@ -19,6 +21,11 @@ async def scoping_chat(request: ProjectScopingChatRequest, container=Depends(get
 @router.post("/chat", response_model=ProjectScopingChatResponse, summary="Conversational project scoping chat alias")
 async def chat_alias(request: ProjectScopingChatRequest, container=Depends(get_container)) -> ProjectScopingChatResponse:
     return await container.project_scoping_assistant.chat(request)
+
+
+@router.post("/scoping/title", response_model=ProjectScopingTitleResponse, summary="Generate or update project title via Gemini")
+async def scoping_title(request: ProjectScopingTitleRequest, container=Depends(get_container)) -> ProjectScopingTitleResponse:
+    return await container.project_scoping_assistant.suggest_title(request)
 
 
 @router.post("/scoping/finalize", response_model=ProjectScopingFinalizeResponse, summary="Finalize project scoping and generate team decomposition")

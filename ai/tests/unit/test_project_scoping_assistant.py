@@ -14,6 +14,7 @@ from gigsaw_ai.schemas.scoping import (
     ChatMessage,
     ProjectScopingChatRequest,
     ProjectScopingFinalizeRequest,
+    ProjectScopingTitleResponse,
 )
 from gigsaw_ai.services.project_scoping_assistant import (
     ProjectScopingAssistant,
@@ -21,6 +22,7 @@ from gigsaw_ai.services.project_scoping_assistant import (
     _GeminiScopingFinalizeOutput,
     _SpecAttribute,
 )
+from gigsaw_ai.services.task_decomposer import TaskDecompositionOutput
 
 
 def _make_gemini_assistant(container, side_effect):
@@ -33,25 +35,35 @@ def _make_gemini_assistant(container, side_effect):
         task_decomposer=container.task_decomposer,
         dependency_planner=container.dependency_planner,
         budget_planner=container.budget_planner,
+        freelancer_matcher=container.freelancer_matcher,
     )
 
 
-def test_project_scoping_chat_uses_gemini_and_accumulates_spec(container):
+def test_project_scoping_chat_uses_gemini_tracks_title_and_budget_change(container):
     assistant = _make_gemini_assistant(
         container,
         [
             _GeminiScopingChatOutput(
+                project_name="B2B SaaS Analytics Platform",
+                updated_budget=Decimal("1500"),
+                currency="USD",
+                budget_changed=False,
                 reply="What features should your SaaS dashboard support first?",
                 clarifying_question="What features should your SaaS dashboard support first?",
                 suggested_replies=["Analytics & Billing", "User Management", "API Webhooks"],
                 extracted_spec=[_SpecAttribute(key="domain", value="B2B SaaS")],
                 completeness_score=0.4,
-                is_ready_to_finalize=False,
-                ready_for_decomposition=False,
-                recommended_action="continue_asking",
+                # Even if an LLM mistakenly tries to pre-finalize on Turn 0, code prevents it
+                is_ready_to_finalize=True,
+                ready_for_decomposition=True,
+                recommended_action="ready_to_finalize",
             ),
             _GeminiScopingChatOutput(
-                reply="Great! I have captured your SaaS dashboard scope and 3-week timeline.",
+                project_name="PulseMetrics Portal",
+                updated_budget=Decimal("2500"),
+                currency="USD",
+                budget_changed=True,
+                reply="Updated project title to PulseMetrics Portal and budget to $2500 USD for your 3-week timeline.",
                 clarifying_question=None,
                 suggested_replies=["Finalize Details & Build Team"],
                 extracted_spec=[_SpecAttribute(key="target_turnaround", value="3 weeks")],
@@ -68,11 +80,13 @@ def test_project_scoping_chat_uses_gemini_and_accumulates_spec(container):
             ProjectScopingChatRequest(
                 initial_goal="I need a B2B SaaS analytics web app",
                 messages=[],
+                current_budget=Decimal("1500"),
             )
         )
     )
-    assert res1.reply == "What features should your SaaS dashboard support first?"
-    assert res1.extracted_spec == {"domain": "B2B SaaS"}
+    assert res1.project_name == "B2B SaaS Analytics Platform"
+    assert res1.current_budget == Decimal("1500")
+    assert not res1.budget_changed
     assert not res1.is_ready_to_finalize
     assert res1.recommended_action == "continue_asking"
 
@@ -82,17 +96,87 @@ def test_project_scoping_chat_uses_gemini_and_accumulates_spec(container):
                 initial_goal="I need a B2B SaaS analytics web app",
                 messages=[
                     ChatMessage(role="assistant", content=res1.reply),
-                    ChatMessage(role="user", content="Analytics & Billing, launching in 3 weeks"),
+                    ChatMessage(role="user", content="Let's take project name as PulseMetrics Portal and increase budget to $2500, 3 weeks"),
                 ],
+                current_budget=res1.current_budget,
+                project_name=res1.project_name,
                 extracted_spec=res1.extracted_spec,
             )
         )
     )
-    assert res2.extracted_spec == {"domain": "B2B SaaS", "target_turnaround": "3 weeks"}
+    assert res2.project_name == "PulseMetrics Portal"
+    assert res2.current_budget == Decimal("2500")
+    assert res2.budget_changed is True
+    assert res2.extracted_spec["budget"] == "2500"
+    assert res2.extracted_spec["project_name"] == "PulseMetrics Portal"
     assert res2.is_ready_to_finalize
     assert res2.ready_for_decomposition
-    assert res2.recommended_action == "ready_to_finalize"
-    assert res2.clarifying_question is None
+    assert "PulseMetrics Portal" in res2.reply
+    assert "2500 USD" in res2.reply
+    assert "Domain: B2B SaaS" in res2.reply
+    assert "Target Turnaround: 3 weeks" in res2.reply
+    assert "recheck" in res2.reply.lower()
+
+
+def test_project_scoping_finalize_uses_updated_chat_budget_and_verifies_freelancers(container):
+    assistant = _make_gemini_assistant(
+        container,
+        [
+            _GeminiScopingFinalizeOutput(
+                project_name="PulseMetrics Portal",
+                final_budget=Decimal("2500"),
+                currency="USD",
+                enriched_brief="Build PulseMetrics Portal B2B SaaS website and brand identity in 3 weeks.",
+                detected_services=["website development", "logo and branding"],
+            )
+        ],
+    )
+    # task_decomposer runs in demo mode here with container.llm, returning deterministic packages
+    result = asyncio.run(
+        assistant.finalize(
+            ProjectScopingFinalizeRequest(
+                initial_goal="I need a SaaS web app",
+                messages=[
+                    ChatMessage(role="user", content="Name it PulseMetrics Portal and change budget to $2500"),
+                ],
+                budget=Decimal("1500"),
+                auto_decompose=True,
+            )
+        )
+    )
+    assert result.project_name == "PulseMetrics Portal"
+    assert result.budget == Decimal("2500")
+    assert result.suggested_budget == Decimal("2500")
+    assert result.analysis_result is not None
+    assert result.analysis_result.budget_plan.total_budget == Decimal("2500.00")
+    assert len(result.freelancer_matches) == len(result.analysis_result.work_packages)
+    assert all(item.match_result.matches for item in result.freelancer_matches)
+
+
+def test_project_scoping_title_endpoint(container):
+    app = create_app()
+    assistant = _make_gemini_assistant(
+        container,
+        [ProjectScopingTitleResponse(project_name="Copper Cup Cafe", source="user_specified")],
+    )
+    original_assistant = container.project_scoping_assistant
+    container.project_scoping_assistant = assistant
+    app.dependency_overrides[get_container] = lambda: container
+    try:
+        client = TestClient(app)
+        response = client.post(
+            "/api/v1/projects/scoping/title",
+            json={
+                "initial_goal": "I need a coffee shop website and branding",
+                "messages": [{"role": "user", "content": "title is Copper Cup Cafe"}],
+            },
+        )
+    finally:
+        container.project_scoping_assistant = original_assistant
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"project_name": "Copper Cup Cafe", "source": "user_specified"}
 
 
 def test_project_scoping_chat_raises_standardized_retry_error_on_gemini_failure(container):
@@ -176,3 +260,4 @@ def test_project_scoping_finalize(container):
     assert result.analysis_result is not None
     assert len(result.analysis_result.work_packages) > 0
     assert result.analysis_result.budget_plan is not None
+    assert len(result.freelancer_matches) == len(result.analysis_result.work_packages)

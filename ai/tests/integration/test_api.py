@@ -26,7 +26,15 @@ def test_project_scoping_and_chat_room_endpoints():
         assert chat_res.status_code == 200
         data = chat_res.json()
         assert "reply" in data
+        assert data.get("project_name")
         assert len(data["suggested_replies"]) > 0
+
+        title_res = client.post("/api/v1/projects/scoping/title", json={
+            "initial_goal": "I need a website for my coffee shop",
+            "messages": [{"role": "user", "content": "lets take project name as Copper Cup"}],
+        })
+        assert title_res.status_code == 200
+        assert "copper cup" in title_res.json()["project_name"].lower()
 
         # Step 2 -> 3: Finalize Scoping
         finalize_res = client.post("/api/v1/projects/scoping/finalize", json={
@@ -41,6 +49,7 @@ def test_project_scoping_and_chat_room_endpoints():
         fin_data = finalize_res.json()
         assert fin_data["analysis_result"] is not None
         assert len(fin_data["analysis_result"]["work_packages"]) > 0
+        assert len(fin_data["freelancer_matches"]) == len(fin_data["analysis_result"]["work_packages"])
 
         # Step 4: Freelancer Swap
         swap_res = client.post("/api/v1/matching/freelancers/swap", json={
