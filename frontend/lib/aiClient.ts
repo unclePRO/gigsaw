@@ -31,10 +31,10 @@ export class AiClientError extends Error {
   }
 }
 
-async function fetchFromAi<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function fetchFromAi<T>(path: string, options: RequestInit = {}, timeoutMs: number = 45000): Promise<T> {
   const url = `${AI_BASE_URL}${path}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch(url, {
@@ -419,18 +419,22 @@ export const aiClient = {
    * Finalize scoping conversation and automatically trigger project decomposition
    */
   async scopingFinalize(params: ProjectScopingFinalizeRequest): Promise<ProjectScopingFinalizeResponse> {
-    return fetchFromAi<ProjectScopingFinalizeResponse>('/api/v1/projects/scoping/finalize', {
-      method: 'POST',
-      body: JSON.stringify({
-        initial_goal: params.initial_goal,
-        messages: params.messages,
-        extracted_spec: params.extracted_spec || {},
-        budget: params.budget != null ? params.budget.toString() : undefined,
-        currency: params.currency || 'USD',
-        project_name: params.project_name,
-        auto_decompose: params.auto_decompose ?? true,
-      }),
-    });
+    return fetchFromAi<ProjectScopingFinalizeResponse>(
+      '/api/v1/projects/scoping/finalize',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          initial_goal: params.initial_goal,
+          messages: params.messages,
+          extracted_spec: params.extracted_spec || {},
+          budget: params.budget != null ? params.budget.toString() : undefined,
+          currency: params.currency || 'USD',
+          project_name: params.project_name,
+          auto_decompose: params.auto_decompose ?? true,
+        }),
+      },
+      60000
+    );
   },
 
   /**

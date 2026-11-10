@@ -22,6 +22,19 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    // Dynamic self-heal: if all freelancer invites are accepted, update to READY_TO_FUND
+    const allAccepted =
+      project.workPackages?.length > 0 &&
+      project.workPackages.every((w: any) => w.inviteStatus === 'accepted');
+
+    if (allAccepted && (project.status === 'draft' || project.status === 'ON_HOLD' || !project.status)) {
+      project.status = 'READY_TO_FUND';
+      await ProjectModel.updateOne({ _id: project._id }, { $set: { status: 'READY_TO_FUND' } });
+    } else if (!allAccepted && project.status === 'READY_TO_FUND') {
+      project.status = 'ON_HOLD';
+      await ProjectModel.updateOne({ _id: project._id }, { $set: { status: 'ON_HOLD' } });
+    }
+
     return NextResponse.json({ success: true, project });
   } catch (error: any) {
     console.error('Error fetching project by ID:', error);
@@ -54,6 +67,55 @@ export async function PATCH(
     const project = await ProjectModel.findById(id);
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // Handle specialist swap action
+    if (action === 'swap_freelancer') {
+      const { newFreelancer } = body;
+      if (!packageId || !newFreelancer) {
+        return NextResponse.json({ error: 'packageId and newFreelancer payload are required for swap' }, { status: 400 });
+      }
+
+      const pkg = project.workPackages.find((w) => w.id === packageId);
+      if (!pkg) {
+        return NextResponse.json({ error: 'Work package not found in project' }, { status: 404 });
+      }
+
+      const oldName = pkg.assignedFreelancerName || 'Specialist';
+      pkg.assignedFreelancerId = newFreelancer.id || newFreelancer._id;
+      pkg.assignedFreelancerName = newFreelancer.name;
+      pkg.assignedFreelancerEmail = newFreelancer.email;
+      if (newFreelancer.rating) pkg.assignedFreelancerRating = newFreelancer.rating;
+      if (newFreelancer.completedProjects !== undefined) pkg.assignedFreelancerCompletedProjects = newFreelancer.completedProjects;
+      if (newFreelancer.bio) pkg.assignedFreelancerBio = newFreelancer.bio;
+      if (newFreelancer.skills) pkg.assignedFreelancerSkills = newFreelancer.skills;
+      if (newFreelancer.location) pkg.assignedFreelancerLocation = newFreelancer.location;
+      if (newFreelancer.yearsOfExperience) pkg.assignedFreelancerYearsOfExperience = newFreelancer.yearsOfExperience;
+      pkg.inviteStatus = 'invited';
+      pkg.status = 'Pending';
+
+      // If the project was previously READY_TO_FUND, it must revert to ON_HOLD to await the new specialist's confirmation
+      if (project.status === 'READY_TO_FUND') {
+        project.status = 'ON_HOLD';
+      }
+
+      // Append real-time notice into project team chat
+      project.messages.push({
+        id: `msg-swap-${Date.now()}`,
+        senderId: 'system',
+        senderName: 'GigSaw AI Assistant',
+        senderEmail: 'assistant@gigsaw.com',
+        senderRole: 'ai_assistant',
+        message: `🔄 Specialist Update: ${newFreelancer.name} has been invited to replace ${oldName} for milestone "${pkg.title}".`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      });
+
+      await project.save();
+      return NextResponse.json({
+        success: true,
+        message: `Successfully invited ${newFreelancer.name} to milestone "${pkg.title}".`,
+        project,
+      });
     }
 
     // Handle project-level cancellation

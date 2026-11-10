@@ -29,11 +29,18 @@ export async function POST(req: NextRequest) {
       broadCategory = 'marketer';
     }
 
+    const canonicalService =
+      broadCategory === 'dev'
+        ? 'website development'
+        : broadCategory === 'designer'
+        ? 'graphic design'
+        : 'digital marketing';
+
     // Try AI Microservice Swap
     try {
       const swapRes = await aiClient.swapFreelancer({
         work_package_id,
-        service_category,
+        service_category: canonicalService,
         required_skills: required_skills || [],
         brief: brief || '',
         budget: budget ? Number(budget) : undefined,

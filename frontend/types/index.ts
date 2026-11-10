@@ -167,7 +167,7 @@ export interface ProjectProposal {
   savings: number;
   workPackages: WorkPackage[];
   messages?: IChatMessage[];
-  status: 'draft' | 'funded' | 'completed' | 'cancelled';
+  status: 'draft' | 'ON_HOLD' | 'READY_TO_FUND' | 'funded' | 'FUNDED_IN_PROGRESS' | 'completed' | 'cancelled';
   paypalOrderId?: string;
   createdAt: string;
   // Extended AI metadata
