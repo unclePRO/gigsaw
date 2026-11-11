@@ -4,10 +4,6 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, ICellRendererParams } from 'ag-grid-community';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
 import {
   FolderOpen,
   CheckCircle2,
@@ -46,6 +42,7 @@ import {
   HelpCircle,
   Briefcase,
   Check,
+  Eye,
 } from 'lucide-react';
 import { WorkPackage, ProjectProposal, IAiProgressSummary, IAiCounterofferAnalysis } from '@/types';
 import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
@@ -94,6 +91,9 @@ export default function MerchantProjectWorkspacePage() {
     loading: boolean;
   } | null>(null);
   const [isDecidingCounter, setIsDecidingCounter] = useState<boolean>(false);
+
+  // Specialist Deliverable Submission Inspection Modal
+  const [selectedSubmissionPackage, setSelectedSubmissionPackage] = useState<WorkPackage | null>(null);
 
   // Review & Rating Modal state
   const [reviewModalPackage, setReviewModalPackage] = useState<{
@@ -442,160 +442,29 @@ export default function MerchantProjectWorkspacePage() {
     }
   };
 
-  // AG Grid column definitions for Milestones
-  const columnDefs = useMemo<ColDef<WorkPackage>[]>(() => [
-    {
-      headerName: 'Milestone Title & Scope',
-      field: 'title',
-      width: 240,
-      cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
-        const wp = params.data;
-        if (!wp) return null;
-        return (
-          <div className="py-2">
-            <div className="font-bold text-xs text-slate-900 dark:text-white leading-tight">
-              {wp.title}
-            </div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
-              {wp.description}
-            </div>
-            {wp.category && (
-              <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] uppercase font-bold tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                {wp.category}
-              </span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      headerName: 'Assigned Specialist',
-      field: 'assignedFreelancerName',
-      width: 200,
-      cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
-        const wp = params.data;
-        if (!wp) return null;
-        return (
-          <div className="flex items-center gap-2 py-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#168C80] to-[#32B6A5] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-              {(wp.assignedFreelancerName || 'S').charAt(0)}
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                {wp.assignedFreelancerName || 'Specialist'}
-              </div>
-              <div className="text-[10px] text-slate-400 truncate">
-                {wp.assignedFreelancerEmail || 'Talent'}
-              </div>
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      headerName: 'Price (USD)',
-      field: 'allocatedPrice',
-      width: 120,
-      cellRenderer: (params: ICellRendererParams<WorkPackage>) => (
-        <span className="font-black text-xs text-slate-900 dark:text-white">
-          ${Number(params.value || 0).toLocaleString()}
-        </span>
-      ),
-    },
-    {
-      headerName: 'Status',
-      field: 'status',
-      width: 150,
-      cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
-        const status = params.value;
-        const colorMap: Record<string, string> = {
-          'Completed': 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
-          'In Review': 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30',
-          'In Progress': 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/30',
-          'Revision Requested': 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
-          'Pending': 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
-        };
-        const badgeClass = colorMap[status] || colorMap['Pending'];
-        return (
-          <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${badgeClass}`}>
-            {status}
-          </span>
-        );
-      },
-    },
-    {
-      headerName: 'Deliverable Link',
-      field: 'deliverableLink',
-      width: 180,
-      cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
-        const wp = params.data;
-        if (!wp) return null;
-        if (wp.deliverableLink) {
-          return (
-            <a
-              href={wp.deliverableLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Inspect Output</span>
-            </a>
-          );
-        }
-        return <span className="text-[11px] text-slate-400">Awaiting submission</span>;
-      },
-    },
-    {
-      headerName: 'Merchant Actions',
-      width: 250,
-      cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
-        const wp = params.data;
-        if (!wp || !project) return null;
-        const canReview = wp.status === 'In Progress' || wp.status === 'Completed' || wp.status === 'Revision Requested';
+  // Role badge helper for milestone deliverables table
+  const getRoleBadge = (category: string = '', roleName?: string) => {
+    const cat = (category || '').toLowerCase();
+    let label = 'Specialist';
+    let color = 'bg-[#168C80]/15 text-[#168C80] dark:text-[#73D8C7] border-[#168C80]/30';
 
-        return (
-          <div className="flex items-center gap-1.5 py-1">
-            {canReview && wp.status !== 'Completed' && (
-              <button
-                onClick={() => setReviewModalPackage({ projectId, package: wp })}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer"
-              >
-                Approve & Rate
-              </button>
-            )}
+    if (cat.includes('dev') || cat.includes('code') || cat.includes('eng') || cat.includes('tech') || cat.includes('full-stack') || cat.includes('frontend') || cat.includes('backend')) {
+      label = 'Developer';
+      color = 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/30';
+    } else if (cat.includes('design') || cat.includes('ui') || cat.includes('ux') || cat.includes('art') || cat.includes('brand') || cat.includes('graphic')) {
+      label = 'Designer';
+      color = 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30';
+    } else if (cat.includes('market') || cat.includes('growth') || cat.includes('seo') || cat.includes('content') || cat.includes('social') || cat.includes('sales')) {
+      label = 'Marketer';
+      color = 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
+    } else if (roleName) {
+      label = roleName;
+    } else if (category) {
+      label = category.charAt(0).toUpperCase() + category.slice(1);
+    }
 
-            {canReview && wp.status !== 'Completed' && (
-              <button
-                onClick={() => setRevisionModalOpen({ projectId, packageId: wp.id })}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors cursor-pointer"
-              >
-                Request Revision
-              </button>
-            )}
-
-            {wp.status === 'Completed' && (
-              <div className="flex items-center gap-1">
-                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Approved</span>
-                </span>
-                {wp.reviewRating && (
-                  <span className="text-[10px] text-amber-500 font-bold ml-1">
-                    ★ {wp.reviewRating}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {wp.status === 'Pending' || wp.status === 'Cancelled' && (
-              <span className="text-[11px] text-slate-400">In execution</span>
-            )}
-          </div>
-        );
-      },
-    },
-  ], [project, projectId]);
+    return { label, color };
+  };
 
   // Derived state calculations
   const totalTasks = project?.workPackages?.length || 0;
@@ -1064,47 +933,169 @@ export default function MerchantProjectWorkspacePage() {
                 </div>
               </div>
 
-              {isFundedOrActive || isCompleted ? (
-                <div className="ag-theme-alpine w-full h-[380px] rounded-xl overflow-hidden border border-[#D8E9E4] dark:border-[#345451]">
-                  <AgGridReact
-                    rowData={project.workPackages}
-                    columnDefs={columnDefs}
-                    rowHeight={70}
-                    headerHeight={44}
-                    defaultColDef={{
-                      sortable: true,
-                      resizable: true,
-                    }}
-                  />
+              {/* Dynamic Responsive Deliverables Table */}
+              {project.workPackages && project.workPackages.length > 0 ? (
+                <div className="w-full overflow-hidden rounded-xl border border-[#D8E9E4] dark:border-[#345451] bg-white dark:bg-[#1B3B39]">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-[#D8E9E4] dark:border-[#345451] bg-[#F0F8F6] dark:bg-[#142F2E]">
+                          <th scope="col" className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#10413E] dark:text-[#A3C5BF] w-[30%]">
+                            Role
+                          </th>
+                          <th scope="col" className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#10413E] dark:text-[#A3C5BF] w-[20%]">
+                            Status
+                          </th>
+                          <th scope="col" className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#10413E] dark:text-[#A3C5BF] w-[22%]">
+                            Submission
+                          </th>
+                          <th scope="col" className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#10413E] dark:text-[#A3C5BF] w-[28%]">
+                            Merchant Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#D8E9E4]/60 dark:divide-[#345451]/60">
+                        {project.workPackages.map((wp) => {
+                          const roleInfo = getRoleBadge(wp.category, wp.roleName);
+                          const hasSubmission = Boolean(
+                            (wp.deliverableLink && wp.deliverableLink.trim().length > 0) ||
+                            (wp.deliverableNotes && wp.deliverableNotes.trim().length > 0) ||
+                            wp.closureRequested ||
+                            wp.status === 'Completed'
+                          );
+
+                          const colorMap: Record<string, { bg: string; dot: string }> = {
+                            'Completed': {
+                              bg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+                              dot: 'bg-emerald-500',
+                            },
+                            'In Review': {
+                              bg: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30',
+                              dot: 'bg-purple-500',
+                            },
+                            'In Progress': {
+                              bg: 'bg-[#168C80]/15 text-[#168C80] dark:text-[#73D8C7] border-[#168C80]/30',
+                              dot: 'bg-[#168C80] dark:bg-[#73D8C7]',
+                            },
+                            'Revision Requested': {
+                              bg: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+                              dot: 'bg-amber-500',
+                            },
+                            'Pending': {
+                              bg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+                              dot: 'bg-slate-400',
+                            },
+                          };
+                          const currentStatusStyle = colorMap[wp.status] || colorMap['Pending'];
+
+                          return (
+                            <tr
+                              key={wp.id}
+                              className="hover:bg-[#F0F8F6]/40 dark:hover:bg-[#142F2E]/40 transition-colors"
+                            >
+                              {/* 1. ROLE */}
+                              <td className="px-5 py-3.5">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#168C80] to-[#32B6A5] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                                    {(wp.assignedFreelancerName || 'S').charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border ${roleInfo.color}`}>
+                                        {roleInfo.label}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate mt-0.5">
+                                      {wp.assignedFreelancerName || 'Assigned Specialist'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* 2. STATUS */}
+                              <td className="px-5 py-3.5">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${currentStatusStyle.bg}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${currentStatusStyle.dot}`} />
+                                  {wp.status}
+                                </span>
+                              </td>
+
+                              {/* 3. SUBMISSION */}
+                              <td className="px-5 py-3.5">
+                                {hasSubmission ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSubmissionPackage(wp)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#168C80] dark:text-[#73D8C7] bg-[#E5F5F1] dark:bg-[#254542] hover:bg-[#168C80] hover:text-white dark:hover:bg-[#168C80] dark:hover:text-white border border-[#168C80]/30 transition-all cursor-pointer shadow-2xs group"
+                                  >
+                                    <Eye className="w-3.5 h-3.5 text-[#168C80] dark:text-[#73D8C7] group-hover:text-white transition-colors" />
+                                    <span>View Submission</span>
+                                  </button>
+                                ) : (
+                                  <span
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 cursor-not-allowed select-none opacity-80"
+                                    title="Specialist has not submitted deliverables yet"
+                                  >
+                                    <Clock className="w-3.5 h-3.5" />
+                                    <span>No submission</span>
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* 4. MERCHANT ACTIONS */}
+                              <td className="px-5 py-3.5">
+                                {wp.status === 'Completed' ? (
+                                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                                    <span>Approved</span>
+                                    {wp.reviewRating && (
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-500 font-black text-[11px] border border-amber-500/20 ml-1">
+                                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                        {wp.reviewRating}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : !isFundedOrActive ? (
+                                  <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium">
+                                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <span>Awaiting escrow funding</span>
+                                  </div>
+                                ) : hasSubmission ? (
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setReviewModalPackage({ projectId, package: wp })}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-xs cursor-pointer"
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>Approve &amp; Rate</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setRevisionModalOpen({ projectId, packageId: wp.id })}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors cursor-pointer"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                      <span>Request Revision</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium">
+                                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <span>Awaiting submission</span>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : (
-                /* Compact Milestone Cards during On Hold / Pre-fund */
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {project.workPackages.map((wp) => (
-                    <div
-                      key={wp.id}
-                      className="p-4 rounded-xl border border-[#D8E9E4] dark:border-[#345451] bg-[#F0F8F6]/60 dark:bg-[#102B2B]/60 space-y-2"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-[#168C80]/10 text-[#168C80] dark:text-[#73D8C7] border border-[#168C80]/20">
-                          {wp.category}
-                        </span>
-                        <span className="text-xs font-black text-[#10413E] dark:text-[#F0FAF8]">
-                          ${wp.allocatedPrice?.toLocaleString()} USD
-                        </span>
-                      </div>
-                      <h4 className="text-xs font-bold text-[#10413E] dark:text-[#F0FAF8]">{wp.title}</h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">{wp.description}</p>
-                      <div className="pt-2 border-t border-[#D8E9E4] dark:border-[#345451] flex items-center justify-between text-[11px]">
-                        <span className="text-slate-600 dark:text-slate-400">
-                          Specialist: <strong>{wp.assignedFreelancerName || 'Assigned Talent'}</strong>
-                        </span>
-                        <span className="font-semibold text-[#168C80] dark:text-[#73D8C7]">
-                          {wp.inviteStatus === 'accepted' ? 'Accepted' : 'Invited'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                <div className="p-8 text-center text-xs text-slate-400">
+                  No milestones configured for this project.
                 </div>
               )}
             </div>
@@ -1768,6 +1759,168 @@ export default function MerchantProjectWorkspacePage() {
               >
                 {submittingReview ? 'Submitting...' : 'Approve Milestone & Submit Review'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Specialist Submission Inspection Modal */}
+      {selectedSubmissionPackage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-[#1B3B39] border border-[#D8E9E4] dark:border-[#345451] rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[#D8E9E4] dark:border-[#345451] pb-3">
+              <div className="flex items-center gap-2.5 text-[#10413E] dark:text-[#F0FAF8] font-bold text-sm">
+                <div className="w-8 h-8 rounded-lg bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] flex items-center justify-center">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold leading-tight">Deliverable Submission</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
+                    Inspect submitted output from specialist
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedSubmissionPackage(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-[#142F2E] transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Specialist & Role Badge */}
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#F0F8F6] dark:bg-[#102B2B] border border-[#D8E9E4] dark:border-[#345451]">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#168C80] to-[#32B6A5] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                  {(selectedSubmissionPackage.assignedFreelancerName || 'S').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-[#10413E] dark:text-[#F0FAF8]">
+                    {selectedSubmissionPackage.assignedFreelancerName || 'Specialist'}
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                    {selectedSubmissionPackage.assignedFreelancerEmail || 'Talent'}
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+                  {selectedSubmissionPackage.category || selectedSubmissionPackage.roleName || 'Specialist'}
+                </span>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Fee: ${selectedSubmissionPackage.allocatedPrice?.toLocaleString()} USD
+                </div>
+              </div>
+            </div>
+
+            {/* Deliverable URL Link */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#10413E] dark:text-[#F0FAF8] flex items-center gap-1.5">
+                <ExternalLink className="w-3.5 h-3.5 text-[#168C80] dark:text-[#73D8C7]" />
+                <span>Deliverable Link / Repository:</span>
+              </label>
+              {selectedSubmissionPackage.deliverableLink ? (
+                <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-[#D8E9E4] dark:border-[#345451]">
+                  <a
+                    href={selectedSubmissionPackage.deliverableLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-[#168C80] dark:text-[#73D8C7] hover:underline truncate max-w-[320px]"
+                  >
+                    {selectedSubmissionPackage.deliverableLink}
+                  </a>
+                  <a
+                    href={selectedSubmissionPackage.deliverableLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#168C80] hover:bg-[#10766D] transition-colors shrink-0"
+                  >
+                    <span>Open</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  No external link provided with this submission.
+                </p>
+              )}
+            </div>
+
+            {/* Deliverable Notes */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#10413E] dark:text-[#F0FAF8]">
+                Specialist Submission Notes:
+              </label>
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-[#D8E9E4] dark:border-[#345451] text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto leading-relaxed">
+                {selectedSubmissionPackage.deliverableNotes ? (
+                  selectedSubmissionPackage.deliverableNotes
+                ) : (
+                  <span className="text-slate-400 italic">No additional notes provided by specialist.</span>
+                )}
+              </div>
+            </div>
+
+            {/* Expected Deliverables Checklist (if present) */}
+            {selectedSubmissionPackage.deliverables && selectedSubmissionPackage.deliverables.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Agreed Milestone Deliverables:
+                </label>
+                <div className="space-y-1">
+                  {selectedSubmissionPackage.deliverables.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                      <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Actions Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-[#D8E9E4] dark:border-[#345451]">
+              <button
+                type="button"
+                onClick={() => setSelectedSubmissionPackage(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+
+              {selectedSubmissionPackage.status !== 'Completed' ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const pkg = selectedSubmissionPackage;
+                      setSelectedSubmissionPackage(null);
+                      setRevisionModalOpen({ projectId, packageId: pkg.id });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Request Revision</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const pkg = selectedSubmissionPackage;
+                      setSelectedSubmissionPackage(null);
+                      setReviewModalPackage({ projectId, package: pkg });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-xs cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Approve &amp; Rate</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <span>Approved &amp; Escrow Released</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
