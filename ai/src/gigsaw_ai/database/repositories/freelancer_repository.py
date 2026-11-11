@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
@@ -46,11 +47,18 @@ def _backend_user_to_freelancer(document: dict[str, Any]) -> Freelancer:
     completed = int(document.get("completedProjects") or 0)
     explicit_years = document.get("yearsOfExperience")
     experience = int(explicit_years) if explicit_years is not None else min(20, max(0, completed // 5))
+
+    raw_categories = document.get("serviceCategories")
+    if isinstance(raw_categories, list) and raw_categories:
+        service_categories = [str(sc).strip().lower() for sc in raw_categories if sc]
+    else:
+        service_categories = BACKEND_CATEGORY_SERVICES.get(category, [])
+
     return Freelancer(
         freelancer_id=str(document["_id"]),
         name=str(document.get("name") or "Unnamed freelancer"),
         skills=[str(skill) for skill in document.get("skills", []) if skill],
-        service_categories=BACKEND_CATEGORY_SERVICES.get(category, []),
+        service_categories=service_categories,
         experience_years=experience,
         rating=max(0.0, min(5.0, float(document.get("rating") or 0))),
         availability=document.get("availability", "available") == "available",
@@ -60,6 +68,10 @@ def _backend_user_to_freelancer(document: dict[str, Any]) -> Freelancer:
         portfolio_description=" ".join(section for section in portfolio_sections if section).strip() or "No portfolio description provided.",
         location=str(document.get("location") or "Not specified"),
         portfolio_references=portfolio_references,
+        bio=str(document.get("bio") or "").strip() or None,
+        completed_projects=completed,
+        category=category or None,
+        email=str(document.get("email") or "") if document.get("email") else None,
     )
 
 
@@ -77,7 +89,11 @@ class InMemoryFreelancerRepository:
             freelancer
             for freelancer in self._items.values()
             if freelancer.availability
-            and (service_category is None or service_category.lower() in {x.lower() for x in freelancer.service_categories})
+            and (
+                service_category is None
+                or service_category.lower() in {x.lower() for x in freelancer.service_categories}
+                or (freelancer.category and service_category.lower() == freelancer.category.lower())
+            )
         ]
 
     async def list_all(self) -> Sequence[Freelancer]:
@@ -105,7 +121,7 @@ class MongoFreelancerRepository:
     async def list_available(self, service_category: str | None = None) -> Sequence[Freelancer]:
         query: dict = {"availability": True}
         if service_category:
-            query["service_categories"] = {"$regex": f"^{service_category}$", "$options": "i"}
+            query["service_categories"] = {"$regex": f"^{re.escape(service_category)}$", "$options": "i"}
         cursor = self.collection.find(query, {"_id": 0})
         return [Freelancer.model_validate(item) async for item in cursor]
 
@@ -144,10 +160,19 @@ class MongoBackendUserRepository:
     async def list_available(self, service_category: str | None = None) -> Sequence[Freelancer]:
         query: dict[str, Any] = {"role": "freelancer", "availability": "available"}
         if service_category:
-            category = next((key for key, services in BACKEND_CATEGORY_SERVICES.items() if service_category.lower() in services), None)
-            if category is None:
-                return []
-            query["category"] = category
+            cat_lower = service_category.lower()
+            category_key = next((key for key, services in BACKEND_CATEGORY_SERVICES.items() if cat_lower in services), None)
+            matched_categories = [category_key] if category_key else []
+            if cat_lower in BACKEND_CATEGORY_SERVICES:
+                matched_categories.append(cat_lower)
+
+            or_clauses: list[dict[str, Any]] = [
+                {"serviceCategories": {"$regex": f"^{re.escape(service_category)}$", "$options": "i"}}
+            ]
+            if matched_categories:
+                or_clauses.append({"category": {"$in": matched_categories}})
+            query["$or"] = or_clauses
+
         cursor = self.collection.find(query)
         return [_backend_user_to_freelancer(item) async for item in cursor]
 

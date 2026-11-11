@@ -1,62 +1,58 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
-  Briefcase,
+  FolderOpen,
   CheckCircle2,
   Clock,
   ExternalLink,
-  Send,
-  RefreshCw,
   MessageSquare,
-  PlusCircle,
-  FileText,
-  MailCheck,
-  Star,
-  DollarSign,
   ShieldCheck,
+  RefreshCw,
+  PlusCircle,
+  Briefcase,
+  Layers,
+  ArrowRight,
+  TrendingUp,
+  DollarSign,
+  AlertCircle,
+  AlertTriangle,
+  Star,
+  Award,
+  ChevronRight,
   Sparkles,
-  Printer,
-  Copy,
-  Check,
 } from 'lucide-react';
-import { WorkPackage, ProjectProposal, IAiInvoiceDraft } from '@/types';
-import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
+import { WorkPackage, ProjectProposal } from '@/types';
 
 export default function FreelancerDashboardPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+
   const [projects, setProjects] = useState<ProjectProposal[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Deliverable submission state
-  const [deliverableUrl, setDeliverableUrl] = useState('');
-  const [deliverableNotes, setDeliverableNotes] = useState('');
-  const [submittedMessage, setSubmittedMessage] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Progress update state
-  const [progressText, setProgressText] = useState('');
-  const [postingProgress, setPostingProgress] = useState(false);
-
-  // Chat modal state
-  const [chatOpen, setChatOpen] = useState(false);
-  const [activeChatProject, setActiveChatProject] = useState<{ id: string; name: string } | null>(null);
-
-  // AI Invoice draft state
-  const [invoiceModalOpen, setInvoiceModalOpen] = useState<boolean>(false);
-  const [invoiceDraft, setInvoiceDraft] = useState<IAiInvoiceDraft | null>(null);
-  const [generatingInvoice, setGeneratingInvoice] = useState<boolean>(false);
-  const [copiedInvoice, setCopiedInvoice] = useState<boolean>(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login?callbackUrl=/freelancer/dashboard');
-    } else if (status === 'authenticated' && (session?.user as any)?.role === 'merchant') {
-      router.push('/dashboard');
+    } else if (status === 'authenticated') {
+      const u = session?.user as any;
+      if (u?.role === 'merchant') {
+        router.push('/dashboard');
+        return;
+      }
+      // Re-verify against MongoDB profile
+      fetch('/api/freelancer/profile')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.profile && !data.profile.isProfileComplete) {
+            router.push('/freelancer/profile?setup=required');
+          }
+        })
+        .catch(() => {});
     }
   }, [status, session, router]);
 
@@ -85,19 +81,19 @@ export default function FreelancerDashboardPage() {
     }
   }, [status, fetchProjects]);
 
-  // Find accepted gigs for this freelancer
-  const activeGigs: { project: ProjectProposal; pkg: WorkPackage }[] = [];
+  // Aggregate all matching gigs across all projects
+  const allAcceptedGigs: { project: ProjectProposal; pkg: WorkPackage }[] = [];
   let pendingInvitesCount = 0;
 
   projects.forEach((proj) => {
-    proj.workPackages.forEach((wp) => {
+    proj.workPackages?.forEach((wp) => {
       const matchesUser =
         wp.assignedFreelancerEmail?.toLowerCase() === userEmail ||
         (!wp.assignedFreelancerEmail && wp.category === userCategory);
 
       if (matchesUser) {
         if (wp.inviteStatus === 'accepted') {
-          activeGigs.push({ project: proj, pkg: wp });
+          allAcceptedGigs.push({ project: proj, pkg: wp });
         } else if (wp.inviteStatus === 'invited' || !wp.inviteStatus) {
           pendingInvitesCount++;
         }
@@ -105,538 +101,272 @@ export default function FreelancerDashboardPage() {
     });
   });
 
-  const currentGig = activeGigs[0] || null;
-  const currentProjectId = currentGig ? (currentGig.project as any)._id || currentGig.project.id : '';
+  // Metrics
+  const totalGigsCount = allAcceptedGigs.length;
+  const activeGigsCount = allAcceptedGigs.filter(
+    (g) => g.pkg.status !== 'Completed' && g.pkg.status !== 'Cancelled' && g.project.status !== 'cancelled'
+  ).length;
+  const completedGigsCount = allAcceptedGigs.filter((g) => g.pkg.status === 'Completed').length;
+  const totalContractEarnings = allAcceptedGigs.reduce((acc, g) => acc + (g.pkg.allocatedPrice || 0), 0);
 
-  const handleSubmitDeliverable = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentProjectId || !currentGig || !deliverableUrl.trim()) return;
+  // Filtered Gigs
+  const filteredGigs = allAcceptedGigs.filter((gig) => {
+    const isCompleted = gig.pkg.status === 'Completed';
+    const isActive =
+      gig.pkg.status !== 'Completed' &&
+      gig.pkg.status !== 'Cancelled' &&
+      gig.project.status !== 'cancelled';
 
-    setIsSubmitting(true);
-    try {
-      const res = await fetch(`/api/projects/${currentProjectId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packageId: currentGig.pkg.id,
-          deliverableLink: deliverableUrl.trim(),
-          deliverableNotes: deliverableNotes.trim(),
-          status: 'In Progress',
-        }),
-      });
-
-      if (res.ok) {
-        setSubmittedMessage(true);
-        setTimeout(() => setSubmittedMessage(false), 3500);
-        fetchProjects();
-      }
-    } catch (err) {
-      console.error('Failed to submit deliverable to MongoDB:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handlePostProgress = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentProjectId || !currentGig || !progressText.trim() || postingProgress) return;
-
-    setPostingProgress(true);
-    try {
-      const res = await fetch(`/api/projects/${currentProjectId}/progress`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packageId: currentGig.pkg.id,
-          message: progressText.trim(),
-        }),
-      });
-
-      if (res.ok) {
-        setProgressText('');
-        fetchProjects();
-      }
-    } catch (err) {
-      console.error('Failed to post progress:', err);
-    } finally {
-      setPostingProgress(false);
-    }
-  };
-
-  const handleGenerateInvoice = async () => {
-    if (!currentGig) return;
-    setGeneratingInvoice(true);
-    setInvoiceModalOpen(true);
-    try {
-      const res = await fetch('/api/ai/invoice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          quotation: {
-            quotation_id: `q-${currentGig.pkg.id}`,
-            freelancer_id: (session?.user as any)?.id || 'fl-1',
-            work_package_id: currentGig.pkg.id,
-            amount: currentGig.pkg.allocatedPrice,
-            delivery_days: currentGig.pkg.estimatedDays || 7,
-            scope: `${currentGig.pkg.title} - ${currentGig.pkg.description}`,
-            status: currentGig.pkg.status.toLowerCase(),
-          },
-          client_name: currentGig.project.merchantName,
-          freelancer_name: session?.user?.name || 'Freelancer',
-          invoice_number: `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-          tax_rate_percent: 0,
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.invoice) {
-        setInvoiceDraft(data.invoice);
-      }
-    } catch (err) {
-      console.error('Invoice error:', err);
-    } finally {
-      setGeneratingInvoice(false);
-    }
-  };
-
-  const handleCopyInvoice = () => {
-    if (!invoiceDraft) return;
-    const text = `INVOICE: ${invoiceDraft.invoice_number}
-Client: ${invoiceDraft.client_name}
-Specialist: ${invoiceDraft.freelancer_name}
-Total Amount: $${invoiceDraft.total} ${invoiceDraft.currency}
-Note: ${invoiceDraft.payment_note}`;
-    navigator.clipboard.writeText(text);
-    setCopiedInvoice(true);
-    setTimeout(() => setCopiedInvoice(false), 2500);
-  };
-
-  if (loading || status === 'loading') {
-    return (
-      <div className="p-16 text-center text-xs text-slate-400">
-        <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-cyan-500" />
-        <span>Loading active gigs from MongoDB Atlas...</span>
-      </div>
-    );
-  }
+    if (statusFilter === 'active') return isActive;
+    if (statusFilter === 'completed') return isCompleted;
+    return true;
+  });
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
-      {/* Top Header */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+      {/* Top Header Card */}
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-              Specialist Portal
+              Freelancer Gigs Hub
             </span>
             <span className="text-xs font-semibold text-slate-400">
-              MongoDB Live Synced
+              {totalGigsCount} Total Contract{totalGigsCount !== 1 ? 's' : ''}
             </span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5">
-            Active Gigs & Workspace
+
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
+            My Client Projects & Gigs
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Signed in as <strong className="text-slate-800 dark:text-slate-200">{user?.name}</strong> &bull; Specialty:{' '}
-            <span className="text-cyan-600 dark:text-cyan-400 font-bold uppercase">{userCategory}</span>
+            Select any project workspace to submit deliverables, track milestone progress, and collaborate with clients.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
-          <Link
-            href="/freelancer/invitations"
-            className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
-          >
-            <MailCheck className="w-3.5 h-3.5 text-cyan-500" />
-            <span>Invitations {pendingInvitesCount > 0 && `(${pendingInvitesCount})`}</span>
-          </Link>
-          <Link
-            href="/freelancer/profile"
-            className="px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-          >
-            Profile
-          </Link>
+          {pendingInvitesCount > 0 && (
+            <Link
+              href="/freelancer/invitations"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition-all"
+            >
+              <span>Invitations</span>
+              <span className="px-1.5 py-0.2 bg-white text-amber-600 rounded-full text-[10px] font-bold">
+                {pendingInvitesCount}
+              </span>
+            </Link>
+          )}
+
           <button
             onClick={fetchProjects}
-            className="p-2 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             title="Refresh"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* Pending Invitations Banner Alert */}
-      {pendingInvitesCount > 0 && (
-        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold">
-            <MailCheck className="w-4 h-4 text-amber-500 shrink-0" />
-            <span>You have {pendingInvitesCount} pending project invitation(s) matched by AI!</span>
+      {/* Metrics Banner */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Workspaces</span>
+          <div className="text-xl font-black text-cyan-600 dark:text-cyan-400">
+            {activeGigsCount}
+          </div>
+          <span className="text-[11px] text-slate-400">In execution</span>
+        </div>
+
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed Milestones</span>
+          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+            {completedGigsCount}
+          </div>
+          <span className="text-[11px] text-slate-400">Accepted by clients</span>
+        </div>
+
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Contract Value</span>
+          <div className="text-xl font-black text-slate-900 dark:text-white">
+            ${totalContractEarnings.toLocaleString()}
+          </div>
+          <span className="text-[11px] text-slate-400">Total Allocated Budget</span>
+        </div>
+
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Invites</span>
+          <div className="text-xl font-black text-amber-500">
+            {pendingInvitesCount}
           </div>
           <Link
             href="/freelancer/invitations"
-            className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold self-start sm:self-auto shadow-sm transition-all"
+            className="text-[11px] text-cyan-600 dark:text-cyan-400 hover:underline font-bold inline-flex items-center gap-1"
           >
-            Review Invitations &rarr;
+            <span>Review offers</span>
+            <ChevronRight className="w-3 h-3" />
           </Link>
         </div>
-      )}
+      </div>
 
-      {/* If No Active Accepted Gigs */}
-      {!currentGig ? (
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-10 text-center space-y-4 shadow-sm transition-colors">
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-3">
+        {(['all', 'active', 'completed'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setStatusFilter(tab)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer ${
+              statusFilter === tab
+                ? 'bg-slate-900 dark:bg-[#32B6A5] text-white dark:text-[#102B2B] shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#142F2E]'
+            }`}
+          >
+            {tab === 'all' ? `All Gigs (${totalGigsCount})` : tab === 'active' ? `Active (${activeGigsCount})` : `Completed (${completedGigsCount})`}
+          </button>
+        ))}
+      </div>
+
+      {/* Gigs List */}
+      {loading ? (
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
+          <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-500" />
+          <span>Synchronizing your client gigs from MongoDB Atlas...</span>
+        </div>
+      ) : filteredGigs.length === 0 ? (
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4 shadow-sm transition-colors">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
             <Briefcase className="w-6 h-6" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">No Active Accepted Milestones</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              No gigs match this filter
+            </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-              You are currently available for new merchant projects. Review your invitations tab or update your portfolio skills so our AI ranks you higher.
+              {pendingInvitesCount > 0
+                ? `You have ${pendingInvitesCount} pending client invitation(s) waiting for your review!`
+                : 'Check back when clients select your profile for milestones.'}
             </p>
           </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
+          {pendingInvitesCount > 0 && (
             <Link
               href="/freelancer/invitations"
-              className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-xs font-bold shadow-glow-cyan transition-all"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition-all"
             >
-              Check Invitations
+              <span>View Client Invitations ({pendingInvitesCount})</span>
+              <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link
-              href="/freelancer/profile"
-              className="px-5 py-2.5 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors"
-            >
-              Update Portfolio & Rates
-            </Link>
-          </div>
+          )}
         </div>
       ) : (
-        <div className="space-y-6">
-          {/* Active Gig Card */}
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-5 shadow-sm transition-colors">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 px-2.5 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-800">
-                    {currentGig.pkg.category} {currentGig.pkg.roleName ? `• ${currentGig.pkg.roleName}` : ''}
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                    Active & Funded
-                  </span>
-                </div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1.5">
-                  {currentGig.project.projectName}
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Merchant: <strong className="text-slate-700 dark:text-slate-300">{currentGig.project.merchantName}</strong>
-                </p>
-              </div>
+        <div className="grid grid-cols-1 gap-4">
+          {filteredGigs.map(({ project: proj, pkg }) => {
+            const pId = (proj as any)._id || proj.id;
+            const isCompleted = pkg.status === 'Completed';
+            const isProjectCancelled = proj.status === 'cancelled';
+            const isRevision = pkg.status === 'Revision Requested';
+            const hasDeliverable = Boolean(pkg.deliverableLink);
 
-              {/* Chat Button & Payout */}
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={handleGenerateInvoice}
-                  className="px-3.5 py-2.5 bg-cyan-50 dark:bg-cyan-950/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 border border-cyan-300 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
-                  title="Generate itemized PayPal invoice draft with AI assistant"
-                >
-                  <FileText className="w-3.5 h-3.5 text-cyan-500" />
-                  <span>Draft Invoice</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveChatProject({
-                      id: currentProjectId,
-                      name: currentGig.project.projectName,
-                    });
-                    setChatOpen(true);
-                  }}
-                  className="px-4 py-2.5 bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Team Chat</span>
-                </button>
-
-                <div className="text-right border-l border-slate-200 dark:border-slate-800 pl-3.5">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Milestone Payout</span>
-                  <span className="text-xl font-black text-slate-900 dark:text-white">${currentGig.pkg.allocatedPrice}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Scope of Milestone</span>
-              <p className="text-sm font-bold text-slate-900 dark:text-white">{currentGig.pkg.title}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl">{currentGig.pkg.description}</p>
-            </div>
-
-            <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Current Status:</span>
-              <span
-                className={`text-xs font-bold px-3 py-0.5 rounded-full ${
-                  currentGig.pkg.status === 'Completed'
-                    ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
-                    : currentGig.pkg.status === 'In Progress'
-                    ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                }`}
+            return (
+              <div
+                key={`${pId}-${pkg.id}`}
+                className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm"
               >
-                {currentGig.pkg.status}
-              </span>
-            </div>
-          </div>
-
-          {/* Share Progress & Progress Feed */}
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Post Progress Update</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Share milestone notes, checklist completions, or blocker updates visible to the merchant.
-              </p>
-            </div>
-
-            <form onSubmit={handlePostProgress} className="space-y-2.5">
-              <textarea
-                rows={2}
-                placeholder="Share milestone progress (e.g. Created initial typography guidelines, responsive layout drafted)..."
-                value={progressText}
-                onChange={(e) => setProgressText(e.target.value)}
-                className="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 leading-relaxed"
-              />
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={!progressText.trim() || postingProgress}
-                  className="px-4 py-2 bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-40"
-                >
-                  {postingProgress ? 'Posting...' : 'Post Progress Update'}
-                </button>
-              </div>
-            </form>
-
-            {/* Progress Updates Feed */}
-            {currentGig.pkg.progressUpdates && currentGig.pkg.progressUpdates.length > 0 && (
-              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wide block">Progress Log:</span>
-                {currentGig.pkg.progressUpdates.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-1"
-                  >
-                    <div className="flex items-center justify-between text-slate-400 text-[10px]">
-                      <span className="font-bold text-slate-700 dark:text-slate-300">
-                        {item.authorName} ({item.authorRole})
-                      </span>
-                      <span>{new Date(item.timestamp).toLocaleString()}</span>
-                    </div>
-                    <p className="text-slate-800 dark:text-slate-200 leading-relaxed">{item.message}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Submit Deliverable Form */}
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Submit Deliverable for Review</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                When ready, provide your deliverable link (GitHub repo, Figma prototype, staging URL). The merchant can review and approve it.
-              </p>
-            </div>
-
-            {submittedMessage && (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <span>Deliverable updated! The merchant has been notified for review.</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmitDeliverable} className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Deliverable URL</label>
-                <input
-                  type="url"
-                  required
-                  placeholder="https://github.com/... or https://figma.com/..."
-                  value={deliverableUrl}
-                  onChange={(e) => setDeliverableUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Deliverable Notes (Optional)</label>
-                <textarea
-                  rows={2}
-                  placeholder="Summary of completed milestones and deliverables..."
-                  value={deliverableNotes}
-                  onChange={(e) => setDeliverableNotes(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-xs font-bold transition-all shadow-glow-cyan flex items-center gap-1.5"
-              >
-                {isSubmitting ? (
-                  <span>Submitting Deliverable...</span>
-                ) : (
-                  <>
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Submit Deliverable</span>
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Secured Project Chat Modal */}
-      {activeChatProject && (
-        <ProjectChatModal
-          projectId={activeChatProject.id}
-          projectName={activeChatProject.name}
-          isOpen={chatOpen}
-          onClose={() => setChatOpen(false)}
-        />
-      )}
-
-      {/* AI Invoice Draft Modal */}
-      {invoiceModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-cyan-500" />
-                  <span>GigSaw AI Freelancer Assistant</span>
-                </span>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
-                  Itemized PayPal Invoice Draft
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInvoiceModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold p-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            {generatingInvoice ? (
-              <div className="p-8 text-center text-xs text-slate-400 space-y-2">
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-cyan-500" />
-                <span>Assembling verified milestone line items & tax calculations...</span>
-              </div>
-            ) : invoiceDraft ? (
-              <div className="space-y-4">
-                {/* Formal Invoice Preview Card */}
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
-                  <div className="flex justify-between items-start pb-2 border-b border-slate-200 dark:border-slate-800">
-                    <div>
-                      <span className="font-extrabold text-cyan-600 dark:text-cyan-400 text-sm">
-                        GigSaw Invoice
-                      </span>
-                      <div className="text-[10px] text-slate-400">{invoiceDraft.invoice_number}</div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Status</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
-                        Escrow Backed
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-[11px] pb-2 border-b border-slate-200 dark:border-slate-800">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Client</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{invoiceDraft.client_name}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Issued By</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{invoiceDraft.freelancer_name}</span>
-                    </div>
-                  </div>
-
-                  {/* Line Items Table */}
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Milestone Scope:</span>
-                    {invoiceDraft.line_items.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex justify-between items-center text-xs py-1 border-b border-slate-100 dark:border-slate-800/60"
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                          isProjectCancelled
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                            : isCompleted
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                            : isRevision
+                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                            : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+                        }`}
                       >
-                        <span className="text-slate-700 dark:text-slate-300 pr-2">{item.description}</span>
-                        <span className="font-bold text-slate-900 dark:text-white shrink-0">${item.amount}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Summary Totals */}
-                  <div className="space-y-1 pt-1 text-right text-xs">
-                    <div className="flex justify-between text-slate-500 dark:text-slate-400">
-                      <span>Subtotal:</span>
-                      <span>${invoiceDraft.subtotal}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-500 dark:text-slate-400">
-                      <span>Estimated Tax:</span>
-                      <span>${invoiceDraft.tax}</span>
-                    </div>
-                    <div className="flex justify-between text-sm font-black text-slate-900 dark:text-white pt-1 border-t border-slate-200 dark:border-slate-800">
-                      <span>Total Due:</span>
-                      <span className="text-cyan-600 dark:text-cyan-400">
-                        ${invoiceDraft.total} {invoiceDraft.currency}
+                        {isProjectCancelled
+                          ? 'Project Cancelled'
+                          : isCompleted
+                          ? 'Completed'
+                          : isRevision
+                          ? 'Revision Requested'
+                          : 'In Execution'}
+                      </span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        {pkg.category}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        Client: <strong className="text-slate-700 dark:text-slate-300">{proj.merchantName}</strong>
                       </span>
                     </div>
+
+                    <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                      {pkg.title}
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 max-w-2xl">
+                      Project: {proj.projectName} &bull; {pkg.description}
+                    </p>
                   </div>
 
-                  <p className="text-[10px] text-slate-400 pt-1 italic">
-                    {invoiceDraft.payment_note}
-                  </p>
+                  {/* Open Workspace Action */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                      href={`/freelancer/dashboard/${pId}?pkg=${pkg.id}`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#168C80] hover:bg-[#126B64] dark:bg-[#32B6A5] dark:hover:bg-[#168C80] text-white dark:text-[#102B2B] dark:hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                    >
+                      <span>Open Workspace</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400">
-                    Draft complies with PayPal billing itemization rules.
-                  </span>
+                {/* Milestone Deliverables & Fee Bar */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-850 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mr-1.5">
+                        Fee:
+                      </span>
+                      <strong className="text-slate-900 dark:text-white font-bold">
+                        ${pkg.allocatedPrice?.toLocaleString()}
+                      </strong>
+                    </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleCopyInvoice}
-                      className="px-3.5 py-2 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors"
-                    >
-                      {copiedInvoice ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          <span>Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>Copy Summary</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => window.print()}
-                      className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Print / PDF</span>
-                    </button>
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mr-1.5">
+                        Turnaround:
+                      </span>
+                      <strong className="text-slate-700 dark:text-slate-300 font-semibold">
+                        {pkg.estimatedDays ? `~${pkg.estimatedDays} days` : 'Standard'}
+                      </strong>
+                    </div>
+
+                    {hasDeliverable && (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Deliverable submitted</span>
+                      </span>
+                    )}
+
+                    {pkg.reviewSubmitted && (
+                      <span className="text-amber-500 font-bold flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-900/40">
+                        <Star className="w-3 h-3 fill-amber-400" />
+                        <span>{pkg.reviewRating}.0 / 5.0 Reviewed</span>
+                      </span>
+                    )}
                   </div>
+
+                  <span className="text-[11px] text-slate-400">
+                    {isCompleted
+                      ? 'Milestone Completed & Verified'
+                      : isProjectCancelled
+                      ? 'Milestone Closed'
+                      : 'Direct PayPal Milestone Payment'}
+                  </span>
                 </div>
               </div>
-            ) : null}
-          </div>
+            );
+          })}
         </div>
       )}
     </div>

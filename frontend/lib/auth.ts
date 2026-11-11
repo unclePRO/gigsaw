@@ -35,22 +35,58 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
+        const isProfileComplete = Boolean(
+          user.isProfileComplete ||
+          user.role === 'merchant' ||
+          (
+            user.title && String(user.title).trim().length > 0 &&
+            user.bio && String(user.bio).trim().length > 0 &&
+            user.hourlyRate && Number(user.hourlyRate) > 0 &&
+            Array.isArray(user.skills) && user.skills.length > 0 &&
+            user.yearsOfExperience !== undefined && user.yearsOfExperience !== null && Number(user.yearsOfExperience) >= 0 &&
+            user.typicalDeliveryDays !== undefined && user.typicalDeliveryDays !== null && Number(user.typicalDeliveryDays) >= 1 &&
+            user.location && String(user.location).trim().length > 0
+          )
+        );
+
+        if (isProfileComplete && !user.isProfileComplete && user.role === 'freelancer') {
+          await UserModel.updateOne({ _id: user._id }, { $set: { isProfileComplete: true } });
+        }
+
         return {
           id: user._id.toString(),
           name: user.name,
           email: user.email,
           role: user.role,
           category: user.category,
+          isProfileComplete,
         } as any;
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = (user as any).id;
         token.role = (user as any).role;
         token.category = (user as any).category;
+        token.isProfileComplete = (user as any).isProfileComplete;
+      }
+      if (trigger === 'update' && session) {
+        if (session.isProfileComplete !== undefined) {
+          token.isProfileComplete = Boolean(session.isProfileComplete);
+        }
+      } else if (token?.email && token?.role === 'freelancer' && !token?.isProfileComplete) {
+        // Self-heal stale JWT if database already has profile completed
+        try {
+          await connectToDatabase();
+          const dbUser = await UserModel.findOne({ email: (token.email as string).toLowerCase() })
+            .select('isProfileComplete')
+            .lean();
+          if (dbUser?.isProfileComplete) {
+            token.isProfileComplete = true;
+          }
+        } catch {}
       }
       return token;
     },
@@ -59,6 +95,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
         (session.user as any).category = token.category;
+        (session.user as any).isProfileComplete = token.isProfileComplete;
       }
       return session;
     },

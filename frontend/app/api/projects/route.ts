@@ -21,11 +21,13 @@ export async function GET(req: NextRequest) {
 
     if (email) {
       if (role === 'freelancer') {
-        // Find projects where this freelancer is assigned to any work package
+        const userCat = (session?.user as any)?.category;
+        // Find projects where this freelancer is assigned to any work package or matched by category
         query = {
           $or: [
             { 'workPackages.assignedFreelancerEmail': email.toLowerCase() },
             { 'workPackages.assignedFreelancerId': (session?.user as any)?.id },
+            ...(userCat ? [{ 'workPackages.category': userCat }] : []),
           ],
         };
       } else {
@@ -90,8 +92,8 @@ export async function POST(req: NextRequest) {
       allocatedTotal: Number(allocatedTotal) || workPackages.reduce((s: number, w: any) => s + (w.allocatedPrice || 0), 0),
       savings: Number(savings) || 0,
       workPackages,
-      status: 'funded',
-      paypalOrderId: paypalOrderId || `ORDER-${Date.now()}`,
+      status: body.status || 'ON_HOLD',
+      paypalOrderId: paypalOrderId || undefined,
       aiAnalysis,
       dependencyPlan,
       assumptions,

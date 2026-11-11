@@ -31,6 +31,7 @@ export interface IUser {
   indicativeProjectPrice?: number;
   location?: string;
   priceBasis?: 'hour' | 'project';
+  isProfileComplete?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -48,7 +49,7 @@ export interface IChatMessage {
   senderId: string;
   senderName: string;
   senderEmail: string;
-  senderRole: UserRole;
+  senderRole: UserRole | 'ai_assistant';
   message: string;
   timestamp: string;
 }
@@ -75,7 +76,7 @@ export interface WorkPackage {
   assignedFreelancerName?: string;
   assignedFreelancerEmail?: string;
   inviteStatus?: 'invited' | 'accepted' | 'declined';
-  status: 'Pending' | 'In Progress' | 'Completed' | 'Revision Requested';
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Revision Requested' | 'Cancelled';
   deliverableLink?: string;
   deliverableNotes?: string;
   progressUpdates?: IProgressUpdate[];
@@ -102,6 +103,37 @@ export interface WorkPackage {
   assignedFreelancerYearsOfExperience?: number;
   assignedFreelancerHourlyRate?: number;
   assignedFreelancerLocation?: string;
+  // Project Completion & Review Fields
+  closureRequested?: boolean;
+  reviewSubmitted?: boolean;
+  reviewRating?: number;
+  reviewText?: string;
+  reviewedAt?: string;
+  // Official PayPal Invoicing & Capture Integration
+  paypalCaptureId?: string;
+  paypalInvoiceId?: string;
+  paypalInvoiceUrl?: string;
+  paypalInvoiceNumber?: string;
+  paypalInvoiceStatus?: string;
+}
+
+export interface IReview {
+  id?: string;
+  _id?: string;
+  freelancerId: string;
+  freelancerName: string;
+  freelancerEmail: string;
+  merchantId: string;
+  merchantName: string;
+  merchantEmail: string;
+  projectId: string;
+  projectName: string;
+  packageId: string;
+  packageTitle: string;
+  category?: FreelancerCategory;
+  rating: number;
+  reviewText: string;
+  createdAt: string | Date;
 }
 
 export interface IAiAnalysis {
@@ -115,7 +147,10 @@ export interface IAiAnalysis {
 
 export interface IAiBudgetAllocation {
   service_category: string;
-  allocated_amount: string | number;
+  allocated_amount?: string | number;
+  recommended_amount?: string | number;
+  trusted_baseline?: string | number;
+  rationale?: string;
   percentage?: number;
 }
 
@@ -138,8 +173,12 @@ export interface ProjectProposal {
   savings: number;
   workPackages: WorkPackage[];
   messages?: IChatMessage[];
-  status: 'draft' | 'funded' | 'completed';
+  status: 'draft' | 'ON_HOLD' | 'READY_TO_FUND' | 'funded' | 'FUNDED_IN_PROGRESS' | 'completed' | 'cancelled';
   paypalOrderId?: string;
+  paypalCaptureData?: any;
+  paypalInvoiceId?: string;
+  paypalInvoiceUrl?: string;
+  paypalInvoiceNumber?: string;
   createdAt: string;
   // Extended AI metadata
   aiAnalysis?: IAiAnalysis;

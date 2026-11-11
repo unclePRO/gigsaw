@@ -32,6 +32,7 @@ export interface IUserDocument extends Document {
   indicativeProjectPrice?: number;
   location?: string;
   priceBasis?: 'hour' | 'project';
+  isProfileComplete?: boolean;
 
   createdAt: Date;
   updatedAt: Date;
@@ -57,14 +58,15 @@ const UserSchema = new Schema<IUserDocument>(
     role: { type: String, enum: ['merchant', 'freelancer'], default: 'merchant', required: true },
     category: { type: String, enum: ['dev', 'designer', 'marketer'], required: false },
     title: { type: String, default: '' },
-    hourlyRate: { type: Number, default: 50 },
+    hourlyRate: { type: Number },
     bio: { type: String, default: '' },
     paypalEmail: { type: String, default: '' },
     skills: [{ type: String }],
-    rating: { type: Number, default: 5.0 },
+    rating: { type: Number, default: 0 },
     completedProjects: { type: Number, default: 0 },
     pastProjects: [PastProjectSchema],
     availability: { type: String, enum: ['available', 'busy'], default: 'available' },
+    isProfileComplete: { type: Boolean, default: false },
 
     // AI Integration Fields
     serviceCategories: [{ type: String }],
@@ -100,8 +102,8 @@ export function sanitizeUserForAi(user: Partial<IUserDocument> | any) {
     category: user.category,
     serviceCategories: user.serviceCategories || [],
     skills: user.skills || [],
-    rating: user.rating ?? 5.0,
-    hourlyRate: user.hourlyRate ?? 50,
+    rating: user.rating ?? 0,
+    hourlyRate: user.hourlyRate ?? 0,
     indicativeProjectPrice: user.indicativeProjectPrice,
     yearsOfExperience: user.yearsOfExperience,
     typicalDeliveryDays: user.typicalDeliveryDays,
@@ -110,7 +112,12 @@ export function sanitizeUserForAi(user: Partial<IUserDocument> | any) {
     priceBasis: user.priceBasis || 'hour',
     completedProjects: user.completedProjects ?? 0,
     pastProjects: user.pastProjects || [],
+    isProfileComplete: Boolean(user.isProfileComplete),
   };
+}
+
+if (process.env.NODE_ENV !== 'production' && mongoose.models.User) {
+  delete (mongoose.models as any).User;
 }
 
 export const UserModel: Model<IUserDocument> =

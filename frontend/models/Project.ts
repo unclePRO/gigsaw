@@ -14,7 +14,7 @@ export interface IWorkPackage {
   assignedFreelancerName?: string;
   assignedFreelancerEmail?: string;
   inviteStatus?: 'invited' | 'accepted' | 'declined';
-  status: 'Pending' | 'In Progress' | 'Completed' | 'Revision Requested';
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Revision Requested' | 'Cancelled';
   deliverableLink?: string;
   deliverableNotes?: string;
   progressUpdates?: IProgressUpdate[];
@@ -40,6 +40,17 @@ export interface IWorkPackage {
   assignedFreelancerYearsOfExperience?: number;
   assignedFreelancerHourlyRate?: number;
   assignedFreelancerLocation?: string;
+  closureRequested?: boolean;
+  reviewSubmitted?: boolean;
+  reviewRating?: number;
+  reviewText?: string;
+  reviewedAt?: Date;
+  // Official PayPal Invoicing & Capture Integration
+  paypalCaptureId?: string;
+  paypalInvoiceId?: string;
+  paypalInvoiceUrl?: string;
+  paypalInvoiceNumber?: string;
+  paypalInvoiceStatus?: string;
 }
 
 export interface IProjectDocument extends Document {
@@ -53,8 +64,12 @@ export interface IProjectDocument extends Document {
   savings: number;
   workPackages: IWorkPackage[];
   messages: IChatMessage[];
-  status: 'draft' | 'funded' | 'completed';
+  status: 'draft' | 'ON_HOLD' | 'READY_TO_FUND' | 'funded' | 'FUNDED_IN_PROGRESS' | 'completed' | 'cancelled';
   paypalOrderId?: string;
+  paypalCaptureData?: any;
+  paypalInvoiceId?: string;
+  paypalInvoiceUrl?: string;
+  paypalInvoiceNumber?: string;
   aiAnalysis?: any;
   dependencyPlan?: any;
   assumptions?: string[];
@@ -80,7 +95,7 @@ const ChatMessageSchema = new Schema<IChatMessage>(
     senderId: { type: String, required: true },
     senderName: { type: String, required: true },
     senderEmail: { type: String, required: true },
-    senderRole: { type: String, enum: ['merchant', 'freelancer'], required: true },
+    senderRole: { type: String, enum: ['merchant', 'freelancer', 'ai_assistant'], required: true },
     message: { type: String, required: true },
     timestamp: { type: String, required: true },
   },
@@ -106,7 +121,7 @@ const WorkPackageSchema = new Schema<IWorkPackage>({
   },
   status: {
     type: String,
-    enum: ['Pending', 'In Progress', 'Completed', 'Revision Requested'],
+    enum: ['Pending', 'In Progress', 'Completed', 'Revision Requested', 'Cancelled'],
     default: 'Pending',
   },
   deliverableLink: { type: String },
@@ -137,6 +152,17 @@ const WorkPackageSchema = new Schema<IWorkPackage>({
   assignedFreelancerYearsOfExperience: { type: Number },
   assignedFreelancerHourlyRate: { type: Number },
   assignedFreelancerLocation: { type: String },
+  closureRequested: { type: Boolean, default: false },
+  reviewSubmitted: { type: Boolean, default: false },
+  reviewRating: { type: Number },
+  reviewText: { type: String },
+  reviewedAt: { type: Date },
+  // Official PayPal Invoicing & Capture Integration
+  paypalCaptureId: { type: String },
+  paypalInvoiceId: { type: String },
+  paypalInvoiceUrl: { type: String },
+  paypalInvoiceNumber: { type: String },
+  paypalInvoiceStatus: { type: String },
 });
 
 const ProjectSchema = new Schema<IProjectDocument>(
@@ -153,10 +179,14 @@ const ProjectSchema = new Schema<IProjectDocument>(
     messages: [ChatMessageSchema],
     status: {
       type: String,
-      enum: ['draft', 'funded', 'completed'],
-      default: 'draft',
+      enum: ['draft', 'ON_HOLD', 'READY_TO_FUND', 'funded', 'FUNDED_IN_PROGRESS', 'completed', 'cancelled'],
+      default: 'ON_HOLD',
     },
     paypalOrderId: { type: String },
+    paypalCaptureData: { type: Schema.Types.Mixed },
+    paypalInvoiceId: { type: String },
+    paypalInvoiceUrl: { type: String },
+    paypalInvoiceNumber: { type: String },
     aiAnalysis: { type: Schema.Types.Mixed },
     dependencyPlan: { type: Schema.Types.Mixed },
     assumptions: [{ type: String }],
@@ -168,6 +198,10 @@ const ProjectSchema = new Schema<IProjectDocument>(
 // Indexes for querying projects by merchant and assigned freelancers
 ProjectSchema.index({ merchantId: 1, createdAt: -1 });
 ProjectSchema.index({ 'workPackages.assignedFreelancerId': 1 });
+
+if (process.env.NODE_ENV !== 'production' && mongoose.models.Project) {
+  delete (mongoose.models as any).Project;
+}
 
 export const ProjectModel: Model<IProjectDocument> =
   mongoose.models.Project || mongoose.model<IProjectDocument>('Project', ProjectSchema);

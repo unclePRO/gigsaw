@@ -28,6 +28,10 @@ class Freelancer(SchemaModel):
     portfolio_description: str
     location: str
     portfolio_references: list[PortfolioReference] = Field(default_factory=list)
+    bio: str | None = None
+    completed_projects: int = 0
+    category: str | None = None
+    email: str | None = None
 
 
 class ServiceCatalogItem(SchemaModel):

@@ -18,23 +18,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    const words = cleanPrompt.split(' ').slice(0, 5).join(' ');
-    const projectName =
-      words.length > 0
-        ? `${words.charAt(0).toUpperCase() + words.slice(1)} Project`
-        : 'New Launch Project';
+    let projectName = `${cleanPrompt.slice(0, 40)} Launch`;
 
-    // 1. Try Python FastAPI AI Microservice via central aiClient
+    // 1. Try Python FastAPI AI Microservice via central aiClient scopingFinalize
     let aiPackages: WorkPackage[] | null = null;
     let aiProposal: ProjectProposal | null = null;
 
     try {
-      const data = await aiClient.analyzeProject({
-        customer_request: cleanPrompt,
+      const finalizeRes = await aiClient.scopingFinalize({
+        initial_goal: cleanPrompt,
+        messages: [],
         budget,
         currency: 'USD',
-        project_name: projectName,
+        auto_decompose: true,
       });
+
+      const data = finalizeRes?.analysis_result;
+      if (finalizeRes?.project_name) {
+        projectName = finalizeRes.project_name;
+      }
 
       if (data && Array.isArray(data.work_packages) && data.work_packages.length > 0) {
         await connectToDatabase();
@@ -47,8 +49,14 @@ export async function POST(req: NextRequest) {
           const alloc = allocations.find(
             (a: any) => a.service_category?.toLowerCase() === wp.service_category?.toLowerCase()
           );
-          const allocatedPrice = alloc
-            ? Math.round(Number(alloc.allocated_amount))
+          
+          // Support FastAPI recommended_amount, allocated_amount, or fallback to equal distribution
+          const rawPrice = alloc
+            ? (alloc.recommended_amount ?? alloc.allocated_amount ?? alloc.trusted_baseline)
+            : null;
+          const parsedPrice = rawPrice != null ? Number(rawPrice) : NaN;
+          const allocatedPrice = !isNaN(parsedPrice) && parsedPrice > 0
+            ? Math.round(parsedPrice)
             : Math.round(budget / data.work_packages.length);
 
           // Determine broad category for UI styling
@@ -59,14 +67,18 @@ export async function POST(req: NextRequest) {
             svcLower.includes('logo') ||
             svcLower.includes('brand') ||
             svcLower.includes('photo') ||
-            svcLower.includes('menu')
+            svcLower.includes('menu') ||
+            svcLower.includes('ui') ||
+            svcLower.includes('ux')
           ) {
             broadCategory = 'designer';
           } else if (
             svcLower.includes('market') ||
             svcLower.includes('social') ||
             svcLower.includes('seo') ||
-            svcLower.includes('ad')
+            svcLower.includes('ad') ||
+            svcLower.includes('campaign') ||
+            svcLower.includes('growth')
           ) {
             broadCategory = 'marketer';
           }
@@ -95,7 +107,13 @@ export async function POST(req: NextRequest) {
               assignedFreelancerId = fl?.id || fl?._id?.toString();
               assignedFreelancerName = fl?.name;
               assignedFreelancerEmail = fl?.email;
-              matchScore = Math.round((bestMatch.score || 0.95) * 100);
+
+              // FastAPI score is already 0-100 (e.g. 72.85). If <= 1, multiply by 100.
+              const rawScore = Number(bestMatch.score) || 0;
+              matchScore = rawScore > 1
+                ? Math.min(99, Math.max(1, Math.round(rawScore)))
+                : Math.min(99, Math.max(1, Math.round(rawScore * 100)));
+
               matchScoreBreakdown = bestMatch.score_breakdown;
               matchReasons = bestMatch.reasons;
             }
@@ -122,12 +140,12 @@ export async function POST(req: NextRequest) {
               assignedFreelancerEmail = fallbackFreelancer.email;
               matchScore = 94;
               matchScoreBreakdown = {
-                semantic_relevance: 0.92,
-                skill_overlap: 0.95,
-                rating: 0.98,
-                availability: 1.0,
-                price_compatibility: 0.9,
-                delivery_time: 0.88,
+                semantic_relevance: 32,
+                skill_overlap: 24,
+                rating: 14.5,
+                availability: 10,
+                price_compatibility: 9,
+                delivery_time: 4.5,
               };
               matchReasons = [
                 `Top-rated specialist in ${broadCategory.toUpperCase()} services`,
@@ -151,6 +169,24 @@ export async function POST(req: NextRequest) {
             } catch {}
           }
 
+          // If profile wasn't found by email/ID, query by role and category from MongoDB
+          if (!flProfile) {
+            try {
+              flProfile = await UserModel.findOne({
+                role: 'freelancer',
+                category: broadCategory,
+              })
+                .select('-password')
+                .sort({ rating: -1, completedProjects: -1 })
+                .lean();
+              if (flProfile) {
+                assignedFreelancerId = flProfile._id?.toString();
+                assignedFreelancerName = flProfile.name;
+                assignedFreelancerEmail = flProfile.email;
+              }
+            } catch {}
+          }
+
           convertedPackages.push({
             id: wp.work_package_id || `wp-${broadCategory}-${Date.now()}-${i}`,
             category: broadCategory,
@@ -164,8 +200,8 @@ export async function POST(req: NextRequest) {
                 ? wp.dependencies
                 : ['Root Milestone'],
             assignedFreelancerId,
-            assignedFreelancerName,
-            assignedFreelancerEmail,
+            assignedFreelancerName: assignedFreelancerName || flProfile?.name,
+            assignedFreelancerEmail: assignedFreelancerEmail || flProfile?.email,
             inviteStatus: 'invited',
             status: 'Pending',
             requiredSkills: wp.required_skills || [],
@@ -177,16 +213,16 @@ export async function POST(req: NextRequest) {
             quotationDeliveryDays: wp.estimated_days || 7,
             quotationScope: wp.description || '',
             quotationStatus: 'pending',
-            matchScore,
+            matchScore: matchScore || 92,
             matchScoreBreakdown,
             matchReasons,
             assignedFreelancerBio: flProfile?.bio || '',
             assignedFreelancerSkills: flProfile?.skills || wp.required_skills || [],
-            assignedFreelancerRating: flProfile?.rating || 5.0,
-            assignedFreelancerCompletedProjects: flProfile?.completedProjects || 0,
+            assignedFreelancerRating: flProfile?.rating ?? 5.0,
+            assignedFreelancerCompletedProjects: flProfile?.completedProjects ?? 0,
             assignedFreelancerPastProjects: flProfile?.pastProjects || [],
-            assignedFreelancerYearsOfExperience: flProfile?.yearsOfExperience || 3,
-            assignedFreelancerHourlyRate: flProfile?.hourlyRate || 50,
+            assignedFreelancerYearsOfExperience: flProfile?.yearsOfExperience ?? 0,
+            assignedFreelancerHourlyRate: flProfile?.hourlyRate ?? 50,
             assignedFreelancerLocation: flProfile?.location || 'Remote',
           });
         }
@@ -394,7 +430,7 @@ export async function POST(req: NextRequest) {
       assumptions: [
         'Client provides prompt review and feedback within 48 hours of deliverable submission.',
         'Assets, access keys, and project specifications are clarified during kickoff.',
-        'Escrow funds are disbursed upon milestone deliverable approval.',
+        'Payments are disbursed upon milestone deliverable approval.',
       ],
       risks: [
         'Scope adjustments during high-fidelity review may alter delivery duration.',

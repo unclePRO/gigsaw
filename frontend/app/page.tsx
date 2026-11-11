@@ -12,6 +12,7 @@ import {
   Briefcase,
   Layers,
   ChevronRight,
+  ChevronDown,
   Star,
   Clock,
   DollarSign,
@@ -46,163 +47,98 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="space-y-24 pb-20">
-      {/* Hero Section */}
-      <section className="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto text-center space-y-8">
-        {/* Subtle pill badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-semibold shadow-sm">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
-          <span>Intelligent Project Decomposition & Escrow</span>
+    <div className="flex flex-col w-full">
+      {/* Fullscreen Hero Section with Graduated Transparent Background Image */}
+      <section className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center items-center overflow-hidden px-4 sm:px-6 lg:px-8 w-full">
+        {/* Background Layer with Right-Side Visibility (~20%) & Multi-Stop Fade to Transparency */}
+        <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
+          {/* Light Theme Background Image */}
+          <div
+            className="absolute inset-0 bg-no-repeat bg-cover bg-right dark:hidden"
+            style={{
+              backgroundImage: "url('/hero-bg-light.jpg')",
+              maskImage:
+                'linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.65) 15%, rgba(0,0,0,0.2) 28%, transparent 45%), linear-gradient(to bottom, rgba(0,0,0,1) 70%, transparent 100%)',
+              WebkitMaskImage:
+                'linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.65) 15%, rgba(0,0,0,0.2) 28%, transparent 45%), linear-gradient(to bottom, rgba(0,0,0,1) 70%, transparent 100%)',
+              WebkitMaskComposite: 'destination-in',
+              maskComposite: 'intersect',
+            }}
+          />
+
+          {/* Dark Theme Background Image */}
+          <div
+            className="absolute inset-0 bg-no-repeat bg-cover bg-right hidden dark:block"
+            style={{
+              backgroundImage: "url('/hero-bg-dark.jpg')",
+              maskImage:
+                'linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.65) 15%, rgba(0,0,0,0.2) 28%, transparent 45%), linear-gradient(to bottom, rgba(0,0,0,1) 70%, transparent 100%)',
+              WebkitMaskImage:
+                'linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.65) 15%, rgba(0,0,0,0.2) 28%, transparent 45%), linear-gradient(to bottom, rgba(0,0,0,1) 70%, transparent 100%)',
+              WebkitMaskComposite: 'destination-in',
+              maskComposite: 'intersect',
+            }}
+          />
+
+          {/* Left-to-Right Color Overlay to Guarantee 100% Text Readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#F0F8F6] via-[#F0F8F6]/90 via-40% to-transparent dark:from-[#102B2B] dark:via-[#102B2B]/90 dark:via-40% dark:to-transparent" />
+
+          {/* Bottom Fade: image smoothly goes away as the user scrolls into the next section */}
+          <div className="absolute bottom-0 inset-x-0 h-44 bg-gradient-to-t from-[#F0F8F6] via-[#F0F8F6]/70 to-transparent dark:from-[#102B2B] dark:via-[#102B2B]/70 dark:to-transparent" />
+
+          {/* Subtle Ambient Radial Highlight on the Right */}
+          <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-gradient-to-l from-[#168C80]/15 via-[#32B6A5]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
         </div>
 
-        {/* Hero Headline */}
-        <h1 className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-tight max-w-4xl mx-auto leading-[1.12]">
-          Hire an entire freelance team with{' '}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600">
-            one prompt & budget
-          </span>.
-        </h1>
+        {/* Hero Content (Positioned in relative z-10) */}
+        <div className="relative z-10 max-w-5xl mx-auto text-center space-y-8 py-16 sm:py-24">
 
-        {/* Concise Subtitle */}
-        <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          Skip searching, negotiating, and paying multiple freelancers separately. Enter your project goal and total budget. GigSaw decomposes the work, pairs verified talent, and coordinates everything through a single PayPal checkout.
-        </p>
+          {/* Hero Headline */}
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tight max-w-4xl mx-auto leading-[1.08]">
+            Hire an entire freelance team with{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#168C80] via-[#32B6A5] to-[#73D8C7]">
+              one prompt
+            </span>.
+          </h1>
 
-        {/* 2 Primary Clear Options: 'Hire Freelancers' and 'Find Work' */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-          <Link
-            href="/login?tab=register&role=merchant"
-            className="w-full sm:w-auto px-8 py-3.5 bg-cyan-500 hover:bg-cyan-600 active:scale-95 text-white font-bold rounded-xl text-sm shadow-glow-cyan transition-all flex items-center justify-center gap-2"
-          >
-            <Users className="w-4 h-4" />
-            <span>Hire Freelancers</span>
-            <ArrowRight className="w-4 h-4 ml-0.5" />
-          </Link>
+          {/* Concise Subtitle */}
+          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
+            Skip searching, negotiating, and paying multiple freelancers separately. Enter your project goal and total budget. Gigsaw disassembles the work, pairs verified talent, and coordinates everything through a single PayPal checkout.
+          </p>
 
-          <Link
-            href="/login?tab=register&role=freelancer"
-            className="w-full sm:w-auto px-8 py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
-          >
-            <Briefcase className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-            <span>Find Work as a Specialist</span>
-          </Link>
-        </div>
-
-        {/* Quick popular category tags */}
-        <div className="pt-4 flex flex-wrap items-center justify-center gap-2 max-w-3xl mx-auto">
-          <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 mr-1">Popular:</span>
-          {popularPills.map((pill) => (
-            <span
-              key={pill}
-              className="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60 transition-colors cursor-default"
+          {/* 2 Primary Clear Options: 'Hire Freelancers' and 'Find Work' */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <Link
+              href="/login?tab=register&role=merchant"
+              className="w-full sm:w-auto px-8 py-4 bg-cyan-500 hover:bg-cyan-600 active:scale-95 text-white font-bold rounded-2xl text-sm shadow-glow-cyan transition-all flex items-center justify-center gap-2 shadow-lg"
             >
-              {pill}
-            </span>
-          ))}
+              <Users className="w-4 h-4" />
+              <span>Hire Freelancers</span>
+              <ArrowRight className="w-4 h-4 ml-0.5" />
+            </Link>
+
+            <Link
+              href="/login?tab=register&role=freelancer"
+              className="w-full sm:w-auto px-8 py-4 bg-white/90 dark:bg-slate-900/90 hover:bg-white dark:hover:bg-slate-900 backdrop-blur-sm border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+            >
+              <Briefcase className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              <span>Find Work as a Specialist</span>
+            </Link>
+          </div>
         </div>
 
-        {/* Interactive Live Teaser Card: The Unified Proposal */}
-        <div className="pt-10 max-w-4xl mx-auto">
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-xl shadow-slate-200/40 dark:shadow-none text-left space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">
-                    Live Demo Proposal
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    Ready for Checkout
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
-                  Artisan Coffeehouse & Bakery Launch
-                </h3>
-              </div>
-              <div className="sm:text-right">
-                <span className="text-xs text-slate-500 dark:text-slate-400 block">Total Budget Allocation</span>
-                <span className="text-xl font-black text-slate-900 dark:text-white">$1,800 USD</span>
-              </div>
-            </div>
-
-            {/* 3 Sequenced Puzzle Milestones */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-              {/* Designer Card */}
-              <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 uppercase">
-                    1. Designer
-                  </span>
-                  <span className="text-xs font-extrabold text-slate-900 dark:text-white">$450</span>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Brand & QR Menu Design</h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                    Logo marks, vector typography, color palette, and interactive digital menu.
-                  </p>
-                </div>
-                <div className="pt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">Elena R.</span>
-                  <span className="text-cyan-600 dark:text-cyan-400 font-bold">96% Match</span>
-                </div>
-              </div>
-
-              {/* Developer Card */}
-              <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-900/60 uppercase">
-                    2. Developer
-                  </span>
-                  <span className="text-xs font-extrabold text-slate-900 dark:text-white">$850</span>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Next.js Web Storefront</h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                    Responsive storefront, online ordering workflows, and MongoDB models.
-                  </p>
-                </div>
-                <div className="pt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">Alex M.</span>
-                  <span className="text-cyan-600 dark:text-cyan-400 font-bold">98% Match</span>
-                </div>
-              </div>
-
-              {/* Marketer Card */}
-              <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/60 uppercase">
-                    3. Marketer
-                  </span>
-                  <span className="text-xs font-extrabold text-slate-900 dark:text-white">$500</span>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Local SEO & Launch Ads</h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                    Google Business local ranking, Meta launch campaigns, and analytics funnel.
-                  </p>
-                </div>
-                <div className="pt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">Marcus C.</span>
-                  <span className="text-cyan-600 dark:text-cyan-400 font-bold">94% Match</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Proof Bar */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
-                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                <span>Single consolidated checkout &bull; Split automatically via PayPal</span>
-              </div>
-              <div className="text-[11px] text-slate-400">
-                Zero individual invoices &bull; 100% Escrow Protection
-              </div>
-            </div>
-          </div>
+        {/* Scroll Down Indicator */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 text-[11px] font-semibold tracking-wider uppercase animate-bounce pointer-events-none select-none">
+          <span>Scroll to explore</span>
+          <ChevronDown className="w-4 h-4" />
         </div>
       </section>
 
-      {/* How GigSaw Works: 3 Simple Steps */}
-      <section className="py-16 bg-white dark:bg-[#0B1120] border-y border-slate-200/80 dark:border-slate-800/80 transition-colors">
+      {/* Subsequent Sections with Spacing */}
+      <div className="space-y-24 pb-20 pt-8">
+
+      {/* How Gigsaw Works: 3 Simple Steps */}
+      <section className="py-16 bg-white dark:bg-[#142F2E] border-y border-[#D8E9E4] dark:border-[#345451] transition-colors">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-2 max-w-xl mx-auto">
             <span className="text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
@@ -212,7 +148,7 @@ export default function HomePage() {
               From one sentence to complete launch
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
-              How GigSaw eliminates the friction of traditional freelance platforms.
+              How Gigsaw eliminates the friction of traditional freelance platforms.
             </p>
           </div>
 
@@ -228,7 +164,7 @@ export default function HomePage() {
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 relative">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-extrabold flex items-center justify-center text-sm shadow-sm">
+              <div className="w-9 h-9 rounded-xl bg-[#168C80] text-white font-extrabold flex items-center justify-center text-sm shadow-sm">
                 02
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">AI Assembles Your Team</h3>
@@ -275,6 +211,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      </div>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   User,
   Star,
@@ -21,30 +21,60 @@ import {
   Calendar,
   Sparkles,
   ShieldCheck,
+  AlertTriangle,
+  MessageSquare,
+  X,
 } from 'lucide-react';
-import { IPastProject, FreelancerCategory } from '@/types';
+import { IPastProject, FreelancerCategory, IReview } from '@/types';
 
-export default function FreelancerProfilePage() {
+const SUGGESTED_LANGUAGES_AND_SKILLS = [
+  'TypeScript',
+  'JavaScript',
+  'Python',
+  'React',
+  'Next.js',
+  'Node.js',
+  'HTML/CSS',
+  'Java',
+  'C++',
+  'Go',
+  'Rust',
+  'SQL',
+  'Tailwind CSS',
+  'PHP',
+  'Figma',
+  'Docker',
+  'English',
+  'Spanish',
+  'German',
+  'French',
+  'Hindi',
+];
+
+function FreelancerProfileContent() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
+  const isSetupParam = searchParams.get('setup') === 'required';
+  const { data: session, status, update } = useSession();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
 
-  // Form states
+  // Form states - Strictly NO mock data defaults
   const [title, setTitle] = useState('');
   const [bio, setBio] = useState('');
-  const [hourlyRate, setHourlyRate] = useState<number>(50);
-  const [indicativeProjectPrice, setIndicativeProjectPrice] = useState<number>(500);
-  const [yearsOfExperience, setYearsOfExperience] = useState<number>(4);
-  const [typicalDeliveryDays, setTypicalDeliveryDays] = useState<number>(7);
-  const [location, setLocation] = useState('Remote / Global');
+  const [hourlyRate, setHourlyRate] = useState<number | ''>('');
+  const [indicativeProjectPrice, setIndicativeProjectPrice] = useState<number | ''>('');
+  const [yearsOfExperience, setYearsOfExperience] = useState<number | ''>('');
+  const [typicalDeliveryDays, setTypicalDeliveryDays] = useState<number | ''>('');
+  const [location, setLocation] = useState('');
   const [priceBasis, setPriceBasis] = useState<'hour' | 'project'>('hour');
   const [paypalEmail, setPaypalEmail] = useState('');
   const [category, setCategory] = useState<FreelancerCategory>('dev');
-  const [rating, setRating] = useState<number>(5.0);
+  const [rating, setRating] = useState<number>(0);
   const [completedProjects, setCompletedProjects] = useState<number>(0);
   const [availability, setAvailability] = useState<'available' | 'busy'>('available');
 
@@ -61,6 +91,27 @@ export default function FreelancerProfilePage() {
   const [newProjTech, setNewProjTech] = useState('');
   const [newProjDate, setNewProjDate] = useState('');
 
+  // Written Reviews Modal State
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
+  const [reviewsList, setReviewsList] = useState<IReview[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+
+  const handleOpenReviewsModal = async () => {
+    setShowReviewsModal(true);
+    setLoadingReviews(true);
+    try {
+      const res = await fetch('/api/reviews');
+      if (res.ok) {
+        const data = await res.json();
+        setReviewsList(data.reviews || []);
+      }
+    } catch (err) {
+      console.error('Failed to load reviews:', err);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
   // Authentication check
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -76,18 +127,46 @@ export default function FreelancerProfilePage() {
         .then((data) => {
           if (data.success && data.profile) {
             const p = data.profile;
+            const isFormActuallyComplete = Boolean(
+              (p.title && String(p.title).trim().length > 0) &&
+              (p.bio && String(p.bio).trim().length > 0) &&
+              (typeof p.hourlyRate === 'number' && p.hourlyRate > 0) &&
+              (Array.isArray(p.skills) && p.skills.length > 0) &&
+              (p.yearsOfExperience !== undefined && p.yearsOfExperience !== null && Number(p.yearsOfExperience) >= 0) &&
+              (p.typicalDeliveryDays !== undefined && p.typicalDeliveryDays !== null && Number(p.typicalDeliveryDays) >= 1) &&
+              (p.location && String(p.location).trim().length > 0)
+            );
+            const isComp = Boolean(p.isProfileComplete || isFormActuallyComplete);
+            setIsProfileComplete(isComp);
+            if (isComp && isSetupParam) {
+              router.replace('/freelancer/profile');
+            }
             setTitle(p.title || '');
             setBio(p.bio || '');
-            setHourlyRate(p.hourlyRate || 50);
-            setIndicativeProjectPrice(p.indicativeProjectPrice || 500);
-            setYearsOfExperience(p.yearsOfExperience || 4);
-            setTypicalDeliveryDays(p.typicalDeliveryDays || 7);
-            setLocation(p.location || 'Remote / Global');
+            setHourlyRate(
+              typeof p.hourlyRate === 'number' && p.hourlyRate > 0 ? p.hourlyRate : ''
+            );
+            setIndicativeProjectPrice(
+              typeof p.indicativeProjectPrice === 'number' && p.indicativeProjectPrice > 0
+                ? p.indicativeProjectPrice
+                : ''
+            );
+            setYearsOfExperience(
+              typeof p.yearsOfExperience === 'number' && p.yearsOfExperience >= 0
+                ? p.yearsOfExperience
+                : ''
+            );
+            setTypicalDeliveryDays(
+              typeof p.typicalDeliveryDays === 'number' && p.typicalDeliveryDays >= 1
+                ? p.typicalDeliveryDays
+                : ''
+            );
+            setLocation(p.location || '');
             setPriceBasis(p.priceBasis || 'hour');
             setPaypalEmail(p.paypalEmail || p.email || '');
             setCategory(p.category || 'dev');
-            setRating(p.rating || 5.0);
-            setCompletedProjects(p.completedProjects || 0);
+            setRating(typeof p.rating === 'number' ? p.rating : 0);
+            setCompletedProjects(typeof p.completedProjects === 'number' ? p.completedProjects : 0);
             setSkills(Array.isArray(p.skills) ? p.skills : []);
             setPastProjects(Array.isArray(p.pastProjects) ? p.pastProjects : []);
             setAvailability(p.availability || 'available');
@@ -96,7 +175,7 @@ export default function FreelancerProfilePage() {
         .catch((err) => setError('Failed to load profile from MongoDB'))
         .finally(() => setLoading(false));
     }
-  }, [status]);
+  }, [status, isSetupParam, router]);
 
   const handleAddSkill = (e: React.KeyboardEvent | React.MouseEvent) => {
     if ('key' in e && e.key !== 'Enter') return;
@@ -143,34 +222,74 @@ export default function FreelancerProfilePage() {
   };
 
   const handleSaveProfile = async () => {
-    setSaving(true);
     setMessage(null);
     setError(null);
+
+    // Strict validation to ensure genuine, complete profile
+    if (!title.trim()) {
+      setError('Professional Title is required.');
+      return;
+    }
+    if (!bio.trim()) {
+      setError('Bio & Experience overview is required.');
+      return;
+    }
+    if (hourlyRate === '' || Number(hourlyRate) <= 0) {
+      setError('Please provide a valid hourly rate greater than $0.');
+      return;
+    }
+    if (yearsOfExperience === '' || Number(yearsOfExperience) < 0) {
+      setError('Please provide your years of experience (0 or more).');
+      return;
+    }
+    if (typicalDeliveryDays === '' || Number(typicalDeliveryDays) < 1) {
+      setError('Please provide typical delivery days (at least 1 day).');
+      return;
+    }
+    if (!location.trim()) {
+      setError('Location / Timezone is required.');
+      return;
+    }
+    if (skills.length === 0) {
+      setError('Please add at least one relevant skill/competency.');
+      return;
+    }
+
+    setSaving(true);
 
     try {
       const res = await fetch('/api/freelancer/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title,
-          bio,
-          hourlyRate,
-          indicativeProjectPrice,
-          yearsOfExperience,
-          typicalDeliveryDays,
-          location,
+          title: title.trim(),
+          bio: bio.trim(),
+          hourlyRate: Number(hourlyRate),
+          indicativeProjectPrice: indicativeProjectPrice !== '' ? Number(indicativeProjectPrice) : undefined,
+          yearsOfExperience: Number(yearsOfExperience),
+          typicalDeliveryDays: Number(typicalDeliveryDays),
+          location: location.trim(),
           priceBasis,
           skills,
           pastProjects,
-          paypalEmail,
+          paypalEmail: paypalEmail.trim() || undefined,
           availability,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
-        setMessage('Profile and portfolio saved to MongoDB Atlas successfully!');
-        setTimeout(() => setMessage(null), 3500);
+        setIsProfileComplete(true);
+        if (typeof update === 'function') {
+          try {
+            await update({ isProfileComplete: true });
+          } catch {}
+        }
+        setMessage('Profile setup complete! Redirecting to your specialist dashboard...');
+        router.replace('/freelancer/profile');
+        setTimeout(() => {
+          router.push('/freelancer/dashboard');
+        }, 1200);
       } else {
         setError(data.error || 'Failed to update profile');
       }
@@ -193,7 +312,7 @@ export default function FreelancerProfilePage() {
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
       {/* Top Header & Status */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
@@ -230,6 +349,16 @@ export default function FreelancerProfilePage() {
         </button>
       </div>
 
+      {/* Minimalistic Profile Setup Banner */}
+      {!loading && !isProfileComplete && (
+        <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200 font-medium">
+          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+          <span>
+            <strong className="font-bold text-amber-950 dark:text-amber-100">Profile Setup Required:</strong> Please complete your profile details below to unlock your workspace and AI matching.
+          </span>
+        </div>
+      )}
+
       {message && (
         <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -244,37 +373,58 @@ export default function FreelancerProfilePage() {
         </div>
       )}
 
-      {/* Ratings & Metrics Banner */}
+      {/* Ratings & Metrics Banner - Real MongoDB Atlas Data Only */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Specialty Domain</span>
           <div className="text-xl font-black text-slate-900 dark:text-white uppercase">{category}</div>
           <span className="text-[11px] text-cyan-600 dark:text-cyan-400 font-bold">Verified for {category} milestones</span>
         </div>
 
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-2 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Merchant Rating</span>
           <div className="text-xl font-black text-amber-500 flex items-center gap-1.5">
             <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
-            <span>{rating.toFixed(1)} / 5.0</span>
+            <span>{rating > 0 && completedProjects > 0 ? `${rating.toFixed(1)} / 5.0` : 'No Rating'}</span>
           </div>
-          <span className="text-[11px] text-slate-400">Based on approved deliverables</span>
+          <div className="flex items-center justify-between pt-0.5">
+            <span className="text-[11px] text-slate-400">
+              {completedProjects > 0 ? `${completedProjects} verified review${completedProjects > 1 ? 's' : ''}` : 'No reviews yet'}
+            </span>
+            <button
+              type="button"
+              onClick={handleOpenReviewsModal}
+              className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 hover:underline inline-flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <MessageSquare className="w-3 h-3" />
+              <span>See Written Reviews</span>
+            </button>
+          </div>
         </div>
 
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed Milestones</span>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">{completedProjects} Finished</div>
-          <span className="text-[11px] text-slate-400">Verified in MongoDB Atlas</span>
+          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+            {completedProjects === 0 ? '0 Finished' : `${completedProjects} Finished`}
+          </div>
+          <span className="text-[11px] text-slate-400">
+            {completedProjects === 0 ? 'Accept milestone invites to begin' : 'Verified in MongoDB Atlas'}
+          </span>
         </div>
       </div>
 
       {/* Basic Info & Rates Card */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-5 transition-colors">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Professional Details & AI Parameters</h2>
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-5 transition-colors">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">Professional Details & AI Parameters</h2>
+          <span className="text-[11px] text-slate-400 italic">* All fields required for AI matchmaking</span>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Professional Title</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Professional Title <span className="text-rose-500">*</span>
+            </label>
             <input
               type="text"
               placeholder="e.g. Senior Next.js & Full-Stack Engineer"
@@ -285,14 +435,17 @@ export default function FreelancerProfilePage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Hourly Rate (USD)</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Hourly Rate (USD) <span className="text-rose-500">*</span>
+            </label>
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-slate-400 text-xs font-bold">$</span>
               <input
                 type="number"
-                min={15}
+                min={1}
+                placeholder="e.g. 45"
                 value={hourlyRate}
-                onChange={(e) => setHourlyRate(Number(e.target.value))}
+                onChange={(e) => setHourlyRate(e.target.value === '' ? '' : Number(e.target.value))}
                 className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
             </div>
@@ -302,31 +455,40 @@ export default function FreelancerProfilePage() {
         {/* AI Estimation Parameters */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Years of Experience</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Years of Experience <span className="text-rose-500">*</span>
+            </label>
             <input
               type="number"
-              min={1}
+              min={0}
+              placeholder="e.g. 3"
               value={yearsOfExperience}
-              onChange={(e) => setYearsOfExperience(Number(e.target.value))}
+              onChange={(e) => setYearsOfExperience(e.target.value === '' ? '' : Number(e.target.value))}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Typical Turnaround (Days)</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Typical Turnaround (Days) <span className="text-rose-500">*</span>
+            </label>
             <input
               type="number"
               min={1}
+              placeholder="e.g. 5"
               value={typicalDeliveryDays}
-              onChange={(e) => setTypicalDeliveryDays(Number(e.target.value))}
+              onChange={(e) => setTypicalDeliveryDays(e.target.value === '' ? '' : Number(e.target.value))}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Location / Timezone</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Location / Timezone <span className="text-rose-500">*</span>
+            </label>
             <input
               type="text"
+              placeholder="e.g. New York, NY (EST) or Remote"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500"
@@ -335,10 +497,12 @@ export default function FreelancerProfilePage() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Bio & Experience Overview</label>
+          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            Bio & Experience Overview <span className="text-rose-500">*</span>
+          </label>
           <textarea
             rows={3}
-            placeholder="Highlight your domain experience, specialties, and workflow..."
+            placeholder="Highlight your domain experience, specialties, past achievements, and preferred workflows..."
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             className="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 leading-relaxed"
@@ -374,20 +538,21 @@ export default function FreelancerProfilePage() {
         </div>
       </div>
 
-      {/* Skills Selection Card */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
+      {/* Skills & Languages Selection Card */}
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Skills & Competencies</h2>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Skills & Languages</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Add technical skills and tools our AI matcher checks against project goals.
+              Select or add your programming languages, spoken languages, and core competencies.
             </p>
           </div>
           <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 px-2.5 py-1 rounded-full border border-cyan-200 dark:border-cyan-800">
-            {skills.length} Skills
+            {skills.length} Selected
           </span>
         </div>
 
+        {/* Selected skills/languages pills */}
         <div className="flex flex-wrap gap-2 pt-1">
           {skills.map((skill) => (
             <span
@@ -406,14 +571,48 @@ export default function FreelancerProfilePage() {
             </span>
           ))}
           {skills.length === 0 && (
-            <span className="text-xs text-slate-400 italic">No skills added yet.</span>
+            <span className="text-xs text-slate-400 italic">No skills or languages added yet.</span>
           )}
         </div>
 
-        <div className="flex gap-2 pt-2">
+        {/* Suggested Languages & Tools (One-click add) */}
+        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+            Suggested Languages & Tools (Click to add):
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {SUGGESTED_LANGUAGES_AND_SKILLS.map((lang) => {
+              const isSelected = skills.includes(lang);
+              return (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => {
+                    if (isSelected) {
+                      handleRemoveSkill(lang);
+                    } else {
+                      setSkills([...skills, lang]);
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1 ${
+                    isSelected
+                      ? 'bg-cyan-500 text-white border-cyan-500 shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-cyan-400 dark:hover:border-cyan-500'
+                  }`}
+                >
+                  <span>{isSelected ? '✓' : '+'}</span>
+                  <span>{lang}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Custom skill/language input */}
+        <div className="flex gap-2 pt-1">
           <input
             type="text"
-            placeholder="e.g. Next.js, TypeScript, Figma, Tailwind CSS, SEO"
+            placeholder="Type a custom language or skill (e.g. Kotlin, Rust, French, Solidity)..."
             value={newSkillInput}
             onChange={(e) => setNewSkillInput(e.target.value)}
             onKeyDown={handleAddSkill}
@@ -424,13 +623,13 @@ export default function FreelancerProfilePage() {
             onClick={handleAddSkill}
             className="px-5 py-2 bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
           >
-            Add Skill
+            Add
           </button>
         </div>
       </div>
 
       {/* Past Projects & Existing Portfolio Card */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Portfolio & Previous Projects</h2>
@@ -507,12 +706,15 @@ export default function FreelancerProfilePage() {
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-700 dark:text-slate-300">Completion Date (Month / Year)</label>
+                <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-cyan-500" />
+                  <span>Completion Date (Calendar)</span>
+                </label>
                 <input
-                  type="month"
+                  type="date"
                   value={newProjDate}
                   onChange={(e) => setNewProjDate(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
             </div>
@@ -595,6 +797,100 @@ export default function FreelancerProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Written Reviews Modal */}
+      {showReviewsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                  <Star className="w-5 h-5 fill-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Client Reviews & Ratings</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {rating > 0 ? `Overall Rating: ${rating.toFixed(1)} / 5.0 (${completedProjects} review${completedProjects > 1 ? 's' : ''})` : 'No client reviews yet'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReviewsModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3.5 pr-1">
+              {loadingReviews ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400">
+                  <RefreshCw className="w-5 h-5 animate-spin text-cyan-500" />
+                  <span className="text-xs">Loading verified merchant reviews...</span>
+                </div>
+              ) : reviewsList.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 space-y-2">
+                  <MessageSquare className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
+                  <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">No written reviews yet</p>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    When merchants approve your completed deliverables and submit feedback, their ratings and written reviews will appear here.
+                  </p>
+                </div>
+              ) : (
+                reviewsList.map((rev) => (
+                  <div
+                    key={rev._id}
+                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span>{rev.merchantName || 'Merchant'}</span>
+                          {rev.projectName && (
+                            <span className="text-[10px] font-normal text-slate-400">&bull; {rev.projectName}</span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-medium">
+                          {rev.packageTitle}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20 text-amber-500 text-xs font-bold shrink-0">
+                        <Star className="w-3.5 h-3.5 fill-amber-400" />
+                        <span>{rev.rating}.0</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 italic leading-relaxed">
+                      &ldquo;{rev.reviewText}&rdquo;
+                    </p>
+                    <div className="text-[10px] text-slate-400 pt-1">
+                      {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowReviewsModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function FreelancerProfilePage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Loading profile...</div>}>
+      <FreelancerProfileContent />
+    </Suspense>
   );
 }
