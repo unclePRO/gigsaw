@@ -376,6 +376,10 @@ export async function POST(req: NextRequest) {
                     yearsOfExperience: flUser.yearsOfExperience || candidate.freelancer?.yearsOfExperience || 2,
                     hourlyRate: flUser.hourlyRate || candidate.freelancer?.hourlyRate || 50,
                     location: flUser.location || candidate.freelancer?.location || 'Remote',
+                    title: (flUser as any).title || candidate.freelancer?.title || '',
+                    typicalDeliveryDays: (flUser as any).typicalDeliveryDays || candidate.freelancer?.typicalDeliveryDays || 5,
+                    category: (flUser as any).category || broadCategory,
+                    availability: (flUser as any).availability || 'available',
                   };
                   break;
                 }
@@ -414,6 +418,10 @@ export async function POST(req: NextRequest) {
               yearsOfExperience: chosen.yearsOfExperience || 2,
               hourlyRate: chosen.hourlyRate || 50,
               location: chosen.location || 'Remote',
+              title: (chosen as any).title || '',
+              typicalDeliveryDays: (chosen as any).typicalDeliveryDays || 5,
+              category: (chosen as any).category || broadCategory,
+              availability: (chosen as any).availability || 'available',
             };
             matchScore = 94;
             matchReasons = [
@@ -449,6 +457,10 @@ export async function POST(req: NextRequest) {
           assignedFreelancerYearsOfExperience: matchedFreelancer?.yearsOfExperience,
           assignedFreelancerHourlyRate: matchedFreelancer?.hourlyRate,
           assignedFreelancerLocation: matchedFreelancer?.location,
+          assignedFreelancerTitle: matchedFreelancer?.title,
+          assignedFreelancerTypicalDeliveryDays: matchedFreelancer?.typicalDeliveryDays,
+          assignedFreelancerCategory: matchedFreelancer?.category,
+          assignedFreelancerAvailability: matchedFreelancer?.availability,
           matchScore,
           matchScoreBreakdown,
           matchReasons,

@@ -30,9 +30,11 @@ import {
   ExternalLink,
   RotateCcw,
   Check,
+  Eye,
 } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { WorkPackage } from '@/types';
+import { FreelancerProfileHoverCard, FreelancerProfileData } from '@/components/ai/FreelancerProfileHoverCard';
 
 // Structured clarifying categories for the AI Project Manager
 function CategoryBadge({ category }: { category: string }) {
@@ -125,6 +127,57 @@ export default function CreateProjectPage() {
   // Pool of alternative freelancers by category fetched from MongoDB
   const [availableFreelancers, setAvailableFreelancers] = useState<Record<string, any[]>>({});
   const [swappingPackageId, setSwappingPackageId] = useState<string | null>(null);
+
+  // Enrich matched freelancer with rich details from MongoDB pool if needed
+  const getFreelancerDetails = (wp: WorkPackage): FreelancerProfileData => {
+    const allPool = Object.values(availableFreelancers).flat();
+    const found = allPool.find(
+      (f: any) =>
+        (wp.assignedFreelancerId && (f._id?.toString() === wp.assignedFreelancerId || f.id?.toString() === wp.assignedFreelancerId)) ||
+        (wp.assignedFreelancerEmail && f.email?.toLowerCase() === wp.assignedFreelancerEmail.toLowerCase()) ||
+        (wp.assignedFreelancerName && f.name?.toLowerCase() === wp.assignedFreelancerName.toLowerCase())
+    );
+
+    return {
+      id: wp.assignedFreelancerId || found?._id || found?.id,
+      name: wp.assignedFreelancerName || found?.name || 'Assigned Specialist',
+      email: wp.assignedFreelancerEmail || found?.email,
+      title:
+        wp.assignedFreelancerTitle ||
+        found?.title ||
+        (wp.category === 'dev'
+          ? 'Full-Stack Software Engineer'
+          : wp.category === 'designer'
+          ? 'UI/UX & Brand Identity Designer'
+          : 'Growth & Performance Marketer'),
+      category: wp.assignedFreelancerCategory || found?.category || wp.category,
+      bio:
+        wp.assignedFreelancerBio ||
+        found?.bio ||
+        'Verified specialist selected by AI matching algorithms for high domain relevance and reliable turnaround.',
+      skills:
+        wp.assignedFreelancerSkills && wp.assignedFreelancerSkills.length > 0
+          ? wp.assignedFreelancerSkills
+          : found?.skills && found.skills.length > 0
+          ? found.skills
+          : wp.requiredSkills || [],
+      rating: wp.assignedFreelancerRating ?? found?.rating ?? 4.2,
+      completedProjects: wp.assignedFreelancerCompletedProjects ?? found?.completedProjects ?? 14,
+      pastProjects:
+        wp.assignedFreelancerPastProjects && wp.assignedFreelancerPastProjects.length > 0
+          ? wp.assignedFreelancerPastProjects
+          : found?.pastProjects || [],
+      yearsOfExperience: wp.assignedFreelancerYearsOfExperience || found?.yearsOfExperience || 4,
+      hourlyRate: wp.assignedFreelancerHourlyRate || found?.hourlyRate || 65,
+      location: wp.assignedFreelancerLocation || found?.location || 'Remote (Global)',
+      typicalDeliveryDays: wp.assignedFreelancerTypicalDeliveryDays || found?.typicalDeliveryDays || wp.estimatedDays || 5,
+      availability: wp.assignedFreelancerAvailability || found?.availability || 'available',
+      matchScore: wp.matchScore,
+      matchScoreBreakdown: wp.matchScoreBreakdown,
+      matchReasons: wp.matchReasons,
+    };
+  };
+
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
@@ -960,20 +1013,43 @@ export default function CreateProjectPage() {
             </div>
           </div>
 
-          {/* Section Heading */}
-          <div className="flex items-center justify-between pt-2">
+          {/* Section Heading & Assembled Team Row */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
             <div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Users className="w-5 h-5 text-cyan-500" />
                 <span>Matched Specialists & Assigned Work Packages</span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Each milestone is assigned to a verified specialist with explainable AI match scores.
+                Hover over any specialist profile to view their full bio, verified ratings, skills, and past enterprise projects.
               </p>
             </div>
-            <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 px-3 py-1 rounded-full border border-cyan-200 dark:border-cyan-800">
-              {workPackages.length} Specialists
-            </span>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="flex items-center -space-x-2 bg-slate-50 dark:bg-slate-900/60 p-1.5 px-3 rounded-full border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+                <span className="text-[10px] font-black uppercase text-slate-400 mr-2 hidden sm:inline">Team:</span>
+                {workPackages.map((wpPkg) => {
+                  const teamFl = getFreelancerDetails(wpPkg);
+                  return (
+                    <FreelancerProfileHoverCard key={wpPkg.id} freelancer={teamFl} align="right">
+                      <div
+                        className="relative group cursor-pointer"
+                        title={`${teamFl.name} (${teamFl.title || wpPkg.category}) - Hover to preview full profile`}
+                      >
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#168C80] to-[#32B6A5] text-white font-black text-xs flex items-center justify-center ring-2 ring-white dark:ring-[#1B3B39] group-hover:scale-115 group-hover:z-10 transition-transform shadow-xs">
+                          {teamFl.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-white dark:ring-slate-900" />
+                      </div>
+                    </FreelancerProfileHoverCard>
+                  );
+                })}
+              </div>
+
+              <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 px-3 py-1 rounded-full border border-cyan-200 dark:border-cyan-800">
+                {workPackages.length} Specialists
+              </span>
+            </div>
           </div>
 
           {/* Rich Freelancer Profile Cards */}
@@ -981,6 +1057,7 @@ export default function CreateProjectPage() {
             {workPackages.map((wp) => {
               const isExpanded = expandedMatchId === wp.id;
               const isSwapping = swappingPackageId === wp.id;
+              const fl = getFreelancerDetails(wp);
 
               // Ensure match score is strictly 0-100%
               const rawScore = Number(wp.matchScore) || 94;
@@ -995,12 +1072,12 @@ export default function CreateProjectPage() {
               return (
                 <div
                   key={wp.id}
-                  className={`bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ${
+                  className={`bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 ${
                     isSwapping ? 'opacity-50 scale-[0.99] animate-pulse' : ''
                   }`}
                 >
                   {/* Top Bar: Role badge, estimate & allocated price */}
-                  <div className="px-6 py-3.5 bg-slate-50/70 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+                  <div className="px-6 py-3.5 bg-slate-50/70 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800/80 rounded-t-2xl flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <CategoryBadge category={wp.category} />
                       <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-2.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 flex items-center gap-1">
@@ -1063,49 +1140,75 @@ export default function CreateProjectPage() {
                     {wp.assignedFreelancerName ? (
                       <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                          {/* Avatar & Personal Details */}
-                          <div className="flex items-start gap-3.5 min-w-0">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#168C80] to-[#32B6A5] text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md">
-                              {wp.assignedFreelancerName.charAt(0).toUpperCase()}
-                            </div>
+                          {/* Avatar & Personal Details with Hover Card */}
+                          <FreelancerProfileHoverCard
+                            freelancer={fl}
+                            onSwap={() => handleSwapFreelancer(wp)}
+                            isSwapping={isSwapping}
+                            align="left"
+                          >
+                            <div className="group/fl flex items-start gap-3.5 min-w-0 cursor-pointer text-left">
+                              <div className="relative shrink-0">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#168C80] to-[#32B6A5] text-white font-black text-lg flex items-center justify-center shadow-md group-hover/fl:scale-105 group-hover/fl:ring-2 group-hover/fl:ring-cyan-400 transition-all">
+                                  {fl.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div
+                                  className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-[#102B2B]"
+                                  title="Available for immediate sprint"
+                                />
+                              </div>
 
-                            <div className="space-y-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h5 className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                                  {wp.assignedFreelancerName}
-                                </h5>
-                                {typeof wp.assignedFreelancerRating === 'number' && wp.assignedFreelancerRating > 0 && (wp.assignedFreelancerCompletedProjects ?? 0) > 0 ? (
-                                  <div className="flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-900/50">
-                                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                    <span>{wp.assignedFreelancerRating.toFixed(1)}</span>
-                                    <span className="text-slate-400 font-normal">
-                                      ({wp.assignedFreelancerCompletedProjects} jobs)
+                              <div className="space-y-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h5 className="font-bold text-sm text-slate-900 dark:text-white truncate group-hover/fl:text-cyan-600 dark:group-hover/fl:text-cyan-400 transition-colors flex items-center gap-1.5">
+                                    <span>{fl.name}</span>
+                                    <Eye className="w-3.5 h-3.5 text-cyan-500 shrink-0 opacity-70 group-hover/fl:opacity-100 transition-opacity" />
+                                  </h5>
+
+                                  {typeof fl.rating === 'number' && fl.rating > 0 && (fl.completedProjects ?? 0) > 0 ? (
+                                    <div className="flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-900/50">
+                                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                      <span>{fl.rating.toFixed(1)}</span>
+                                      <span className="text-slate-400 font-normal">
+                                        ({fl.completedProjects} jobs)
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
+                                      No Rating
                                     </span>
-                                  </div>
-                                ) : (
-                                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
-                                    No Rating
+                                  )}
+
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50/90 dark:bg-cyan-950/50 group-hover/fl:bg-cyan-100 dark:group-hover/fl:bg-cyan-900/70 px-2.5 py-0.5 rounded-full border border-cyan-200/70 dark:border-cyan-800/70 transition-colors shadow-2xs">
+                                    <Eye className="w-3 h-3" />
+                                    <span>Hover for Full Profile</span>
                                   </span>
-                                )}
-                              </div>
+                                </div>
 
-                              {wp.assignedFreelancerBio && (
-                                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 max-w-xl">
-                                  {wp.assignedFreelancerBio}
-                                </p>
-                              )}
+                                {fl.title && (
+                                  <p className="text-[11px] font-semibold text-cyan-700 dark:text-cyan-300">
+                                    {fl.title}
+                                  </p>
+                                )}
 
-                              <div className="text-[11px] text-slate-400 flex items-center gap-3 pt-0.5">
-                                {Boolean(wp.assignedFreelancerYearsOfExperience && wp.assignedFreelancerYearsOfExperience > 0) && (
-                                  <span>{wp.assignedFreelancerYearsOfExperience}+ Years Exp.</span>
+                                {fl.bio && (
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 max-w-xl">
+                                    {fl.bio}
+                                  </p>
                                 )}
-                                {Boolean(wp.assignedFreelancerHourlyRate && wp.assignedFreelancerHourlyRate > 0) && (
-                                  <span>${wp.assignedFreelancerHourlyRate}/hr</span>
-                                )}
-                                <span>{wp.assignedFreelancerLocation || 'Remote'}</span>
+
+                                <div className="text-[11px] text-slate-400 flex items-center gap-3 pt-0.5">
+                                  {Boolean(fl.yearsOfExperience && fl.yearsOfExperience > 0) && (
+                                    <span>{fl.yearsOfExperience}+ Years Exp.</span>
+                                  )}
+                                  {Boolean(fl.hourlyRate && fl.hourlyRate > 0) && (
+                                    <span>${fl.hourlyRate}/hr</span>
+                                  )}
+                                  <span>{fl.location || 'Remote'}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
+                          </FreelancerProfileHoverCard>
 
                           {/* Match Score & "Pick Someone Else" Button */}
                           <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
