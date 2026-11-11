@@ -39,7 +39,8 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("CHROMA_COLLECTION", "CHROMA_COLLECTION_NAME"),
     )
     api_host: str = Field(default="0.0.0.0", alias="API_HOST")
-    api_port: int = Field(default=8001, alias="API_PORT")
+    api_port: int = Field(default=8001, validation_alias=AliasChoices("PORT", "API_PORT"))
+    cors_origins: list[str] = Field(default_factory=lambda: ["*"], alias="CORS_ORIGINS")
     request_timeout_seconds: float = Field(default=15.0, alias="REQUEST_TIMEOUT_SECONDS")
     max_llm_retries: int = Field(default=1, alias="MAX_LLM_RETRIES")
 

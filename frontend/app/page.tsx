@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import MerchantDashboardPage from '@/app/dashboard/page';
 import FreelancerDashboardPage from '@/app/freelancer/dashboard/page';
+import { RenderWakeupBanner } from '@/components/ai/RenderWakeupBanner';
 
 export default function HomePage() {
   const { data: session } = useSession();
@@ -48,6 +49,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col w-full">
+      <RenderWakeupBanner />
       {/* Fullscreen Hero Section with Graduated Transparent Background Image */}
       <section className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center items-center overflow-hidden px-4 sm:px-6 lg:px-8 w-full">
         {/* Background Layer with Right-Side Visibility (~20%) & Multi-Stop Fade to Transparency */}

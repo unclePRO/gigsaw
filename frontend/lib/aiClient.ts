@@ -13,7 +13,11 @@ import {
   IAiProgressSummary,
 } from '@/types';
 
-const AI_BASE_URL = process.env.NEXT_PUBLIC_AI_MICROSERVICE_URL || 'http://localhost:8001';
+const AI_BASE_URL =
+  process.env.AI_SERVICE_URL ||
+  process.env.NEXT_PUBLIC_AI_MICROSERVICE_URL ||
+  process.env.AI_MICROSERVICE_URL ||
+  'http://localhost:8001';
 
 export class AiClientError extends Error {
   status: number;
@@ -31,7 +35,7 @@ export class AiClientError extends Error {
   }
 }
 
-async function fetchFromAi<T>(path: string, options: RequestInit = {}, timeoutMs: number = 45000): Promise<T> {
+async function fetchFromAi<T>(path: string, options: RequestInit = {}, timeoutMs: number = 75000): Promise<T> {
   const url = `${AI_BASE_URL}${path}`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
