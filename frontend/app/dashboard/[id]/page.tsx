@@ -26,6 +26,7 @@ import {
   Star,
   Award,
   ChevronLeft,
+  ChevronRight,
   XCircle,
   AlertTriangle,
   ChevronDown,
@@ -37,11 +38,21 @@ import {
   RotateCcw,
   FileText,
   Receipt,
+  LayoutDashboard,
+  CreditCard,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ArrowUpRight,
+  HelpCircle,
+  Briefcase,
+  Check,
 } from 'lucide-react';
 import { WorkPackage, ProjectProposal, IAiProgressSummary, IAiCounterofferAnalysis } from '@/types';
 import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
 import { EmbeddedProjectChat } from '@/components/chat/EmbeddedProjectChat';
 import { CheckoutSection } from '@/components/dashboard/CheckoutSection';
+
+export type DashboardTab = 'general' | 'members' | 'chat' | 'money';
 
 export default function MerchantProjectWorkspacePage() {
   const router = useRouter();
@@ -54,6 +65,10 @@ export default function MerchantProjectWorkspacePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Tab & Retractable Sidebar State
+  const [activeTab, setActiveTab] = useState<DashboardTab>('general');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   // Specialist Swap State
   const [swappingPackageId, setSwappingPackageId] = useState<string | null>(null);
   const [swapFeedbackMsg, setSwapFeedbackMsg] = useState<string | null>(null);
@@ -62,7 +77,7 @@ export default function MerchantProjectWorkspacePage() {
   const [progressSummary, setProgressSummary] = useState<IAiProgressSummary | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(false);
 
-  // Standalone chat modal toggle (if merchant prefers modal view)
+  // Standalone chat modal toggle (if merchant prefers pop-out modal)
   const [chatModalOpen, setChatModalOpen] = useState(false);
 
   // Revision modal state
@@ -128,7 +143,6 @@ export default function MerchantProjectWorkspacePage() {
   };
 
   const fetchProgressSummary = useCallback(async (proj: ProjectProposal) => {
-    // Only fetch AI progress summary if project is active / funded
     if (proj.status !== 'FUNDED_IN_PROGRESS' && proj.status !== 'funded') return;
 
     setLoadingProgress(true);
@@ -428,7 +442,7 @@ export default function MerchantProjectWorkspacePage() {
     }
   };
 
-  // AG Grid column definitions (used only for funded / active stage)
+  // AG Grid column definitions for Milestones
   const columnDefs = useMemo<ColDef<WorkPackage>[]>(() => [
     {
       headerName: 'Milestone Title & Scope',
@@ -461,29 +475,17 @@ export default function MerchantProjectWorkspacePage() {
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
         const wp = params.data;
         if (!wp) return null;
-        const name = wp.assignedFreelancerName || 'Specialist';
-        const rating = wp.assignedFreelancerRating || 5.0;
-        const count = wp.assignedFreelancerCompletedProjects || 0;
-        const yrs = wp.assignedFreelancerYearsOfExperience || 3;
-        const loc = wp.assignedFreelancerLocation || 'Remote';
-
         return (
           <div className="flex items-center gap-2 py-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#168C80] to-[#32B6A5] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-              {name.charAt(0)}
+              {(wp.assignedFreelancerName || 'S').charAt(0)}
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                {name}
+              <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                {wp.assignedFreelancerName || 'Specialist'}
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-                <span className="text-amber-500 font-semibold flex items-center">
-                  ★ {rating.toFixed(1)} ({count})
-                </span>
-                <span>&bull;</span>
-                <span>{yrs}y exp</span>
-                <span>&bull;</span>
-                <span className="truncate max-w-[50px]">{loc}</span>
+              <div className="text-[10px] text-slate-400 truncate">
+                {wp.assignedFreelancerEmail || 'Talent'}
               </div>
             </div>
           </div>
@@ -491,986 +493,1149 @@ export default function MerchantProjectWorkspacePage() {
       },
     },
     {
-      headerName: 'Escrow Price',
+      headerName: 'Price (USD)',
       field: 'allocatedPrice',
       width: 120,
-      cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
-        const wp = params.data;
-        if (!wp) return null;
-        return (
-          <div className="py-2.5">
-            <div className="font-bold text-xs text-slate-900 dark:text-white">
-              ${wp.allocatedPrice?.toLocaleString()} USD
-            </div>
-            <div className="text-[10px] text-slate-400">
-              {wp.estimatedDays ? `~${wp.estimatedDays} days` : 'Standard'}
-            </div>
-          </div>
-        );
-      },
+      cellRenderer: (params: ICellRendererParams<WorkPackage>) => (
+        <span className="font-black text-xs text-slate-900 dark:text-white">
+          ${Number(params.value || 0).toLocaleString()}
+        </span>
+      ),
     },
     {
-      headerName: 'Status & Deliverable',
+      headerName: 'Status',
       field: 'status',
-      width: 210,
+      width: 150,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
-        const wp = params.data;
-        if (!wp) return null;
-
-        const isCompleted = wp.status === 'Completed';
-        const isRevision = wp.status === 'Revision Requested';
-        const isCancelled = wp.status === 'Cancelled' || project?.status === 'cancelled';
-        const hasDeliverable = Boolean(wp.deliverableLink);
-        const hasCounteroffer = wp.quotationStatus === 'counteroffer';
-
+        const status = params.value;
+        const colorMap: Record<string, string> = {
+          'Completed': 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+          'In Review': 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30',
+          'In Progress': 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/30',
+          'Revision Requested': 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+          'Pending': 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+        };
+        const badgeClass = colorMap[status] || colorMap['Pending'];
         return (
-          <div className="py-2 space-y-1">
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  isCompleted
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                    : isRevision
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                    : isCancelled
-                    ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
-                    : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20'
-                }`}
-              >
-                {isCompleted ? (
-                  <CheckCircle2 className="w-3 h-3" />
-                ) : isCancelled ? (
-                  <XCircle className="w-3 h-3" />
-                ) : (
-                  <Clock className="w-3 h-3" />
-                )}
-                <span>{isCancelled ? 'Cancelled' : wp.status}</span>
-              </span>
-            </div>
-
-            {hasCounteroffer && (
-              <button
-                onClick={() => handleReviewCounteroffer(wp)}
-                className="block text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:underline"
-              >
-                ⚡ Counteroffer: ${wp.quotationAmount} USD ({wp.quotationDeliveryDays}d) &rarr; Review
-              </button>
-            )}
-
-            {hasDeliverable && (
-              <a
-                href={wp.deliverableLink}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
-              >
-                <ExternalLink className="w-3 h-3" />
-                <span>Inspect Deliverable</span>
-              </a>
-            )}
-          </div>
+          <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${badgeClass}`}>
+            {status}
+          </span>
         );
       },
     },
     {
-      headerName: 'Actions',
-      width: 320,
+      headerName: 'Deliverable Link',
+      field: 'deliverableLink',
+      width: 180,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
         const wp = params.data;
-        if (!wp || !projectId) return null;
-
-        const isCompleted = wp.status === 'Completed';
-        const isProjectCancelled = project?.status === 'cancelled';
-        const isFunded = project?.status === 'FUNDED_IN_PROGRESS' || project?.status === 'funded';
-
-        if (isProjectCancelled) {
+        if (!wp) return null;
+        if (wp.deliverableLink) {
           return (
-            <div className="py-3 text-[11px] text-slate-400 italic">
-              Project Cancelled
-            </div>
+            <a
+              href={wp.deliverableLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Inspect Output</span>
+            </a>
           );
         }
+        return <span className="text-[11px] text-slate-400">Awaiting submission</span>;
+      },
+    },
+    {
+      headerName: 'Merchant Actions',
+      width: 250,
+      cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
+        const wp = params.data;
+        if (!wp || !project) return null;
+        const canReview = wp.status === 'In Progress' || wp.status === 'Completed' || wp.status === 'Revision Requested';
 
         return (
-          <div className="flex items-center gap-1.5 py-2.5 flex-wrap">
-            {!isCompleted ? (
-              <button
-                onClick={async () => {
-                  await handleUpdateStatus(projectId, wp.id, 'Completed');
-                  setReviewModalPackage({ projectId, package: wp });
-                }}
-                className="px-3 py-1 rounded-xl text-xs font-bold transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1"
-                title="Approve deliverable and rate specialist"
-              >
-                <CheckCircle2 className="w-3 h-3" />
-                <span>Approve & Review</span>
-              </button>
-            ) : wp.reviewSubmitted ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-xl border border-amber-200 dark:border-amber-900/40">
-                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                <span>{wp.reviewRating}/5 Reviewed</span>
-              </span>
-            ) : (
+          <div className="flex items-center gap-1.5 py-1">
+            {canReview && wp.status !== 'Completed' && (
               <button
                 onClick={() => setReviewModalPackage({ projectId, package: wp })}
-                className="px-3 py-1 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-sm flex items-center gap-1 transition-all animate-pulse"
-                title="Rate specialist and submit review"
+                className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer"
               >
-                <Star className="w-3 h-3 fill-white" />
-                <span>Rate & Review</span>
+                Approve & Rate
               </button>
             )}
 
-            {!isCompleted && (
+            {canReview && wp.status !== 'Completed' && (
               <button
-                onClick={() =>
-                  setRevisionModalOpen({ projectId, packageId: wp.id })
-                }
-                className="px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                onClick={() => setRevisionModalOpen({ projectId, packageId: wp.id })}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors cursor-pointer"
               >
-                Revision
+                Request Revision
               </button>
             )}
 
-            {(isFunded || isCompleted) && (
-              <button
-                onClick={() => handleOpenOfficialInvoice(wp.id)}
-                disabled={loadingInvoice === wp.id}
-                className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-[#E5F5F1] dark:bg-[#254542] hover:bg-[#D8E9E4] dark:hover:bg-[#1B3B39] text-[#168C80] dark:text-[#73D8C7] border border-[#D8E9E4] dark:border-[#345451] transition-colors flex items-center gap-1 cursor-pointer"
-                title="Open official PayPal hosted invoice"
-              >
-                {loadingInvoice === wp.id ? (
-                  <RefreshCw className="w-3 h-3 animate-spin text-[#168C80] dark:text-[#73D8C7]" />
-                ) : (
-                  <FileText className="w-3 h-3 text-[#168C80] dark:text-[#73D8C7]" />
+            {wp.status === 'Completed' && (
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Approved</span>
+                </span>
+                {wp.reviewRating && (
+                  <span className="text-[10px] text-amber-500 font-bold ml-1">
+                    ★ {wp.reviewRating}
+                  </span>
                 )}
-                <span>PayPal Invoice</span>
-              </button>
+              </div>
+            )}
+
+            {wp.status === 'Pending' || wp.status === 'Cancelled' && (
+              <span className="text-[11px] text-slate-400">In execution</span>
             )}
           </div>
         );
       },
     },
-  ], [projectId, project?.status]);
+  ], [project, projectId]);
+
+  // Derived state calculations
+  const totalTasks = project?.workPackages?.length || 0;
+  const completedTasks = project?.workPackages?.filter((w) => w.status === 'Completed').length || 0;
+  const acceptedTasks = project?.workPackages?.filter((w) => w.inviteStatus === 'accepted').length || 0;
+  const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const isCancelled = project?.status === 'cancelled';
+  const isCompleted = project?.status === 'completed' || (totalTasks > 0 && completedTasks === totalTasks);
+  const isFundedOrActive = project?.status === 'FUNDED_IN_PROGRESS' || project?.status === 'funded';
+  const isReadyToFund = !isFundedOrActive && !isCancelled && !isCompleted && totalTasks > 0 && acceptedTasks === totalTasks;
+  const isOnHold = !isFundedOrActive && !isReadyToFund && !isCancelled && !isCompleted;
+
+  // Counteroffers count
+  const pendingCounteroffers = useMemo(() => {
+    if (!project?.workPackages) return [];
+    return project.workPackages.filter(
+      (wp) => wp.quotationStatus === 'pending' || (wp.quotationAmount && wp.quotationAmount !== wp.allocatedPrice)
+    );
+  }, [project?.workPackages]);
 
   if (loading) {
     return (
-      <div className="p-6 max-w-6xl mx-auto space-y-6">
-        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
-          <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-500" />
-          <span>Loading project workspace from MongoDB Atlas...</span>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+        <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
+        <div className="h-40 bg-slate-100 dark:bg-[#1B3B39] rounded-2xl animate-pulse" />
+        <div className="h-96 bg-slate-100 dark:bg-[#1B3B39] rounded-2xl animate-pulse" />
       </div>
     );
   }
 
   if (error || !project) {
     return (
-      <div className="p-6 max-w-6xl mx-auto space-y-6">
-        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4">
-          <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">Project Not Found</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            {error || "Could not find the requested project. It may have been removed or you do not have permission to view it."}
-          </p>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold transition-all"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Return to All Projects</span>
-          </Link>
-        </div>
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-4">
+        <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Project Not Found</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{error || 'Unable to locate this project.'}</p>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#168C80] hover:bg-[#10766D] text-white text-xs font-bold rounded-xl"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Return to Dashboard</span>
+        </Link>
       </div>
     );
   }
 
-  const isCancelled = project.status === 'cancelled';
-  const isCompleted = project.status === 'completed';
-  const isReadyToFund = project.status === 'READY_TO_FUND';
-  const isFundedOrActive = project.status === 'FUNDED_IN_PROGRESS' || project.status === 'funded';
-  const isOnHold = !isFundedOrActive && !isReadyToFund && !isCompleted && !isCancelled;
-
-  const totalTasks = project.workPackages.length;
-  const acceptedTasks = project.workPackages.filter((w) => w.inviteStatus === 'accepted').length;
-  const completedTasks = project.workPackages.filter((w) => w.status === 'Completed').length;
-  const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
-      {/* Breadcrumb Navigation & Project Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div className="flex items-center gap-2 text-xs">
-          <Link
-            href="/dashboard"
-            className="text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 flex items-center gap-1 font-semibold transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>All Projects</span>
-          </Link>
-          <span className="text-slate-300 dark:text-slate-700">/</span>
-          <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-xs">
-            {project.projectName}
-          </span>
-        </div>
-
-        {/* Quick project switcher */}
-        {allProjects.length > 1 && (
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-slate-400 font-medium">Switch Project:</span>
-            <select
-              value={projectId}
-              onChange={(e) => router.push(`/dashboard/${e.target.value}`)}
-              className="text-xs font-semibold bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
-            >
-              {allProjects.map((p) => {
-                const pid = (p as any)._id || p.id;
-                return (
-                  <option key={pid} value={pid}>
-                    {p.projectName} {p.status === 'cancelled' ? '(Cancelled)' : ''}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* Top Header Card */}
-      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors shadow-sm">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
-                isCancelled
-                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
-                  : isCompleted
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                  : isReadyToFund
-                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
-                  : isOnHold
-                  ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-[#D8E9E4] dark:border-[#345451]'
-                  : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
-              }`}
-            >
-              {isCancelled
-                ? 'Project Cancelled'
-                : isCompleted
-                ? 'Completed'
-                : isReadyToFund
-                ? 'Ready to Fund (All Specialists Accepted)'
-                : isOnHold
-                ? 'Project On Hold (Awaiting Specialist Invites)'
-                : 'Funded & Active'}
-            </span>
-
-            <span className="text-xs font-semibold text-slate-400">
-              {isOnHold || isReadyToFund
-                ? `${acceptedTasks}/${totalTasks} Specialists Accepted`
-                : `${completedTasks}/${totalTasks} Milestones Complete (${progressPercent}%)`}
-            </span>
-          </div>
-
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            {project.projectName}
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl">
-            {project.merchantPrompt}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-right">
-            <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
-              Total Budget
-            </span>
-            <span className="text-sm font-black text-slate-900 dark:text-white">
-              ${project.totalBudget?.toLocaleString()} USD
-            </span>
-          </div>
-
-          {!isCancelled && !isCompleted && (
-            <button
-              onClick={() => setCancelModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 text-xs font-bold rounded-xl transition-all cursor-pointer"
-              title="Cancel project and release escrow"
-            >
-              <XCircle className="w-3.5 h-3.5" />
-              <span>Cancel Project</span>
-            </button>
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col md:flex-row bg-[#F0F8F6] dark:bg-[#102B2B] text-slate-900 dark:text-slate-100">
+      {/* ============================================================== */}
+      {/* RETRACTABLE SIDEBAR (Merchant Workspace Navigation)             */}
+      {/* ============================================================== */}
+      <aside
+        className={`bg-white dark:bg-[#142F2E] border-r border-[#D8E9E4] dark:border-[#345451] transition-all duration-300 flex flex-col shrink-0 z-20 ${
+          isSidebarCollapsed ? 'w-16 md:w-20' : 'w-64 md:w-72'
+        }`}
+      >
+        {/* Sidebar Header: Project Brand & Collapse Toggle */}
+        <div className="p-4 border-b border-[#D8E9E4] dark:border-[#345451] flex items-center justify-between gap-2">
+          {!isSidebarCollapsed && (
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#168C80] dark:text-[#73D8C7] block truncate">
+                Project Workspace
+              </span>
+              <h2 className="text-xs font-black text-[#10413E] dark:text-[#F0FAF8] truncate" title={project.projectName}>
+                {project.projectName}
+              </h2>
+            </div>
           )}
 
           <button
-            onClick={() => fetchProjectDetails(false)}
-            className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-            title="Refresh from MongoDB"
+            type="button"
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="p-1.5 rounded-lg border border-[#D8E9E4] dark:border-[#345451] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ml-auto cursor-pointer"
+            title={isSidebarCollapsed ? 'Expand sidebar' : 'Retract sidebar'}
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4 text-[#168C80] dark:text-[#73D8C7]" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4 text-slate-500" />
+            )}
           </button>
         </div>
-      </div>
 
-      {swapFeedbackMsg && (
-        <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl text-xs font-semibold text-cyan-800 dark:text-cyan-300 flex items-center gap-2 animate-fadeIn">
-          <RotateCcw className="w-4 h-4 text-cyan-500 shrink-0" />
-          <span>{swapFeedbackMsg}</span>
-        </div>
-      )}
+        {/* Sidebar Navigation Tabs */}
+        <nav className="p-3 space-y-1.5 flex-1">
+          {/* TAB 1: GENERAL */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('general')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+              activeTab === 'general'
+                ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-l-4 border-[#168C80] dark:border-[#32B6A5] shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
+            }`}
+            title="General Overview & Basic Details"
+          >
+            <LayoutDashboard className="w-4 h-4 shrink-0 text-[#168C80] dark:text-[#32B6A5]" />
+            {!isSidebarCollapsed && (
+              <div className="flex-1 flex items-center justify-between min-w-0">
+                <span className="truncate">General</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/70 dark:bg-black/20 text-slate-500 dark:text-slate-400">
+                  {progressPercent}%
+                </span>
+              </div>
+            )}
+          </button>
 
-      {cancelSuccessMsg && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs font-semibold text-rose-800 dark:text-rose-300 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-          <span>{cancelSuccessMsg}</span>
-        </div>
-      )}
-
-      {reviewSuccessMsg && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-          <span>{reviewSuccessMsg}</span>
-        </div>
-      )}
-
-      {isCancelled && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-xs text-rose-900 dark:text-rose-200">
-          <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
-          <div>
-            <strong className="font-bold">Project Cancelled:</strong> This project was cancelled by the merchant. Milestones have been closed and remaining escrow funds released.
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* STATE 1: PROJECT ON HOLD (Awaiting invites / No cluttered tables) */}
-      {/* ============================================================== */}
-      {isOnHold && (
-        <div className="space-y-6">
-          {/* On Hold Notification Banner */}
-          <div className="p-5 bg-gradient-to-r from-[#168C80]/15 via-[#32B6A5]/10 to-[#73D8C7]/10 border border-[#168C80]/30 rounded-2xl space-y-2 text-xs text-[#10413E] dark:text-[#F0FAF8] shadow-sm">
-            <div className="flex items-center gap-2 font-bold text-sm text-[#10413E] dark:text-[#F0FAF8]">
-              <Clock className="w-4 h-4 text-[#168C80] dark:text-[#32B6A5] animate-spin" />
-              <span>Project On Hold &bull; Awaiting Specialist Confirmations</span>
-            </div>
-            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Your matched specialists have been invited to their respective milestones. The project will remain on hold until every specialist accepts. You can coordinate with them in the team chat right now. If a specialist declines or takes too long, click <strong>&ldquo;Find Someone Else&rdquo;</strong> to instantly swap them with another top AI-matched talent.
-            </p>
-          </div>
-
-          {/* 2-Column Streamlined Workspace: Team Cart & Invitations (Left) | Embedded Team Chat (Right) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left Column: People Working & Acceptance Status */}
-            <div className="lg:col-span-6 space-y-4">
-              <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-cyan-500" />
-                    <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                      Invited Specialists Team ({project.workPackages.length})
-                    </h2>
-                  </div>
-                  <span className="text-[11px] font-bold text-[#168C80] dark:text-[#73D8C7]">
-                    {acceptedTasks} of {totalTasks} Accepted
+          {/* TAB 2: MEMBERS */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('members')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer relative ${
+              activeTab === 'members'
+                ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-l-4 border-[#168C80] dark:border-[#32B6A5] shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
+            }`}
+            title="Members, Invites & Counteroffers"
+          >
+            <Users className="w-4 h-4 shrink-0 text-[#168C80] dark:text-[#32B6A5]" />
+            {!isSidebarCollapsed && (
+              <div className="flex-1 flex items-center justify-between min-w-0">
+                <span className="truncate">Members</span>
+                <div className="flex items-center gap-1">
+                  {pendingCounteroffers.length > 0 && (
+                    <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-amber-500 text-white animate-pulse" title="Counteroffers pending review">
+                      {pendingCounteroffers.length} Offer
+                    </span>
+                  )}
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    {acceptedTasks}/{totalTasks}
                   </span>
                 </div>
+              </div>
+            )}
+            {isSidebarCollapsed && pendingCounteroffers.length > 0 && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            )}
+          </button>
 
-                <div className="space-y-3.5">
-                  {project.workPackages.map((wp) => {
-                    const isAccepted = wp.inviteStatus === 'accepted';
-                    const isDeclined = wp.inviteStatus === 'declined';
-                    const isSwapping = swappingPackageId === wp.id;
+          {/* TAB 3: CHAT */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('chat')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer relative ${
+              activeTab === 'chat'
+                ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-l-4 border-[#168C80] dark:border-[#32B6A5] shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
+            }`}
+            title="Dedicated Team Chat"
+          >
+            <MessageSquare className="w-4 h-4 shrink-0 text-[#168C80] dark:text-[#32B6A5]" />
+            {!isSidebarCollapsed && (
+              <div className="flex-1 flex items-center justify-between min-w-0">
+                <span className="truncate">Team Chat</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live real-time room" />
+              </div>
+            )}
+          </button>
 
-                    return (
-                      <div
-                        key={wp.id}
-                        className={`p-4 rounded-xl border transition-all ${
-                          isAccepted
-                            ? 'bg-emerald-500/5 dark:bg-emerald-950/20 border-emerald-500/30'
-                            : isDeclined
-                            ? 'bg-rose-500/5 dark:bg-rose-950/20 border-rose-500/30'
-                            : 'bg-slate-50/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="space-y-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-                                {wp.category}
-                              </span>
-                              <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                {wp.title}
-                              </h3>
-                            </div>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                              {wp.description}
-                            </p>
-                          </div>
+          {/* TAB 4: MONEY */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('money')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer relative ${
+              activeTab === 'money'
+                ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-l-4 border-[#168C80] dark:border-[#32B6A5] shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
+            }`}
+            title="Money, PayPal Escrow & Invoices"
+          >
+            <DollarSign className="w-4 h-4 shrink-0 text-[#168C80] dark:text-[#32B6A5]" />
+            {!isSidebarCollapsed && (
+              <div className="flex-1 flex items-center justify-between min-w-0">
+                <span className="truncate">Money</span>
+                <span
+                  className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                    isFundedOrActive
+                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                      : isReadyToFund
+                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 animate-pulse'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                  }`}
+                >
+                  {isFundedOrActive ? 'Escrow Paid' : isReadyToFund ? 'Ready to Pay' : 'On Hold'}
+                </span>
+              </div>
+            )}
+          </button>
+        </nav>
 
-                          <div className="text-right shrink-0">
-                            <span className="text-xs font-black text-slate-900 dark:text-white">
-                              ${wp.allocatedPrice?.toLocaleString()} USD
-                            </span>
-                          </div>
-                        </div>
+        {/* Sidebar Footer: Back to Projects List */}
+        <div className="p-3 border-t border-[#D8E9E4] dark:border-[#345451] space-y-2">
+          <Link
+            href="/dashboard"
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            title="Back to all projects"
+          >
+            <ChevronLeft className="w-4 h-4 shrink-0 text-[#168C80] dark:text-[#32B6A5]" />
+            {!isSidebarCollapsed && <span className="truncate">All Projects</span>}
+          </Link>
+        </div>
+      </aside>
 
-                        {/* Specialist Info & Status Row */}
-                        <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#168C80] to-[#32B6A5] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-                              {(wp.assignedFreelancerName || 'S').charAt(0)}
-                            </div>
-                            <div className="text-[11px]">
-                              <span className="font-bold text-slate-800 dark:text-slate-200">
-                                {wp.assignedFreelancerName || 'Specialist Talent'}
-                              </span>
-                              <span className="text-slate-400 text-[10px] ml-1">
-                                ({wp.assignedFreelancerRating ? `★ ${wp.assignedFreelancerRating.toFixed(1)}` : 'Top Match'})
-                              </span>
-                            </div>
-                          </div>
+      {/* ============================================================== */}
+      {/* MAIN WORKSPACE CONTENT AREA                                     */}
+      {/* ============================================================== */}
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 space-y-6 overflow-y-auto">
+        {/* Workspace Top Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#D8E9E4] dark:border-[#345451]">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-black tracking-wide border ${
+                  isCancelled
+                    ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                    : isCompleted
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                    : isReadyToFund
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                    : isOnHold
+                    ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-[#D8E9E4] dark:border-[#345451]'
+                    : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+                }`}
+              >
+                {isCancelled
+                  ? 'Project Cancelled'
+                  : isCompleted
+                  ? 'Completed'
+                  : isReadyToFund
+                  ? 'Ready to Fund (All Specialists Accepted)'
+                  : isOnHold
+                  ? 'Project On Hold (Awaiting Specialist Invites)'
+                  : 'Funded & Active'}
+              </span>
 
-                          <div className="flex items-center gap-2">
-                            {/* Acceptance Status Badge */}
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                isAccepted
-                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
-                                  : isDeclined
-                                  ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30'
-                                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
-                              }`}
-                            >
-                              {isAccepted ? (
-                                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                              ) : isDeclined ? (
-                                <XCircle className="w-3 h-3 text-rose-500" />
-                              ) : (
-                                <Clock className="w-3 h-3 text-amber-500 animate-pulse" />
-                              )}
-                              <span>
-                                {isAccepted ? 'Accepted' : isDeclined ? 'Declined' : 'Invited (Pending)'}
-                              </span>
-                            </span>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {isOnHold || isReadyToFund
+                  ? `${acceptedTasks}/${totalTasks} Specialists Accepted`
+                  : `${completedTasks}/${totalTasks} Milestones Complete (${progressPercent}%)`}
+              </span>
+            </div>
 
-                            {/* Find Someone Else Button */}
-                            <button
-                              type="button"
-                              disabled={isSwapping}
-                              onClick={() => handleSwapSpecialist(wp)}
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
-                                isDeclined
-                                  ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm animate-pulse'
-                                  : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
-                              }`}
-                              title="Replace this specialist with another AI-matched candidate"
-                            >
-                              {isSwapping ? (
-                                <>
-                                  <RefreshCw className="w-3 h-3 animate-spin text-cyan-500" />
-                                  <span>Swapping...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <RotateCcw className="w-3 h-3" />
-                                  <span>{isDeclined ? 'Find Alternative' : 'Find Someone Else'}</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+            <h1 className="text-xl sm:text-2xl font-black text-[#10413E] dark:text-[#F0FAF8] tracking-tight truncate">
+              {project.projectName}
+            </h1>
+          </div>
+
+          {/* Quick Header Actions */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="bg-white dark:bg-[#1B3B39] border border-[#D8E9E4] dark:border-[#345451] rounded-xl px-3.5 py-1.5 text-right shadow-xs">
+              <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
+                Total Budget
+              </span>
+              <span className="text-xs font-black text-[#10413E] dark:text-[#F0FAF8]">
+                ${project.totalBudget?.toLocaleString()} USD
+              </span>
+            </div>
+
+            {!isCancelled && !isCompleted && (
+              <button
+                type="button"
+                onClick={() => setCancelModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                title="Cancel project and release escrow"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Cancel</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => fetchProjectDetails(false)}
+              className="p-2 border border-[#D8E9E4] dark:border-[#345451] rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Refresh from MongoDB"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Global Notifications */}
+        {swapFeedbackMsg && (
+          <div className="p-4 bg-[#E5F5F1] dark:bg-[#254542] border border-[#168C80]/30 rounded-2xl text-xs font-semibold text-[#168C80] dark:text-[#73D8C7] flex items-center gap-2 animate-fadeIn">
+            <RotateCcw className="w-4 h-4 text-[#168C80] shrink-0" />
+            <span>{swapFeedbackMsg}</span>
+          </div>
+        )}
+
+        {cancelSuccessMsg && (
+          <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs font-semibold text-rose-800 dark:text-rose-300 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+            <span>{cancelSuccessMsg}</span>
+          </div>
+        )}
+
+        {reviewSuccessMsg && (
+          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span>{reviewSuccessMsg}</span>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 1: GENERAL OVERVIEW                                        */}
+        {/* ============================================================== */}
+        {activeTab === 'general' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Project State Banner depending on accepted count */}
+            {isOnHold && (
+              <div className="p-5 bg-gradient-to-r from-[#168C80]/15 via-[#32B6A5]/10 to-[#73D8C7]/10 border border-[#168C80]/30 rounded-2xl space-y-3 shadow-xs">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-2.5 font-bold text-sm text-[#10413E] dark:text-[#F0FAF8]">
+                    <Clock className="w-4 h-4 text-[#168C80] dark:text-[#32B6A5] animate-spin" />
+                    <span>Project On Hold &bull; Awaiting Specialist Confirmations ({acceptedTasks}/{totalTasks} Accepted)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('members')}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#168C80] hover:bg-[#10766D] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  >
+                    <span>View Specialists & Invites</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                  Your project is on hold until all {totalTasks} matched specialists accept their milestone invitations. You can discuss details directly in the <strong>Team Chat</strong> tab. If someone declines or is delayed, visit the <strong>Members</strong> tab to replace them instantly with one click.
+                </p>
+              </div>
+            )}
+
+            {isReadyToFund && (
+              <div className="p-5 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-2xl space-y-3 shadow-xs">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-2.5 font-bold text-sm text-emerald-800 dark:text-emerald-200">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <span>All Specialists Confirmed &bull; Ready for Single Checkout!</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('money')}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  >
+                    <span>Proceed to Money & Checkout</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                  Every specialist has accepted their milestone quote. Approve the single ${project.totalBudget?.toLocaleString()} USD authorization in the <strong>Money</strong> tab to instantly fund escrow and begin development.
+                </p>
+              </div>
+            )}
+
+            {isFundedOrActive && (
+              <div className="p-5 bg-gradient-to-r from-cyan-500/10 via-emerald-500/5 to-teal-500/10 border border-cyan-500/30 rounded-2xl flex items-center justify-between gap-4 flex-wrap shadow-xs">
+                <div className="flex items-center gap-2.5 font-bold text-sm text-slate-900 dark:text-white">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  <span>Project Active & Funded &bull; PayPal Escrow Protection Live</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('money')}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#168C80] dark:text-[#73D8C7] hover:underline cursor-pointer"
+                >
+                  <span>View Escrow Ledger & Invoices</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Financial Overview Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-5 space-y-1 shadow-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Project Budget</span>
+                <div className="text-xl font-black text-[#10413E] dark:text-[#F0FAF8]">
+                  ${project.totalBudget?.toLocaleString()} USD
+                </div>
+                <span className="text-[11px] text-slate-400">Total approved investment</span>
+              </div>
+
+              <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-5 space-y-1 shadow-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Allocated to Specialists</span>
+                <div className="text-xl font-black text-[#168C80] dark:text-[#73D8C7]">
+                  ${project.allocatedTotal?.toLocaleString()} USD
+                </div>
+                <span className="text-[11px] text-slate-400">Across {totalTasks} milestones</span>
+              </div>
+
+              <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-5 space-y-1 shadow-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Retained Buffer</span>
+                <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                  ${project.savings?.toLocaleString() || 0} USD
+                </div>
+                <span className="text-[11px] text-slate-400">Retained reserve buffer</span>
+              </div>
+
+              <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-5 space-y-1 shadow-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Escrow Security</span>
+                <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  <span>{isFundedOrActive ? 'PayPal Escrow Active' : 'Awaiting Funding'}</span>
+                </div>
+                <span className="text-[11px] text-slate-400">
+                  {isFundedOrActive ? 'Disbursed upon deliverable approval' : 'Single checkout protection'}
+                </span>
               </div>
             </div>
 
-            {/* Right Column: Live Embedded Team Chat */}
-            <div className="lg:col-span-6">
-              <EmbeddedProjectChat
-                projectId={projectId}
-                projectName={project.projectName}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* STATE 2: READY TO FUND (The Single Consolidated Checkout)      */}
-      {/* ============================================================== */}
-      {isReadyToFund && (
-        <div className="space-y-6">
-          {/* STEP 2: The Single Multi-Seller Checkout Component */}
-          <CheckoutSection
-            project={project}
-            onPaymentSuccess={() => {
-              fetchProjectDetails();
-            }}
-          />
-
-          {/* Underneath: Specialist confirmation & Live Team Chat */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-6 space-y-4">
-              <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-emerald-500" />
-                    <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                      Confirmed Specialists Team
-                    </h2>
-                  </div>
-                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                    100% Ready to Start
-                  </span>
+            {/* AI Dynamic Progress Summary */}
+            <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-6 space-y-4 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#168C80] dark:text-[#32B6A5]" />
+                  <h3 className="text-sm font-bold text-[#10413E] dark:text-[#F0FAF8]">AI Project Manager Status</h3>
                 </div>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {completedTasks} of {totalTasks} milestones completed ({progressPercent}%)
+                </span>
+              </div>
 
-                <div className="space-y-3">
+              <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 ${
+                    isCancelled ? 'bg-rose-500' : 'bg-gradient-to-r from-[#168C80] to-[#73D8C7]'
+                  }`}
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+
+              {loadingProgress ? (
+                <div className="py-2 text-xs text-slate-400 flex items-center gap-2">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#168C80]" />
+                  <span>Evaluating project progress with Gemini AI...</span>
+                </div>
+              ) : progressSummary ? (
+                <div className="text-xs text-slate-600 dark:text-slate-300 bg-[#F0F8F6] dark:bg-[#102B2B] p-4 rounded-xl border border-[#D8E9E4] dark:border-[#345451] space-y-2">
+                  <p className="leading-relaxed">{progressSummary.summary}</p>
+                  {progressSummary.blocked_tasks && progressSummary.blocked_tasks.length > 0 && (
+                    <div className="text-amber-600 dark:text-amber-400 text-[11px] font-semibold flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Attention: {progressSummary.blocked_tasks.join(', ')}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {isOnHold
+                    ? 'All work packages are pending acceptance from the selected specialist team.'
+                    : 'Milestone execution is actively tracked across your assembled team.'}
+                </p>
+              )}
+            </div>
+
+            {/* Milestones & Deliverables Overview */}
+            <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-6 space-y-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-[#10413E] dark:text-[#F0FAF8]">
+                    Milestone Deliverables & Scope ({totalTasks})
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Review assigned tasks, inspect submitted outputs, and approve escrow disbursements.
+                  </p>
+                </div>
+              </div>
+
+              {isFundedOrActive || isCompleted ? (
+                <div className="ag-theme-alpine w-full h-[380px] rounded-xl overflow-hidden border border-[#D8E9E4] dark:border-[#345451]">
+                  <AgGridReact
+                    rowData={project.workPackages}
+                    columnDefs={columnDefs}
+                    rowHeight={70}
+                    headerHeight={44}
+                    defaultColDef={{
+                      sortable: true,
+                      resizable: true,
+                    }}
+                  />
+                </div>
+              ) : (
+                /* Compact Milestone Cards during On Hold / Pre-fund */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {project.workPackages.map((wp) => (
                     <div
                       key={wp.id}
-                      className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20 flex items-center justify-between gap-3"
+                      className="p-4 rounded-xl border border-[#D8E9E4] dark:border-[#345451] bg-[#F0F8F6]/60 dark:bg-[#102B2B]/60 space-y-2"
                     >
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                            {wp.category}
-                          </span>
-                          <span className="text-xs font-bold text-slate-900 dark:text-white">
-                            {wp.title}
-                          </span>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-[#168C80]/10 text-[#168C80] dark:text-[#73D8C7] border border-[#168C80]/20">
+                          {wp.category}
+                        </span>
+                        <span className="text-xs font-black text-[#10413E] dark:text-[#F0FAF8]">
+                          ${wp.allocatedPrice?.toLocaleString()} USD
+                        </span>
+                      </div>
+                      <h4 className="text-xs font-bold text-[#10413E] dark:text-[#F0FAF8]">{wp.title}</h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">{wp.description}</p>
+                      <div className="pt-2 border-t border-[#D8E9E4] dark:border-[#345451] flex items-center justify-between text-[11px]">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          Specialist: <strong>{wp.assignedFreelancerName || 'Assigned Talent'}</strong>
+                        </span>
+                        <span className="font-semibold text-[#168C80] dark:text-[#73D8C7]">
+                          {wp.inviteStatus === 'accepted' ? 'Accepted' : 'Invited'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 2: MEMBERS & INVITATIONS & COUNTEROFFERS                   */}
+        {/* ============================================================== */}
+        {activeTab === 'members' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Header info */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-black text-[#10413E] dark:text-[#F0FAF8]">
+                  Specialist Team & Invitation Status
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Track confirmation from each specialist. If someone declines or asks for scope adjustment, review counteroffers or swap them instantly.
+                </p>
+              </div>
+              <div className="text-xs font-bold px-3 py-1.5 rounded-xl bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border border-[#D8E9E4] dark:border-[#345451] self-start sm:self-auto">
+                {acceptedTasks} of {totalTasks} Confirmed
+              </div>
+            </div>
+
+            {/* Counteroffers Section (if any specialist proposed adjustments) */}
+            {pendingCounteroffers.length > 0 && (
+              <div className="p-5 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 rounded-2xl space-y-3 shadow-xs">
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-bold text-sm">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span>Specialist Counteroffer Received ({pendingCounteroffers.length})</span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  One or more specialists proposed adjustments to their scope, timeline, or quote. Click below to inspect AI feasibility and decide:
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  {pendingCounteroffers.map((wp) => (
+                    <div
+                      key={wp.id}
+                      className="p-3 bg-white dark:bg-[#1B3B39] rounded-xl border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-[#10413E] dark:text-[#F0FAF8]">
+                          {wp.assignedFreelancerName} &bull; {wp.title}
                         </div>
-                        <div className="text-[11px] text-slate-600 dark:text-slate-300">
-                          Specialist: <strong className="text-slate-800 dark:text-slate-100">{wp.assignedFreelancerName}</strong> &bull; {wp.assignedFreelancerEmail}
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Proposed quote: <strong className="text-amber-600 dark:text-amber-400">${wp.quotationAmount || wp.allocatedPrice} USD</strong> (Original: ${wp.allocatedPrice} USD) &bull; {wp.quotationDeliveryDays || wp.estimatedDays || 7} Days
                         </div>
                       </div>
-
-                      <div className="text-right shrink-0">
-                        <div className="text-xs font-black text-slate-900 dark:text-white">
-                          ${wp.allocatedPrice?.toLocaleString()} USD
-                        </div>
-                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 justify-end">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Accepted</span>
-                        </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleReviewCounteroffer(wp)}
+                          className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                        >
+                          Review with AI Analysis
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* Specialists Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {project.workPackages.map((wp) => {
+                const isAccepted = wp.inviteStatus === 'accepted';
+                const isDeclined = wp.inviteStatus === 'declined';
+                const isSwapping = swappingPackageId === wp.id;
+
+                return (
+                  <div
+                    key={wp.id}
+                    className={`p-5 rounded-2xl border transition-all space-y-4 ${
+                      isAccepted
+                        ? 'bg-white dark:bg-[#1B3B39] border-emerald-500/30 shadow-xs'
+                        : isDeclined
+                        ? 'bg-rose-500/5 dark:bg-rose-950/20 border-rose-500/30'
+                        : 'bg-white dark:bg-[#1B3B39] border-[#D8E9E4] dark:border-[#345451] shadow-xs'
+                    }`}
+                  >
+                    {/* Top Row: Milestone Category & Budget */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1 min-w-0">
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-[#168C80]/10 text-[#168C80] dark:text-[#73D8C7] border border-[#168C80]/20">
+                          {wp.category}
+                        </span>
+                        <h3 className="text-sm font-bold text-[#10413E] dark:text-[#F0FAF8] truncate">
+                          {wp.title}
+                        </h3>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                          {wp.description}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-black text-[#10413E] dark:text-[#F0FAF8]">
+                          ${wp.allocatedPrice?.toLocaleString()} USD
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Specialist Profile Details */}
+                    <div className="pt-3 border-t border-[#D8E9E4] dark:border-[#345451] flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#168C80] to-[#32B6A5] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                          {(wp.assignedFreelancerName || 'S').charAt(0)}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-[#10413E] dark:text-[#F0FAF8]">
+                            {wp.assignedFreelancerName || 'Specialist Talent'}
+                          </div>
+                          <div className="text-[11px] text-slate-400">
+                            {wp.assignedFreelancerEmail || 'Talent'} &bull; {wp.assignedFreelancerRating ? `★ ${wp.assignedFreelancerRating.toFixed(1)}` : 'Verified Pro'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Status Badge */}
+                      <span
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold border ${
+                          isAccepted
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                            : isDeclined
+                            ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30'
+                            : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                        }`}
+                      >
+                        {isAccepted ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        ) : isDeclined ? (
+                          <XCircle className="w-3.5 h-3.5 text-rose-500" />
+                        ) : (
+                          <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                        )}
+                        <span>{isAccepted ? 'Invitation Accepted' : isDeclined ? 'Declined' : 'Invite Pending'}</span>
+                      </span>
+                    </div>
+
+                    {/* Action Bar: Swap Specialist & Chat */}
+                    <div className="pt-2 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('chat')}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#D8E9E4] dark:border-[#345451] text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-[#168C80] dark:text-[#73D8C7]" />
+                        <span>Chat with Specialist</span>
+                      </button>
+
+                      {/* Find Someone Else Button */}
+                      <button
+                        type="button"
+                        disabled={isSwapping}
+                        onClick={() => handleSwapSpecialist(wp)}
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          isDeclined
+                            ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs animate-pulse'
+                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
+                        }`}
+                        title="Replace this specialist with another AI-matched talent"
+                      >
+                        {isSwapping ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#168C80]" />
+                            <span>Swapping...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>{isDeclined ? 'Find Alternative' : 'Find Someone Else'}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 3: DEDICATED TEAM CHAT                                     */}
+        {/* ============================================================== */}
+        {activeTab === 'chat' && (
+          <div className="space-y-4 animate-fadeIn">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-black text-[#10413E] dark:text-[#F0FAF8]">
+                  Team Project Chat
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Collaborate in real time with all specialist team members and Gigsaw AI Assistant.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Live Team Room</span>
+              </div>
             </div>
 
-            <div className="lg:col-span-6">
+            <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] overflow-hidden shadow-xs">
               <EmbeddedProjectChat
                 projectId={projectId}
                 projectName={project.projectName}
+                className="h-[620px] border-none"
               />
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ============================================================== */}
-      {/* STATE 3: FUNDED & IN PROGRESS (The Active Execution Workspace) */}
-      {/* ============================================================== */}
-      {(isFundedOrActive || isCompleted) && (
-        <div className="space-y-6">
-
-          {/* Official PayPal Invoicing & Payout Verification Banner */}
-          <div className="bg-gradient-to-r from-[#168C80]/15 via-[#32B6A5]/10 to-[#73D8C7]/10 border border-[#168C80]/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-[#168C80]/20 text-[#168C80] dark:text-[#73D8C7] border border-[#168C80]/30 rounded-full flex items-center gap-1">
-                  <Receipt className="w-3 h-3 text-[#168C80] dark:text-[#73D8C7]" />
-                  Official PayPal Invoicing API v2
-                </span>
-                <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded-full">
-                  Status: PAID
-                </span>
-              </div>
-              <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                Multi-Seller Payout & Hosted PayPal Invoice
-              </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-                Single checkout of <strong>${(project.allocatedTotal || project.totalBudget)?.toLocaleString()} USD</strong> was captured via PayPal Orders v2. Each specialist's share was automatically routed into their PayPal Business Sandbox account. Access your official PayPal-hosted invoice with itemized line items below.
-              </p>
-              {project.paypalOrderId && (
-                <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 pt-0.5">
-                  PayPal Order Reference: <span className="font-bold text-cyan-600 dark:text-cyan-400">{project.paypalOrderId}</span>
-                </div>
-              )}
-              {invoiceError && (
-                <div className="text-xs text-rose-500 font-medium pt-1">
-                  {invoiceError}
-                </div>
-              )}
-            </div>
-
-            <div className="shrink-0 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleOpenOfficialInvoice()}
-                disabled={loadingInvoice === 'project'}
-                className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#168C80] hover:bg-[#10766D] transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
-              >
-                {loadingInvoice === 'project' ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Loading Invoice...</span>
-                  </>
-                ) : (
-                  <>
-                    <ExternalLink className="w-4 h-4" />
-                    <span>View Official PayPal Invoice</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* AI Dynamic Progress Summary */}
-          <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-cyan-500" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">AI Project Manager Status</h3>
-              </div>
-              <span className="text-[11px] text-slate-400 font-medium">
-                Progress: {completedTasks} of {totalTasks} milestones completed
-              </span>
-            </div>
-
-            <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-500 ${isCancelled ? 'bg-rose-500' : 'bg-gradient-to-r from-cyan-500 to-emerald-500'}`}
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-
-            {loadingProgress ? (
-              <div className="py-2 text-xs text-slate-400 flex items-center gap-2">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-500" />
-                <span>Evaluating project progress with Gemini AI...</span>
-              </div>
-            ) : progressSummary ? (
-              <div className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2">
-                <p className="leading-relaxed">{progressSummary.summary}</p>
-                {progressSummary.blocked_tasks && progressSummary.blocked_tasks.length > 0 && (
-                  <div className="text-amber-600 dark:text-amber-400 text-[11px] font-semibold flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>Attention: {progressSummary.blocked_tasks.join(', ')}</span>
+        {/* ============================================================== */}
+        {/* TAB 4: MONEY & PAYPAL ESCROW & INVOICES                        */}
+        {/* ============================================================== */}
+        {activeTab === 'money' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* If ready to fund: show single checkout */}
+            {isReadyToFund && (
+              <div className="space-y-4">
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-200">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <span>All {totalTasks} specialists have accepted their quotes. Complete single checkout to start!</span>
                   </div>
-                )}
+                </div>
+
+                <CheckoutSection
+                  project={project}
+                  onPaymentSuccess={() => {
+                    fetchProjectDetails();
+                  }}
+                />
               </div>
-            ) : (
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                All milestones are actively coordinated across your specialist team.
-              </p>
             )}
-          </div>
 
-          {/* AG Grid Milestones Table */}
-          <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                  Milestone Work Packages & Deliverables
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Inspect submitted deliverables, review work packages, and trigger escrow approval.
+            {/* If on hold: explain funding unlocks when all accept */}
+            {isOnHold && (
+              <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-6 space-y-4 shadow-xs">
+                <div className="flex items-center gap-2 text-sm font-black text-[#10413E] dark:text-[#F0FAF8]">
+                  <CreditCard className="w-4 h-4 text-[#168C80] dark:text-[#32B6A5]" />
+                  <span>Single PayPal Checkout &bull; Funding On Hold</span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
+                  To protect your funds, Gigsaw does not charge you until every specialist on your team accepts their invitation. Once {totalTasks} of {totalTasks} accept, you will approve one single checkout for ${project.totalBudget?.toLocaleString()} USD.
                 </p>
+
+                {/* Shopping Cart Summary */}
+                <div className="p-4 rounded-xl bg-[#F0F8F6] dark:bg-[#102B2B] border border-[#D8E9E4] dark:border-[#345451] space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[#10413E] dark:text-[#F0FAF8]">
+                    Planned Escrow Distribution
+                  </h4>
+                  <div className="space-y-1.5 text-xs">
+                    {project.workPackages.map((wp, i) => (
+                      <div key={wp.id || i} className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                        <span>{wp.title} ({wp.assignedFreelancerName || 'Specialist'})</span>
+                        <span className="font-bold text-[#10413E] dark:text-[#F0FAF8]">${wp.allocatedPrice} USD</span>
+                      </div>
+                    ))}
+                    <div className="pt-2 border-t border-[#D8E9E4] dark:border-[#345451] flex justify-between items-center font-black text-sm text-[#10413E] dark:text-[#F0FAF8]">
+                      <span>Total Project Budget</span>
+                      <span>${project.totalBudget?.toLocaleString()} USD</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('members')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#168C80] hover:bg-[#10766D] text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                >
+                  <span>Review Specialist Invitations</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Official PayPal Invoicing Banner (when funded / active) */}
+            {(isFundedOrActive || isCompleted) && (
+              <div className="bg-gradient-to-r from-[#168C80]/15 via-[#32B6A5]/10 to-[#73D8C7]/10 border border-[#168C80]/30 rounded-2xl p-6 space-y-4 shadow-xs">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-[#168C80]/20 text-[#168C80] dark:text-[#73D8C7] border border-[#168C80]/30 rounded-full flex items-center gap-1">
+                        <Receipt className="w-3 h-3 text-[#168C80] dark:text-[#73D8C7]" />
+                        Official PayPal Invoicing REST API v2
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded-full">
+                        Status: PAID
+                      </span>
+                    </div>
+                    <h3 className="text-base font-black text-[#10413E] dark:text-[#F0FAF8]">
+                      Multi-Seller Escrow Ledger & Hosted Invoice
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                      Captured via PayPal Orders v2. Each specialist's funds are held in secure escrow and released upon milestone review approval. View the official PayPal-hosted invoice with itemized line items below.
+                    </p>
+                    {project.paypalOrderId && (
+                      <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 pt-0.5">
+                        PayPal Order ID: <span className="font-bold text-[#168C80] dark:text-[#73D8C7]">{project.paypalOrderId}</span>
+                      </div>
+                    )}
+                    {invoiceError && (
+                      <div className="text-xs text-rose-500 font-medium pt-1">
+                        {invoiceError}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenOfficialInvoice()}
+                      disabled={loadingInvoice === 'project'}
+                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#168C80] hover:bg-[#10766D] transition-all flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+                    >
+                      {loadingInvoice === 'project' ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Generating Invoice...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ExternalLink className="w-4 h-4" />
+                          <span>View Official PayPal Invoice</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Itemized Milestones Payment Breakdown */}
+            <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-6 space-y-4 shadow-xs">
+              <h3 className="text-sm font-bold text-[#10413E] dark:text-[#F0FAF8]">
+                Itemized Milestone Payment Breakdown
+              </h3>
+
+              <div className="divide-y divide-[#D8E9E4] dark:divide-[#345451]">
+                {project.workPackages.map((wp) => (
+                  <div key={wp.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-[#168C80]/10 text-[#168C80] dark:text-[#73D8C7]">
+                          {wp.category}
+                        </span>
+                        <span className="text-xs font-bold text-[#10413E] dark:text-[#F0FAF8] truncate">{wp.title}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Specialist: <strong>{wp.assignedFreelancerName || 'Specialist'}</strong> ({wp.assignedFreelancerEmail})
+                      </p>
+                      {wp.paypalCaptureId && (
+                        <p className="text-[10px] font-mono text-slate-400">
+                          PayPal Capture Ref: {wp.paypalCaptureId}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+                      <div className="text-right">
+                        <div className="text-xs font-black text-[#10413E] dark:text-[#F0FAF8]">
+                          ${wp.allocatedPrice?.toLocaleString()} USD
+                        </div>
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                          {isFundedOrActive ? 'Escrow Funded' : 'Planned'}
+                        </span>
+                      </div>
+
+                      {isFundedOrActive && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenOfficialInvoice(wp.id)}
+                          disabled={loadingInvoice === wp.id}
+                          className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-[#E5F5F1] dark:bg-[#254542] hover:bg-[#D8E9E4] dark:hover:bg-[#1B3B39] text-[#168C80] dark:text-[#73D8C7] border border-[#D8E9E4] dark:border-[#345451] transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          title="Generate individual milestone invoice"
+                        >
+                          {loadingInvoice === wp.id ? (
+                            <RefreshCw className="w-3 h-3 animate-spin text-[#168C80]" />
+                          ) : (
+                            <FileText className="w-3 h-3 text-[#168C80]" />
+                          )}
+                          <span>Invoice</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-
-            <div className="ag-theme-alpine w-full h-[380px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-              <AgGridReact
-                rowData={project.workPackages}
-                columnDefs={columnDefs}
-                rowHeight={70}
-                headerHeight={44}
-                defaultColDef={{
-                  sortable: true,
-                  resizable: true,
-                }}
-              />
-            </div>
           </div>
-
-          {/* Embedded Live Team Chat underneath Milestones */}
-          <EmbeddedProjectChat
-            projectId={projectId}
-            projectName={project.projectName}
-          />
-        </div>
-      )}
+        )}
+      </main>
 
       {/* ============================================================== */}
-      {/* MODALS: Cancel Project, Review/Rating, Revision, Counteroffer   */}
+      {/* MODALS                                                         */}
       {/* ============================================================== */}
 
-      {/* Cancel Project Confirmation Modal */}
-      {cancelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      {/* 1. Revision Notes Modal */}
+      {revisionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white dark:bg-[#1B3B39] border border-rose-500/30 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Cancel Project?
-                </h3>
-                <p className="text-xs text-slate-400">
-                  {project.projectName}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
-              Are you sure you want to cancel this project? All active milestones will be marked as cancelled, hired specialists will be notified, and remaining escrow funds will be unlocked. This action cannot be undone.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setCancelModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                Keep Project
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelProject}
-                disabled={cancellingProject}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-md"
-              >
-                {cancellingProject ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Cancelling...</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="w-3.5 h-3.5" />
-                    <span>Confirm Cancel Project</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Review & Rating Modal */}
-      {reviewModalPackage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
-                  <Star className="w-5 h-5 fill-amber-400" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Rate Specialist & Leave Review
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {reviewModalPackage.package.assignedFreelancerName || 'Specialist'} &bull; {reviewModalPackage.package.title}
-                  </p>
-                </div>
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-sm">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Request Deliverable Revision</span>
               </div>
               <button
-                type="button"
-                onClick={() => setReviewModalPackage(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                onClick={() => {
+                  setRevisionModalOpen(null);
+                  setRevisionNotes('');
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitReview} className="space-y-4">
-              <div className="space-y-1.5 text-center py-2 bg-slate-50/50 dark:bg-slate-900/40 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                  Overall Rating (out of 5 stars)
-                </label>
-                <div className="flex items-center justify-center gap-2 pt-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onMouseEnter={() => setHoverRating(star)}
-                      onMouseLeave={() => setHoverRating(null)}
-                      onClick={() => setReviewRating(star)}
-                      className="p-1 hover:scale-110 active:scale-95 transition-transform"
-                    >
-                      <Star
-                        className={`w-7 h-7 transition-colors ${
-                          star <= (hoverRating ?? reviewRating)
-                            ? 'text-amber-400 fill-amber-400'
-                            : 'text-slate-300 dark:text-slate-700'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-                <div className="text-[11px] font-bold text-amber-600 dark:text-amber-400 pt-0.5">
-                  {reviewRating === 5 && 'Outstanding Delivery (5 / 5)'}
-                  {reviewRating === 4 && 'Great Work (4 / 5)'}
-                  {reviewRating === 3 && 'Good Delivery (3 / 5)'}
-                  {reviewRating === 2 && 'Fair / Below Expectations (2 / 5)'}
-                  {reviewRating === 1 && 'Needs Improvement (1 / 5)'}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                  Written Review (Will appear on specialist profile)
-                </label>
-                <textarea
-                  rows={4}
-                  required
-                  placeholder="Share feedback on communication, quality of deliverables, technical execution, and speed..."
-                  value={reviewText}
-                  onChange={(e) => setReviewText(e.target.value)}
-                  className="w-full p-3.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 leading-relaxed"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setReviewModalPackage(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingReview || !reviewText.trim()}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-50 shadow-md transition-all flex items-center gap-1.5"
-                >
-                  {submittingReview ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Saving Review...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Star className="w-3.5 h-3.5 fill-white" />
-                      <span>Submit Review & Complete Milestone</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Deliverable Revision Modal */}
-      {revisionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Request Deliverable Revision
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Provide actionable guidance for the specialist on changes required before final escrow approval.
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              Provide constructive feedback to the specialist. The milestone will be marked as <strong>Revision Requested</strong> and escrow release paused until updated.
             </p>
+
             <textarea
               rows={4}
-              placeholder="e.g. Please update button hover states and ensure mobile breakpoint responsiveness..."
               value={revisionNotes}
               onChange={(e) => setRevisionNotes(e.target.value)}
-              className="w-full p-3 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              placeholder="Detail the specific corrections, missing components, or adjustments required..."
+              className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
+
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setRevisionModalOpen(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                onClick={() => {
+                  setRevisionModalOpen(null);
+                  setRevisionNotes('');
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={async () => {
-                  await handleUpdateStatus(
+                disabled={!revisionNotes.trim()}
+                onClick={() => {
+                  handleUpdateStatus(
                     revisionModalOpen.projectId,
                     revisionModalOpen.packageId,
                     'Revision Requested',
-                    revisionNotes
+                    revisionNotes.trim()
                   );
                   setRevisionModalOpen(null);
                   setRevisionNotes('');
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 shadow-md"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 transition-colors disabled:opacity-50"
               >
-                Send Revision Request
+                Submit Revision Request
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* AI Counteroffer Decision Modal */}
+      {/* 2. Review Counteroffer Modal */}
       {counterofferModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-amber-500" />
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  AI Counteroffer Evaluation
-                </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-[#1B3B39] border border-[#D8E9E4] dark:border-[#345451] rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#D8E9E4] dark:border-[#345451] pb-3">
+              <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-bold text-sm">
+                <Sparkles className="w-4 h-4" />
+                <span>Specialist Counteroffer &bull; AI Analysis</span>
               </div>
               <button
-                type="button"
                 onClick={() => setCounterofferModal(null)}
-                className="p-1 text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl space-y-1">
-                <span className="font-bold text-slate-900 dark:text-white">
-                  {counterofferModal.pkg.title}
-                </span>
-                <p className="text-slate-500 dark:text-slate-400">
-                  Specialist requested: ${counterofferModal.pkg.quotationAmount} USD in {counterofferModal.pkg.quotationDeliveryDays} days.
-                </p>
-                {counterofferModal.pkg.quotationScope && (
-                  <p className="italic text-slate-600 dark:text-slate-300">
-                    &ldquo;{counterofferModal.pkg.quotationScope}&rdquo;
-                  </p>
-                )}
+            <div className="space-y-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Milestone</span>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {counterofferModal.pkg.title} ({counterofferModal.pkg.assignedFreelancerName})
+                </h4>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs">
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Original Quote</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    ${counterofferModal.pkg.allocatedPrice} &bull; {counterofferModal.pkg.estimatedDays || 7} days
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Specialist Counteroffer</span>
+                  <span className="font-bold text-cyan-600 dark:text-cyan-400">
+                    ${counterofferModal.pkg.quotationAmount || counterofferModal.pkg.allocatedPrice} &bull; {counterofferModal.pkg.quotationDeliveryDays || 7} days
+                  </span>
+                </div>
               </div>
 
               {counterofferModal.loading ? (
-                <div className="py-6 text-center text-slate-400 flex items-center justify-center gap-2">
+                <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
                   <RefreshCw className="w-4 h-4 animate-spin text-cyan-500" />
-                  <span>Evaluating impact with Gemini AI...</span>
+                  <span>Evaluating quotation with Gemini AI...</span>
                 </div>
               ) : counterofferModal.analysis ? (
-                <div className="p-3 bg-cyan-50 dark:bg-cyan-950/40 rounded-xl space-y-2 border border-cyan-200 dark:border-cyan-800">
-                  <div className="flex justify-between font-bold text-cyan-900 dark:text-cyan-200">
-                    <span>Budget Impact:</span>
-                    <span>{counterofferModal.analysis.budget_impact}</span>
+                <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-xs space-y-2 text-cyan-900 dark:text-cyan-200">
+                  <div className="font-bold flex items-center justify-between">
+                    <span>AI Recommendation: {counterofferModal.analysis.recommendation?.toUpperCase()}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20">
+                      Budget Impact: {counterofferModal.analysis.budget_impact || 'Moderate'}
+                    </span>
                   </div>
-                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                    {counterofferModal.analysis.recommendation}
+                  <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                    {counterofferModal.analysis.recommendation} (Budget Delta: ${counterofferModal.analysis.amount_delta > 0 ? '+' : ''}${counterofferModal.analysis.amount_delta} USD, ${counterofferModal.analysis.delivery_days_delta > 0 ? '+' : ''}${counterofferModal.analysis.delivery_days_delta} days)
                   </p>
                 </div>
               ) : null}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#D8E9E4] dark:border-[#345451]">
               <button
                 type="button"
                 disabled={isDecidingCounter}
                 onClick={() => handleCounterofferDecision(counterofferModal.pkg.id, 'decline')}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 transition-colors"
               >
                 Decline Counteroffer
               </button>
@@ -1478,16 +1643,137 @@ export default function MerchantProjectWorkspacePage() {
                 type="button"
                 disabled={isDecidingCounter}
                 onClick={() => handleCounterofferDecision(counterofferModal.pkg.id, 'accept')}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition-colors"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-xs"
               >
-                {isDecidingCounter ? 'Updating...' : 'Accept Counteroffer'}
+                Accept & Adjust Scope
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Standalone Team Chat Modal (if merchant toggles it) */}
+      {/* 3. Cancel Project Confirmation Modal */}
+      {cancelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-[#1B3B39] border border-[#D8E9E4] dark:border-[#345451] rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
+              <AlertCircle className="w-5 h-5" />
+              <span>Cancel Project Confirmation</span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Are you sure you want to cancel <strong>&ldquo;{project.projectName}&rdquo;</strong>? This will release any remaining unreleased escrow allocations and mark the project as cancelled.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={cancellingProject}
+                onClick={() => setCancelModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Keep Project
+              </button>
+              <button
+                type="button"
+                disabled={cancellingProject}
+                onClick={handleCancelProject}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-colors disabled:opacity-50"
+              >
+                {cancellingProject ? 'Cancelling...' : 'Confirm Cancellation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Review & Rating Modal */}
+      {reviewModalPackage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-[#1B3B39] border border-[#D8E9E4] dark:border-[#345451] rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#D8E9E4] dark:border-[#345451] pb-3">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
+                <Award className="w-5 h-5" />
+                <span>Approve Milestone & Leave Review</span>
+              </div>
+              <button
+                onClick={() => setReviewModalPackage(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-sm font-bold text-[#10413E] dark:text-[#F0FAF8]">
+                {reviewModalPackage.package.title}
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Specialist: {reviewModalPackage.package.assignedFreelancerName}
+              </p>
+            </div>
+
+            {/* Star Rating Input */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Specialist Rating:
+              </label>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(null)}
+                    className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                  >
+                    <Star
+                      className={`w-6 h-6 ${
+                        star <= (hoverRating || reviewRating)
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-slate-300 dark:text-slate-600'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Review feedback textarea */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Review & Milestone Feedback:
+              </label>
+              <textarea
+                rows={3}
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+                placeholder="Share your experience working with this specialist on this milestone..."
+                className="w-full text-xs p-3 rounded-xl border border-[#D8E9E4] dark:border-[#345451] bg-[#F0F8F6] dark:bg-[#102B2B] text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setReviewModalPackage(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={submittingReview || !reviewText.trim()}
+                onClick={handleSubmitReview}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {submittingReview ? 'Submitting...' : 'Approve Milestone & Submit Review'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Standalone ProjectChatModal shortcut */}
       {chatModalOpen && (
         <ProjectChatModal
           projectId={projectId}
