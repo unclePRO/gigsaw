@@ -67,7 +67,7 @@ export const Navbar: React.FC = () => {
   }, [isFreelancer, fetchInviteCount]);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 dark:bg-[#142F2E]/95 backdrop-blur-md border-b border-[#D8E9E4] dark:border-[#345451] transition-colors">
+    <header className="sticky top-0 z-50 bg-[#D6ECE5]/95 dark:bg-[#0B1E1E]/95 backdrop-blur-md border-b border-[#B4D5CD] dark:border-[#1F4240] transition-colors shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Brand Logo */}
         <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
@@ -78,7 +78,7 @@ export const Navbar: React.FC = () => {
               alt="Gigsaw"
               width={140}
               height={36}
-              className="h-8 w-auto dark:hidden object-contain rounded-md"
+              className="h-8 w-auto dark:hidden object-contain rounded-md mix-blend-multiply"
               priority
             />
             {/* Dark mode: logo with white text */}
@@ -103,8 +103,8 @@ export const Navbar: React.FC = () => {
                   href="/create"
                   className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
                     pathname === '/create'
-                      ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                      ? 'bg-white/85 dark:bg-[#1B3B39] text-[#10413E] dark:text-[#73D8C7] border border-[#B4D5CD] dark:border-[#2A524F] font-bold shadow-xs'
+                      : 'text-[#244340] dark:text-[#A3C5BF] hover:text-[#10413E] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
@@ -114,8 +114,8 @@ export const Navbar: React.FC = () => {
                   href="/dashboard"
                   className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
                     pathname === '/dashboard'
-                      ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                      ? 'bg-white/85 dark:bg-[#1B3B39] text-[#10413E] dark:text-[#73D8C7] border border-[#B4D5CD] dark:border-[#2A524F] font-bold shadow-xs'
+                      : 'text-[#244340] dark:text-[#A3C5BF] hover:text-[#10413E] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
                   <BarChart3 className="w-3.5 h-3.5" />
@@ -128,8 +128,8 @@ export const Navbar: React.FC = () => {
                   href="/freelancer/dashboard"
                   className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
                     pathname === '/freelancer/dashboard'
-                      ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                      ? 'bg-white/85 dark:bg-[#1B3B39] text-[#10413E] dark:text-[#73D8C7] border border-[#B4D5CD] dark:border-[#2A524F] font-bold shadow-xs'
+                      : 'text-[#244340] dark:text-[#A3C5BF] hover:text-[#10413E] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
                   <Briefcase className="w-3.5 h-3.5" />
@@ -139,8 +139,8 @@ export const Navbar: React.FC = () => {
                   href="/freelancer/invitations"
                   className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 relative ${
                     pathname === '/freelancer/invitations'
-                      ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                      ? 'bg-white/85 dark:bg-[#1B3B39] text-[#10413E] dark:text-[#73D8C7] border border-[#B4D5CD] dark:border-[#2A524F] font-bold shadow-xs'
+                      : 'text-[#244340] dark:text-[#A3C5BF] hover:text-[#10413E] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
                   <CheckSquare className="w-3.5 h-3.5" />
@@ -155,8 +155,8 @@ export const Navbar: React.FC = () => {
                   href="/freelancer/profile"
                   className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 relative ${
                     pathname === '/freelancer/profile'
-                      ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                      ? 'bg-white/85 dark:bg-[#1B3B39] text-[#10413E] dark:text-[#73D8C7] border border-[#B4D5CD] dark:border-[#2A524F] font-bold shadow-xs'
+                      : 'text-[#244340] dark:text-[#A3C5BF] hover:text-[#10413E] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
                   <User className="w-3.5 h-3.5" />
@@ -172,16 +172,16 @@ export const Navbar: React.FC = () => {
             <div className="flex items-center gap-2">
               <Link
                 href="/login?tab=register&role=merchant"
-                className="px-3.5 py-2 rounded-lg font-bold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-lg font-bold text-[#244340] dark:text-[#A3C5BF] hover:text-[#10413E] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center gap-1.5"
               >
-                <Users className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                <Users className="w-3.5 h-3.5 text-[#168C80] dark:text-[#32B6A5]" />
                 <span>Hire Freelancers</span>
               </Link>
               <Link
                 href="/login?tab=register&role=freelancer"
-                className="px-3.5 py-2 rounded-lg font-bold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-lg font-bold text-[#244340] dark:text-[#A3C5BF] hover:text-[#10413E] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center gap-1.5"
               >
-                <Briefcase className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                <Briefcase className="w-3.5 h-3.5 text-[#168C80] dark:text-[#32B6A5]" />
                 <span>Find Work</span>
               </Link>
             </div>
@@ -195,12 +195,12 @@ export const Navbar: React.FC = () => {
             type="button"
             onClick={toggleTheme}
             aria-label="Toggle theme"
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-all border border-slate-200 dark:border-slate-800"
+            className="p-2 rounded-xl text-[#244340] hover:text-[#10413E] dark:text-[#A3C5BF] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all border border-[#B4D5CD] dark:border-[#1F4240]"
           >
             {theme === 'dark' ? (
               <Sun className="w-4 h-4 text-amber-400 transition-transform rotate-0 scale-100" />
             ) : (
-              <Moon className="w-4 h-4 text-slate-600 transition-transform rotate-0 scale-100" />
+              <Moon className="w-4 h-4 text-[#244340] transition-transform rotate-0 scale-100" />
             )}
           </button>
 
@@ -208,23 +208,23 @@ export const Navbar: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-2 p-1 pl-2.5 rounded-full border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                className="flex items-center gap-2 p-1 pl-2.5 rounded-full border border-[#B4D5CD] dark:border-[#1F4240] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
               >
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[110px] truncate">
+                <span className="text-xs font-bold text-[#10413E] dark:text-[#F0FAF8] max-w-[110px] truncate">
                   {user.name}
                 </span>
-                <div className="w-6 h-6 rounded-full bg-cyan-500 text-white font-bold flex items-center justify-center text-xs">
+                <div className="w-6 h-6 rounded-full bg-[#168C80] text-white font-bold flex items-center justify-center text-xs">
                   {user.name?.charAt(0) || 'U'}
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 mr-1" />
+                <ChevronDown className="w-3.5 h-3.5 text-[#527773] dark:text-[#A3C5BF] mr-1" />
               </button>
 
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#142F2E] rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 text-xs z-50">
-                  <div className="px-3.5 py-2.5 border-b border-slate-100 dark:border-slate-800">
-                    <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
-                    <p className="text-slate-400 text-[11px] truncate">{user.email}</p>
-                    <span className="inline-block mt-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/80 text-cyan-700 dark:text-cyan-400">
+                <div className="absolute right-0 mt-2 w-56 bg-[#F0F8F6] dark:bg-[#0D2423] rounded-xl shadow-xl border border-[#B4D5CD] dark:border-[#1F4240] py-1.5 text-xs z-50">
+                  <div className="px-3.5 py-2.5 border-b border-[#D8E9E4] dark:border-[#1F4240]">
+                    <p className="font-bold text-[#10413E] dark:text-white">{user.name}</p>
+                    <p className="text-[#527773] dark:text-[#A3C5BF] text-[11px] truncate">{user.email}</p>
+                    <span className="inline-block mt-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#E5F5F1] dark:bg-[#1B3B39] text-[#168C80] dark:text-[#73D8C7] border border-[#D8E9E4] dark:border-[#2A524F]">
                       {user.role} {user.category ? `(${user.category})` : ''}
                     </span>
                   </div>
@@ -234,7 +234,7 @@ export const Navbar: React.FC = () => {
                       <Link
                         href="/dashboard"
                         onClick={() => setProfileOpen(false)}
-                        className="block px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium"
+                        className="block px-3.5 py-2 hover:bg-black/5 dark:hover:bg-white/5 text-[#244340] dark:text-[#A3C5BF] font-medium"
                       >
                         Merchant Dashboard
                       </Link>
@@ -243,14 +243,14 @@ export const Navbar: React.FC = () => {
                         <Link
                           href="/freelancer/dashboard"
                           onClick={() => setProfileOpen(false)}
-                          className="block px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium"
+                          className="block px-3.5 py-2 hover:bg-black/5 dark:hover:bg-white/5 text-[#244340] dark:text-[#A3C5BF] font-medium"
                         >
                           My Gigs
                         </Link>
                         <Link
                           href="/freelancer/profile"
                           onClick={() => setProfileOpen(false)}
-                          className="block px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium"
+                          className="block px-3.5 py-2 hover:bg-black/5 dark:hover:bg-white/5 text-[#244340] dark:text-[#A3C5BF] font-medium"
                         >
                           Portfolio & Profile
                         </Link>
@@ -258,7 +258,7 @@ export const Navbar: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="border-t border-slate-100 dark:border-slate-800 pt-1">
+                  <div className="border-t border-[#D8E9E4] dark:border-[#1F4240] pt-1">
                     <button
                       onClick={() => {
                         setProfileOpen(false);
@@ -277,7 +277,7 @@ export const Navbar: React.FC = () => {
             /* Sign In button with Cyan highlight */
             <Link
               href="/login"
-              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 active:scale-95 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+              className="px-4 py-2 bg-[#168C80] hover:bg-[#10766D] active:scale-95 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>Sign In</span>

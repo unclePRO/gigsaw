@@ -34,7 +34,8 @@
   --foreground: #10413E;
   --text-muted: #527773;
   --card-bg: #FFFFFF;
-  --navbar-bg: #FFFFFF;
+  --navbar-bg: #D6ECE5;
+  --navbar-border: #B4D5CD;
   --border-color: #D8E9E4;
   --primary-accent: #168C80;
   --active-nav: #E5F5F1;
@@ -47,7 +48,8 @@
   --foreground: #F0FAF8;
   --text-muted: #A3C5BF;
   --card-bg: #1B3B39;
-  --navbar-bg: #142F2E;
+  --navbar-bg: #0B1E1E;
+  --navbar-border: #1F4240;
   --border-color: #345451;
   --primary-accent: #32B6A5;
   --active-nav: #254542;
@@ -70,13 +72,13 @@ main {
 /* Header & Navbar Standardized */
 header {
   background-color: var(--navbar-bg) !important;
-  border-bottom: 1px solid var(--border-color) !important;
+  border-bottom: 1px solid var(--navbar-border, var(--border-color)) !important;
 }
 
 /* Footer Standardized */
 footer {
   background-color: var(--navbar-bg) !important;
-  border-top: 1px solid var(--border-color) !important;
+  border-top: 1px solid var(--navbar-border, var(--border-color)) !important;
   color: var(--text-muted) !important;
 }
 

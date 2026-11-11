@@ -25,7 +25,7 @@ export default function RootLayout({
               <main className="flex-1 w-full bg-[#F0F8F6] dark:bg-[#102B2B]">
                 {children}
               </main>
-              <footer className="border-t border-[#D8E9E4] dark:border-[#345451] bg-white dark:bg-[#142F2E] py-6 text-center text-xs text-slate-500 dark:text-slate-400 transition-colors">
+              <footer className="border-t border-[#B4D5CD] dark:border-[#1F4240] bg-[#D6ECE5] dark:bg-[#0B1E1E] py-6 text-center text-xs text-[#527773] dark:text-[#A3C5BF] transition-colors">
                 <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-slate-800 dark:text-slate-200 tracking-tight">Gigsaw</span>
