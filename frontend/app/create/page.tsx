@@ -97,6 +97,11 @@ export default function CreateProjectPage() {
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [showIntelligenceDetails, setShowIntelligenceDetails] = useState<boolean>(false);
   const [chatInput, setChatInput] = useState('');
+  const [budgetStr, setBudgetStr] = useState<string>(budget ? String(budget) : '0');
+
+  useEffect(() => {
+    setBudgetStr(String(budget || 0));
+  }, [budget]);
 
   // Conversational Scoping AI State
   const [projectName, setProjectName] = useState<string>('');
@@ -668,10 +673,27 @@ export default function CreateProjectPage() {
                   <input
                     id="budget-input"
                     type="number"
-                    min={100}
+                    min={0}
                     step={50}
-                    value={budget}
-                    onChange={(e) => setBudget(Number(e.target.value))}
+                    value={budgetStr}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={() => {
+                      if (!budgetStr || budgetStr.trim() === '') {
+                        setBudgetStr('0');
+                        setBudget(0);
+                      }
+                    }}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      // Override leading zero if user typed after a 0 (e.g. was '0', user typed '1' -> '01' or '010')
+                      if (val.length > 1 && val.startsWith('0') && val[1] !== '.') {
+                        val = val.replace(/^0+/, '');
+                        if (val === '') val = '0';
+                      }
+                      setBudgetStr(val);
+                      const num = Number(val);
+                      setBudget(isNaN(num) ? 0 : Math.max(0, num));
+                    }}
                     className="w-full pl-8 pr-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors"
                   />
                 </div>
