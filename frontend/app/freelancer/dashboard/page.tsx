@@ -140,7 +140,7 @@ export default function FreelancerDashboardPage() {
             My Client Projects & Gigs
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Select any project workspace to submit deliverables, track escrow status, and collaborate with merchants.
+            Select any project workspace to submit deliverables, track milestone progress, and collaborate with clients.
           </p>
         </div>
 
@@ -151,7 +151,7 @@ export default function FreelancerDashboardPage() {
               className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition-all"
             >
               <span>Invitations</span>
-              <span className="px-1.5 py-0.2 bg-white text-amber-600 rounded-full text-[10px] font-black">
+              <span className="px-1.5 py-0.2 bg-white text-amber-600 rounded-full text-[10px] font-bold">
                 {pendingInvitesCount}
               </span>
             </Link>
@@ -182,15 +182,15 @@ export default function FreelancerDashboardPage() {
           <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
             {completedGigsCount}
           </div>
-          <span className="text-[11px] text-slate-400">Accepted by merchants</span>
+          <span className="text-[11px] text-slate-400">Accepted by clients</span>
         </div>
 
         <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Contract Value</span>
           <div className="text-xl font-black text-slate-900 dark:text-white">
-            ${totalContractEarnings.toLocaleString()} USD
+            ${totalContractEarnings.toLocaleString()}
           </div>
-          <span className="text-[11px] text-slate-400">Secured in escrow</span>
+          <span className="text-[11px] text-slate-400">Total Allocated Budget</span>
         </div>
 
         <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
@@ -243,7 +243,7 @@ export default function FreelancerDashboardPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
               {pendingInvitesCount > 0
                 ? `You have ${pendingInvitesCount} pending client invitation(s) waiting for your review!`
-                : 'Check back when merchants select your profile for milestones.'}
+                : 'Check back when clients select your profile for milestones.'}
             </p>
           </div>
           {pendingInvitesCount > 0 && (
@@ -320,15 +320,15 @@ export default function FreelancerDashboardPage() {
                   </div>
                 </div>
 
-                {/* Milestone Deliverables & Escrow Bar */}
+                {/* Milestone Deliverables & Fee Bar */}
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-850 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-3">
                     <div>
                       <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mr-1.5">
-                        Escrow:
+                        Fee:
                       </span>
-                      <strong className="text-slate-900 dark:text-white font-black">
-                        ${pkg.allocatedPrice?.toLocaleString()} USD
+                      <strong className="text-slate-900 dark:text-white font-bold">
+                        ${pkg.allocatedPrice?.toLocaleString()}
                       </strong>
                     </div>
 
@@ -358,10 +358,10 @@ export default function FreelancerDashboardPage() {
 
                   <span className="text-[11px] text-slate-400">
                     {isCompleted
-                      ? 'Payment Released upon Deliverable Verification'
+                      ? 'Milestone Completed & Verified'
                       : isProjectCancelled
                       ? 'Milestone Closed'
-                      : 'Funds Secured in PayPal Escrow'}
+                      : 'Direct PayPal Milestone Payment'}
                   </span>
                 </div>
               </div>

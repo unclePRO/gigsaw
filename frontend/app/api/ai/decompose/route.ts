@@ -430,7 +430,7 @@ export async function POST(req: NextRequest) {
       assumptions: [
         'Client provides prompt review and feedback within 48 hours of deliverable submission.',
         'Assets, access keys, and project specifications are clarified during kickoff.',
-        'Escrow funds are disbursed upon milestone deliverable approval.',
+        'Payments are disbursed upon milestone deliverable approval.',
       ],
       risks: [
         'Scope adjustments during high-fidelity review may alter delivery duration.',

@@ -393,11 +393,11 @@ export default function FreelancerGigWorkspacePage() {
               <div className="flex-1 flex items-center justify-between min-w-0">
                 <span className="truncate">Submissions</span>
                 {isRevisionRequested ? (
-                  <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-amber-500 text-white animate-pulse">
+                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-amber-500 text-white">
                     Revision
                   </span>
                 ) : isCompleted ? (
-                  <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
                     Approved
                   </span>
                 ) : hasSubmitted ? (
@@ -412,7 +412,7 @@ export default function FreelancerGigWorkspacePage() {
               </div>
             )}
             {isSidebarCollapsed && isRevisionRequested && (
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500" />
             )}
           </button>
 
@@ -431,7 +431,7 @@ export default function FreelancerGigWorkspacePage() {
             {!isSidebarCollapsed && (
               <div className="flex-1 flex items-center justify-between min-w-0">
                 <span className="truncate">Team Chat</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live room" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500" title="Live room" />
               </div>
             )}
           </button>
@@ -445,13 +445,13 @@ export default function FreelancerGigWorkspacePage() {
                 ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-l-4 border-[#168C80] dark:border-[#32B6A5] shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
             }`}
-            title="PayPal Escrow, Invoices & Payout"
+            title="PayPal Payment, Invoices & Payout"
           >
             <DollarSign className="w-4 h-4 shrink-0 text-[#168C80] dark:text-[#32B6A5]" />
             {!isSidebarCollapsed && (
               <div className="flex-1 flex items-center justify-between min-w-0">
                 <span className="truncate">Payment</span>
-                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
                   ${matchingPkg.allocatedPrice}
                 </span>
               </div>
@@ -481,13 +481,13 @@ export default function FreelancerGigWorkspacePage() {
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={`px-3 py-1 rounded-full text-xs font-black tracking-wide border ${
+                className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide border ${
                   isProjectCancelled
                     ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
                     : isCompleted
                     ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                     : isRevisionRequested
-                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
                     : 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-[#D8E9E4] dark:border-[#345451]'
                 }`}
               >
@@ -577,7 +577,7 @@ export default function FreelancerGigWorkspacePage() {
                   </span>
                   <p className="leading-relaxed">
                     {matchingPkg.deliverableNotes ||
-                      'The client reviewed your submission and requested adjustments before escrow can be released. Please check the Submissions tab to update your work.'}
+                      'The client reviewed your submission and requested adjustments. Please check the Submissions tab to update your work.'}
                   </p>
                 </div>
               </div>
@@ -593,7 +593,7 @@ export default function FreelancerGigWorkspacePage() {
                   <div>
                     <h3 className="text-sm font-bold">Milestone Deliverable Approved</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      The merchant has verified your deliverable and released payment.
+                      The client has verified your deliverable and completed payment.
                     </p>
                   </div>
                 </div>
@@ -625,7 +625,7 @@ export default function FreelancerGigWorkspacePage() {
               <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-xs text-rose-900 dark:text-rose-200">
                 <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
                 <div>
-                  <strong className="font-bold">Project Cancelled by Merchant:</strong> The merchant has cancelled this project. Deliveries are paused and remaining escrow funds have been closed.
+                  <strong className="font-bold">Project Cancelled by Client:</strong> The client has cancelled this project. Deliveries are paused.
                 </div>
               </div>
             )}
@@ -635,10 +635,10 @@ export default function FreelancerGigWorkspacePage() {
               <div className="flex items-center justify-between border-b border-[#D8E9E4] dark:border-[#345451] pb-3">
                 <div className="flex items-center gap-2 text-[#10413E] dark:text-[#F0FAF8] font-bold text-sm">
                   <FolderOpen className="w-4 h-4 text-[#168C80] dark:text-[#73D8C7]" />
-                  <span>Project Details &amp; Merchant Specifications</span>
+                  <span>Project Details &amp; Client Specifications</span>
                 </div>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#168C80]/10 text-[#168C80] dark:text-[#73D8C7] border border-[#168C80]/20">
-                  {matchingPkg.category?.toUpperCase() || 'SPECIALIST'}
+                  {matchingPkg.category?.toUpperCase() || 'FREELANCER'}
                 </span>
               </div>
 
@@ -676,17 +676,17 @@ export default function FreelancerGigWorkspacePage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-5 space-y-1 shadow-xs">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Milestone Escrow Value
+                  Milestone Fee
                 </span>
                 <div className="text-xl font-black text-[#10413E] dark:text-[#F0FAF8]">
-                  ${matchingPkg.allocatedPrice?.toLocaleString()} USD
+                  ${matchingPkg.allocatedPrice?.toLocaleString()}
                 </div>
                 <span className="text-[11px] text-[#168C80] dark:text-[#73D8C7] font-bold">
                   {isCompleted
-                    ? 'Escrow Disbursed'
+                    ? 'Payment Released'
                     : isProjectCancelled
-                    ? 'Escrow Cancelled'
-                    : 'Guaranteed in PayPal Escrow'}
+                    ? 'Cancelled'
+                    : 'Paid via PayPal'}
                 </span>
               </div>
 
@@ -810,7 +810,7 @@ export default function FreelancerGigWorkspacePage() {
                     Current Deliverable On Record
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Output submitted for client inspection and escrow disbursement.
+                    Output submitted for client inspection and approval.
                   </p>
                 </div>
 
@@ -826,7 +826,7 @@ export default function FreelancerGigWorkspacePage() {
                   }`}
                 >
                   {isCompleted
-                    ? 'Approved & Escrow Released'
+                    ? 'Approved & Completed'
                     : isRevisionRequested
                     ? 'Revision Requested'
                     : hasSubmitted
@@ -994,7 +994,7 @@ export default function FreelancerGigWorkspacePage() {
                 </p>
               </div>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 self-start sm:self-auto">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 Live Channel
               </span>
             </div>
@@ -1007,18 +1007,18 @@ export default function FreelancerGigWorkspacePage() {
         )}
 
         {/* ============================================================== */}
-        {/* TAB 4: PAYMENT, PAYPAL ESCROW & INVOICES                       */}
+        {/* TAB 4: PAYMENT, PAYPAL & INVOICES                              */}
         {/* ============================================================== */}
         {activeTab === 'payment' && (
           <div className="space-y-6 animate-fadeIn">
-            {/* PayPal Escrow Status Card */}
+            {/* PayPal Payment Status Card */}
             <div className="bg-gradient-to-r from-[#168C80]/15 via-[#32B6A5]/10 to-[#73D8C7]/10 border border-[#168C80]/30 rounded-2xl p-6 space-y-4 shadow-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#168C80]/20 pb-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-[#168C80]/20 text-[#168C80] dark:text-[#73D8C7] border border-[#168C80]/30 rounded-full flex items-center gap-1">
                       <Receipt className="w-3 h-3" />
-                      PayPal Multi-Seller Escrow Active
+                      PayPal Multi-Seller Payment Active
                     </span>
                     <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded-full">
                       Status: {matchingPkg.paypalInvoiceStatus || 'PAID'}
@@ -1031,27 +1031,27 @@ export default function FreelancerGigWorkspacePage() {
 
                 <div className="text-right">
                   <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
-                    Secured Amount
+                    Funded Amount
                   </span>
                   <span className="text-xl font-black text-[#10413E] dark:text-[#F0FAF8]">
-                    ${matchingPkg.allocatedPrice?.toLocaleString()} USD
+                    ${matchingPkg.allocatedPrice?.toLocaleString()}
                   </span>
                 </div>
               </div>
 
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
-                Your <strong>${matchingPkg.allocatedPrice?.toLocaleString()} USD</strong> milestone fee is funded upfront by the merchant and held safely in PayPal Escrow. Funds are routed directly into your PayPal account upon deliverable approval.
+                Your <strong>${matchingPkg.allocatedPrice?.toLocaleString()}</strong> milestone fee is funded upfront by the merchant via PayPal Multi-Seller Checkout. Direct payout to your PayPal account upon deliverable verification.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
                 <div className="p-3 rounded-xl bg-white/70 dark:bg-black/30 border border-[#168C80]/20 space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Billed Merchant</span>
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Client</span>
                   <div className="font-bold text-slate-900 dark:text-white">{project.merchantName}</div>
                   <div className="text-slate-500 dark:text-slate-400 text-[11px] truncate">{project.merchantEmail}</div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-white/70 dark:bg-black/30 border border-[#168C80]/20 space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Payable Specialist</span>
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Payable Freelancer</span>
                   <div className="font-bold text-slate-900 dark:text-white">{matchingPkg.assignedFreelancerName}</div>
                   <div className="text-slate-500 dark:text-slate-400 text-[11px] truncate">
                     {matchingPkg.assignedFreelancerEmail || userEmail}
@@ -1221,7 +1221,7 @@ export default function FreelancerGigWorkspacePage() {
                       <span className="text-[10px] text-slate-400 block truncate">{project.merchantEmail}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-slate-400 block font-sans">Payable Specialist:</span>
+                      <span className="text-slate-400 block font-sans">Payable Freelancer:</span>
                       <strong className="text-slate-800 dark:text-slate-200">{matchingPkg.assignedFreelancerName}</strong>
                       <span className="text-[10px] text-slate-400 block truncate">{matchingPkg.assignedFreelancerEmail}</span>
                     </div>
@@ -1230,10 +1230,10 @@ export default function FreelancerGigWorkspacePage() {
                   <div className="border-t border-[#D8E9E4] dark:border-[#345451] pt-2 space-y-1 text-xs">
                     <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200">
                       <span>{matchingPkg.title} ({matchingPkg.category})</span>
-                      <span>${matchingPkg.allocatedPrice?.toFixed(2)} USD</span>
+                      <span>${matchingPkg.allocatedPrice?.toFixed(2)}</span>
                     </div>
                     <p className="text-[11px] text-slate-400">
-                      Authorized &amp; funded via PayPal Multi-Seller Escrow on Gigsaw.
+                      Authorized &amp; funded via PayPal Multi-Seller Checkout on Gigsaw.
                     </p>
                   </div>
 

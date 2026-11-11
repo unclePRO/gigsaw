@@ -80,10 +80,10 @@ export async function POST(req: NextRequest) {
     // Determine invoice item details
     const itemName = targetPackage
       ? `${project.projectName} - ${targetPackage.title}`
-      : `${project.projectName} (Consolidated Escrow Milestones)`;
+      : `${project.projectName} (Consolidated Milestones)`;
     const itemDesc = targetPackage
-      ? `Specialist: ${targetPackage.assignedFreelancerName || 'Assigned Talent'} (${targetPackage.category}). Scope: ${targetPackage.description || targetPackage.title}`
-      : `Complete project funding across ${project.workPackages.length} specialist milestones on Gigsaw AI Escrow.`;
+      ? `Freelancer: ${targetPackage.assignedFreelancerName || 'Assigned Talent'} (${targetPackage.category}). Scope: ${targetPackage.description || targetPackage.title}`
+      : `Complete project funding across ${project.workPackages.length} freelancer milestones on Gigsaw.`;
     const itemAmount = (
       targetPackage
         ? Number(targetPackage.allocatedPrice || 50)
@@ -159,12 +159,12 @@ export async function POST(req: NextRequest) {
         currency_code: 'USD',
         note: 'Authorized and funded via PayPal Multi-Seller Marketplace Checkout on Gigsaw.',
         term: 'Due on receipt',
-        memo: 'Gigsaw AI Escrow Multi-Seller Milestone Payment',
+        memo: 'Gigsaw AI Multi-Seller Milestone Payment',
       },
       invoicer: {
         name: {
           given_name: 'Gigsaw',
-          surname: 'Escrow Platform',
+          surname: 'Platform',
         },
       },
       primary_recipients: [

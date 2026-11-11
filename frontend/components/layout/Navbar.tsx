@@ -146,14 +146,14 @@ export const Navbar: React.FC = () => {
                   <CheckSquare className="w-3.5 h-3.5" />
                   <span>Invites</span>
                   {pendingInviteCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 shadow-sm animate-pulse">
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-xs">
                       {pendingInviteCount > 9 ? '9+' : pendingInviteCount}
                     </span>
                   )}
                 </Link>
                 <Link
                   href="/freelancer/profile"
-                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 relative ${
+                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
                     pathname === '/freelancer/profile'
                       ? 'bg-white/85 dark:bg-[#1B3B39] text-[#10413E] dark:text-[#73D8C7] border border-[#B4D5CD] dark:border-[#2A524F] font-bold shadow-xs'
                       : 'text-[#244340] dark:text-[#A3C5BF] hover:text-[#10413E] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
@@ -161,9 +161,6 @@ export const Navbar: React.FC = () => {
                 >
                   <User className="w-3.5 h-3.5" />
                   <span>Portfolio</span>
-                  {user?.isProfileComplete === false && (
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Profile Setup Required" />
-                  )}
                 </Link>
               </>
             )

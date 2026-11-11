@@ -331,7 +331,7 @@ export default function MerchantProjectWorkspacePage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setCancelSuccessMsg('Project has been cancelled. Remaining escrow funds are released.');
+        setCancelSuccessMsg('Project has been cancelled. Remaining project allocations are refunded.');
         setCancelModalOpen(false);
         fetchProjectDetails();
       } else {
@@ -591,7 +591,7 @@ export default function MerchantProjectWorkspacePage() {
                 <span className="truncate">Members</span>
                 <div className="flex items-center gap-1">
                   {pendingCounteroffers.length > 0 && (
-                    <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-amber-500 text-white animate-pulse" title="Counteroffers pending review">
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500 text-white" title="Counteroffers pending review">
                       {pendingCounteroffers.length} Offer
                     </span>
                   )}
@@ -602,7 +602,7 @@ export default function MerchantProjectWorkspacePage() {
               </div>
             )}
             {isSidebarCollapsed && pendingCounteroffers.length > 0 && (
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500" />
             )}
           </button>
 
@@ -621,12 +621,12 @@ export default function MerchantProjectWorkspacePage() {
             {!isSidebarCollapsed && (
               <div className="flex-1 flex items-center justify-between min-w-0">
                 <span className="truncate">Team Chat</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live real-time room" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500" title="Live room" />
               </div>
             )}
           </button>
 
-          {/* TAB 4: MONEY */}
+          {/* TAB 4: PAYMENT */}
           <button
             type="button"
             onClick={() => setActiveTab('money')}
@@ -635,22 +635,22 @@ export default function MerchantProjectWorkspacePage() {
                 ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-l-4 border-[#168C80] dark:border-[#32B6A5] shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
             }`}
-            title="Money, PayPal Escrow & Invoices"
+            title="Payment, PayPal & Invoices"
           >
             <DollarSign className="w-4 h-4 shrink-0 text-[#168C80] dark:text-[#32B6A5]" />
             {!isSidebarCollapsed && (
               <div className="flex-1 flex items-center justify-between min-w-0">
-                <span className="truncate">Money</span>
+                <span className="truncate">Payment</span>
                 <span
-                  className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                  className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
                     isFundedOrActive
                       ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
                       : isReadyToFund
-                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 animate-pulse'
+                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                   }`}
                 >
-                  {isFundedOrActive ? 'Escrow Paid' : isReadyToFund ? 'Ready to Pay' : 'On Hold'}
+                  {isFundedOrActive ? 'Paid via PayPal' : isReadyToFund ? 'Ready to Fund' : 'Awaiting Acceptance'}
                 </span>
               </div>
             )}
@@ -679,33 +679,33 @@ export default function MerchantProjectWorkspacePage() {
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={`px-3 py-1 rounded-full text-xs font-black tracking-wide border ${
+                className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide border ${
                   isCancelled
                     ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
                     : isCompleted
                     ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                     : isReadyToFund
-                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
                     : isOnHold
                     ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-[#D8E9E4] dark:border-[#345451]'
                     : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
                 }`}
               >
                 {isCancelled
-                  ? 'Project Cancelled'
+                  ? 'Cancelled'
                   : isCompleted
                   ? 'Completed'
                   : isReadyToFund
-                  ? 'Ready to Fund (All Specialists Accepted)'
+                  ? 'Ready to Fund'
                   : isOnHold
-                  ? 'Project On Hold (Awaiting Specialist Invites)'
-                  : 'Funded & Active'}
+                  ? 'Awaiting Team Acceptance'
+                  : 'Funded'}
               </span>
 
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 {isOnHold || isReadyToFund
-                  ? `${acceptedTasks}/${totalTasks} Specialists Accepted`
-                  : `${completedTasks}/${totalTasks} Milestones Complete (${progressPercent}%)`}
+                  ? `${acceptedTasks}/${totalTasks} Freelancers Accepted`
+                  : `${completedTasks}/${totalTasks} Tasks Complete (${progressPercent}%)`}
               </span>
             </div>
 
@@ -721,7 +721,7 @@ export default function MerchantProjectWorkspacePage() {
                 Total Budget
               </span>
               <span className="text-xs font-black text-[#10413E] dark:text-[#F0FAF8]">
-                ${project.totalBudget?.toLocaleString()} USD
+                ${project.totalBudget?.toLocaleString()}
               </span>
             </div>
 
@@ -730,7 +730,7 @@ export default function MerchantProjectWorkspacePage() {
                 type="button"
                 onClick={() => setCancelModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 text-xs font-bold rounded-xl transition-all cursor-pointer"
-                title="Cancel project and release escrow"
+                title="Cancel project and close budget"
               >
                 <XCircle className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Cancel</span>
@@ -780,20 +780,20 @@ export default function MerchantProjectWorkspacePage() {
               <div className="p-5 bg-gradient-to-r from-[#168C80]/15 via-[#32B6A5]/10 to-[#73D8C7]/10 border border-[#168C80]/30 rounded-2xl space-y-3 shadow-xs">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <div className="flex items-center gap-2.5 font-bold text-sm text-[#10413E] dark:text-[#F0FAF8]">
-                    <Clock className="w-4 h-4 text-[#168C80] dark:text-[#32B6A5] animate-spin" />
-                    <span>Project On Hold &bull; Awaiting Specialist Confirmations ({acceptedTasks}/{totalTasks} Accepted)</span>
+                    <Clock className="w-4 h-4 text-[#168C80] dark:text-[#32B6A5]" />
+                    <span>Project On Hold &bull; Awaiting Freelancer Confirmations ({acceptedTasks}/{totalTasks} Accepted)</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setActiveTab('members')}
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#168C80] hover:bg-[#10766D] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
                   >
-                    <span>View Specialists & Invites</span>
+                    <span>View Team & Invites</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
-                  Your project is on hold until all {totalTasks} matched specialists accept their milestone invitations. You can discuss details directly in the <strong>Team Chat</strong> tab. If someone declines or is delayed, visit the <strong>Members</strong> tab to replace them instantly with one click.
+                  Your project is on hold until all {totalTasks} assigned freelancers accept their invitations. You can discuss details directly in the <strong>Team Chat</strong> tab. If someone declines or is delayed, visit the <strong>Members</strong> tab to replace them with another talent.
                 </p>
               </div>
             )}
@@ -803,19 +803,19 @@ export default function MerchantProjectWorkspacePage() {
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <div className="flex items-center gap-2.5 font-bold text-sm text-emerald-800 dark:text-emerald-200">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span>All Specialists Confirmed &bull; Ready for Single Checkout!</span>
+                    <span>All Freelancers Confirmed &bull; Ready to Fund</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setActiveTab('money')}
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
                   >
-                    <span>Proceed to Money & Checkout</span>
+                    <span>Proceed to Payment</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
-                  Every specialist has accepted their milestone quote. Approve the single ${project.totalBudget?.toLocaleString()} USD authorization in the <strong>Money</strong> tab to instantly fund escrow and begin development.
+                  Every freelancer has accepted their quote. Complete payment via PayPal Multi-Seller Checkout in the <strong>Payment</strong> tab to fund the project and begin development.
                 </p>
               </div>
             )}
@@ -824,14 +824,14 @@ export default function MerchantProjectWorkspacePage() {
               <div className="p-5 bg-gradient-to-r from-cyan-500/10 via-emerald-500/5 to-teal-500/10 border border-cyan-500/30 rounded-2xl flex items-center justify-between gap-4 flex-wrap shadow-xs">
                 <div className="flex items-center gap-2.5 font-bold text-sm text-slate-900 dark:text-white">
                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  <span>Project Active & Funded &bull; PayPal Escrow Protection Live</span>
+                  <span>Project Active &bull; Paid via PayPal</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setActiveTab('money')}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-[#168C80] dark:text-[#73D8C7] hover:underline cursor-pointer"
                 >
-                  <span>View Escrow Ledger & Invoices</span>
+                  <span>View Payment Details & Invoices</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -842,15 +842,15 @@ export default function MerchantProjectWorkspacePage() {
               <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-5 space-y-1 shadow-xs">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Project Budget</span>
                 <div className="text-xl font-black text-[#10413E] dark:text-[#F0FAF8]">
-                  ${project.totalBudget?.toLocaleString()} USD
+                  ${project.totalBudget?.toLocaleString()}
                 </div>
                 <span className="text-[11px] text-slate-400">Total approved investment</span>
               </div>
 
               <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-5 space-y-1 shadow-xs">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Allocated to Specialists</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Allocated to Freelancers</span>
                 <div className="text-xl font-black text-[#168C80] dark:text-[#73D8C7]">
-                  ${project.allocatedTotal?.toLocaleString()} USD
+                  ${project.allocatedTotal?.toLocaleString()}
                 </div>
                 <span className="text-[11px] text-slate-400">Across {totalTasks} milestones</span>
               </div>
@@ -858,19 +858,19 @@ export default function MerchantProjectWorkspacePage() {
               <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-5 space-y-1 shadow-xs">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Retained Buffer</span>
                 <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-                  ${project.savings?.toLocaleString() || 0} USD
+                  ${project.savings?.toLocaleString() || 0}
                 </div>
                 <span className="text-[11px] text-slate-400">Retained reserve buffer</span>
               </div>
 
               <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-5 space-y-1 shadow-xs">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Escrow Security</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Payment Protection</span>
                 <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  <span>{isFundedOrActive ? 'PayPal Escrow Active' : 'Awaiting Funding'}</span>
+                  <span>{isFundedOrActive ? 'Paid via PayPal' : 'Awaiting Payment'}</span>
                 </div>
                 <span className="text-[11px] text-slate-400">
-                  {isFundedOrActive ? 'Disbursed upon deliverable approval' : 'Single checkout protection'}
+                  {isFundedOrActive ? 'Paid with PayPal Buyer Protection' : 'Instant multi-seller checkout'}
                 </span>
               </div>
             </div>
@@ -914,7 +914,7 @@ export default function MerchantProjectWorkspacePage() {
               ) : (
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {isOnHold
-                    ? 'All work packages are pending acceptance from the selected specialist team.'
+                    ? 'All work packages are pending acceptance from the selected team.'
                     : 'Milestone execution is actively tracked across your assembled team.'}
                 </p>
               )}
@@ -928,7 +928,7 @@ export default function MerchantProjectWorkspacePage() {
                     Milestone Deliverables & Scope ({totalTasks})
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Review assigned tasks, inspect submitted outputs, and approve escrow disbursements.
+                    Review assigned tasks, inspect submitted deliverables, and mark complete.
                   </p>
                 </div>
               </div>
@@ -1006,7 +1006,7 @@ export default function MerchantProjectWorkspacePage() {
                                       </span>
                                     </div>
                                     <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate mt-0.5">
-                                      {wp.assignedFreelancerName || 'Assigned Specialist'}
+                                      {wp.assignedFreelancerName || 'Assigned Freelancer'}
                                     </div>
                                   </div>
                                 </div>
@@ -1034,7 +1034,7 @@ export default function MerchantProjectWorkspacePage() {
                                 ) : (
                                   <span
                                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 cursor-not-allowed select-none opacity-80"
-                                    title="Specialist has not submitted deliverables yet"
+                                    title="Freelancer has not submitted deliverables yet"
                                   >
                                     <Clock className="w-3.5 h-3.5" />
                                     <span>No submission</span>
@@ -1058,7 +1058,7 @@ export default function MerchantProjectWorkspacePage() {
                                 ) : !isFundedOrActive ? (
                                   <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium">
                                     <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                    <span>Awaiting escrow funding</span>
+                                    <span>Awaiting payment</span>
                                   </div>
                                 ) : hasSubmission ? (
                                   <div className="flex items-center gap-2">
@@ -1111,10 +1111,10 @@ export default function MerchantProjectWorkspacePage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-black text-[#10413E] dark:text-[#F0FAF8]">
-                  Specialist Team & Invitation Status
+                  Team &amp; Invitation Status
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Track confirmation from each specialist. If someone declines or asks for scope adjustment, review counteroffers or swap them instantly.
+                  Track confirmation from each freelancer. If someone declines or asks for scope adjustment, review counteroffers or replace them.
                 </p>
               </div>
               <div className="text-xs font-bold px-3 py-1.5 rounded-xl bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border border-[#D8E9E4] dark:border-[#345451] self-start sm:self-auto">
@@ -1127,10 +1127,10 @@ export default function MerchantProjectWorkspacePage() {
               <div className="p-5 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 rounded-2xl space-y-3 shadow-xs">
                 <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-bold text-sm">
                   <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span>Specialist Counteroffer Received ({pendingCounteroffers.length})</span>
+                  <span>Freelancer Counteroffer Received ({pendingCounteroffers.length})</span>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300">
-                  One or more specialists proposed adjustments to their scope, timeline, or quote. Click below to inspect AI feasibility and decide:
+                  One or more freelancers proposed adjustments to their scope, timeline, or quote. Review AI analysis and decide:
                 </p>
 
                 <div className="space-y-2 pt-1">
@@ -1144,7 +1144,7 @@ export default function MerchantProjectWorkspacePage() {
                           {wp.assignedFreelancerName} &bull; {wp.title}
                         </div>
                         <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Proposed quote: <strong className="text-amber-600 dark:text-amber-400">${wp.quotationAmount || wp.allocatedPrice} USD</strong> (Original: ${wp.allocatedPrice} USD) &bull; {wp.quotationDeliveryDays || wp.estimatedDays || 7} Days
+                          Proposed quote: <strong className="text-amber-600 dark:text-amber-400">${wp.quotationAmount || wp.allocatedPrice}</strong> (Original: ${wp.allocatedPrice}) &bull; {wp.quotationDeliveryDays || wp.estimatedDays || 7} Days
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -1195,7 +1195,7 @@ export default function MerchantProjectWorkspacePage() {
                       </div>
                       <div className="text-right shrink-0">
                         <span className="text-xs font-black text-[#10413E] dark:text-[#F0FAF8]">
-                          ${wp.allocatedPrice?.toLocaleString()} USD
+                          ${wp.allocatedPrice?.toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -1208,7 +1208,7 @@ export default function MerchantProjectWorkspacePage() {
                         </div>
                         <div>
                           <div className="text-xs font-bold text-[#10413E] dark:text-[#F0FAF8]">
-                            {wp.assignedFreelancerName || 'Specialist Talent'}
+                            {wp.assignedFreelancerName || 'Assigned Freelancer'}
                           </div>
                           <div className="text-[11px] text-slate-400">
                             {wp.assignedFreelancerEmail || 'Talent'} &bull; {wp.assignedFreelancerRating ? `★ ${wp.assignedFreelancerRating.toFixed(1)}` : 'Verified Pro'}
@@ -1231,7 +1231,7 @@ export default function MerchantProjectWorkspacePage() {
                         ) : isDeclined ? (
                           <XCircle className="w-3.5 h-3.5 text-rose-500" />
                         ) : (
-                          <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                          <Clock className="w-3.5 h-3.5 text-amber-500" />
                         )}
                         <span>{isAccepted ? 'Invitation Accepted' : isDeclined ? 'Declined' : 'Invite Pending'}</span>
                       </span>
@@ -1245,7 +1245,7 @@ export default function MerchantProjectWorkspacePage() {
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#D8E9E4] dark:border-[#345451] text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                       >
                         <MessageSquare className="w-3.5 h-3.5 text-[#168C80] dark:text-[#73D8C7]" />
-                        <span>Chat with Specialist</span>
+                        <span>Chat with Freelancer</span>
                       </button>
 
                       {/* Find Someone Else Button */}
@@ -1255,10 +1255,10 @@ export default function MerchantProjectWorkspacePage() {
                         onClick={() => handleSwapSpecialist(wp)}
                         className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                           isDeclined
-                            ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs animate-pulse'
+                            ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs'
                             : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
                         }`}
-                        title="Replace this specialist with another AI-matched talent"
+                        title="Replace this freelancer with another talent"
                       >
                         {isSwapping ? (
                           <>
@@ -1291,11 +1291,11 @@ export default function MerchantProjectWorkspacePage() {
                   Team Project Chat
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Collaborate in real time with all specialist team members and Gigsaw AI Assistant.
+                  Collaborate in real time with all team members and Gigsaw AI Assistant.
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Live Team Room</span>
               </div>
             </div>
@@ -1311,7 +1311,7 @@ export default function MerchantProjectWorkspacePage() {
         )}
 
         {/* ============================================================== */}
-        {/* TAB 4: MONEY & PAYPAL ESCROW & INVOICES                        */}
+        {/* TAB 4: PAYMENT, PAYPAL & INVOICES                              */}
         {/* ============================================================== */}
         {activeTab === 'money' && (
           <div className="space-y-6 animate-fadeIn">
@@ -1321,7 +1321,7 @@ export default function MerchantProjectWorkspacePage() {
                 <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-200">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span>All {totalTasks} specialists have accepted their quotes. Complete single checkout to start!</span>
+                    <span>All {totalTasks} freelancers have accepted their quotes. Complete payment to start!</span>
                   </div>
                 </div>
 
@@ -1339,27 +1339,27 @@ export default function MerchantProjectWorkspacePage() {
               <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-[#D8E9E4] dark:border-[#345451] p-6 space-y-4 shadow-xs">
                 <div className="flex items-center gap-2 text-sm font-black text-[#10413E] dark:text-[#F0FAF8]">
                   <CreditCard className="w-4 h-4 text-[#168C80] dark:text-[#32B6A5]" />
-                  <span>Single PayPal Checkout &bull; Funding On Hold</span>
+                  <span>PayPal Multi-Seller Checkout &bull; Awaiting Acceptance</span>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
-                  To protect your funds, Gigsaw does not charge you until every specialist on your team accepts their invitation. Once {totalTasks} of {totalTasks} accept, you will approve one single checkout for ${project.totalBudget?.toLocaleString()} USD.
+                  To protect your budget, Gigsaw does not initiate payment until every freelancer on your team accepts their invitation. Once {totalTasks} of {totalTasks} accept, you will complete checkout for ${project.totalBudget?.toLocaleString()}.
                 </p>
 
                 {/* Shopping Cart Summary */}
                 <div className="p-4 rounded-xl bg-[#F0F8F6] dark:bg-[#102B2B] border border-[#D8E9E4] dark:border-[#345451] space-y-2">
                   <h4 className="text-xs font-black uppercase tracking-wider text-[#10413E] dark:text-[#F0FAF8]">
-                    Planned Escrow Distribution
+                    Budget Distribution
                   </h4>
                   <div className="space-y-1.5 text-xs">
                     {project.workPackages.map((wp, i) => (
                       <div key={wp.id || i} className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                        <span>{wp.title} ({wp.assignedFreelancerName || 'Specialist'})</span>
-                        <span className="font-bold text-[#10413E] dark:text-[#F0FAF8]">${wp.allocatedPrice} USD</span>
+                        <span>{wp.title} ({wp.assignedFreelancerName || 'Freelancer'})</span>
+                        <span className="font-bold text-[#10413E] dark:text-[#F0FAF8]">${wp.allocatedPrice}</span>
                       </div>
                     ))}
                     <div className="pt-2 border-t border-[#D8E9E4] dark:border-[#345451] flex justify-between items-center font-black text-sm text-[#10413E] dark:text-[#F0FAF8]">
                       <span>Total Project Budget</span>
-                      <span>${project.totalBudget?.toLocaleString()} USD</span>
+                      <span>${project.totalBudget?.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -1369,7 +1369,7 @@ export default function MerchantProjectWorkspacePage() {
                   onClick={() => setActiveTab('members')}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#168C80] hover:bg-[#10766D] text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
                 >
-                  <span>Review Specialist Invitations</span>
+                  <span>Review Team Invitations</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1390,10 +1390,10 @@ export default function MerchantProjectWorkspacePage() {
                       </span>
                     </div>
                     <h3 className="text-base font-black text-[#10413E] dark:text-[#F0FAF8]">
-                      Multi-Seller Escrow Ledger & Hosted Invoice
+                      PayPal Multi-Seller Payment &amp; Invoices
                     </h3>
                     <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-                      Captured via PayPal Orders v2. Each specialist's funds are held in secure escrow and released upon milestone review approval. View the official PayPal-hosted invoice with itemized line items below.
+                      Captured via PayPal Orders v2. Payments are disbursed directly to each freelancer upon deliverable completion and approval. View the official PayPal-hosted invoice with itemized line items below.
                     </p>
                     {project.paypalOrderId && (
                       <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 pt-0.5">
@@ -1448,7 +1448,7 @@ export default function MerchantProjectWorkspacePage() {
                         <span className="text-xs font-bold text-[#10413E] dark:text-[#F0FAF8] truncate">{wp.title}</span>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        Specialist: <strong>{wp.assignedFreelancerName || 'Specialist'}</strong> ({wp.assignedFreelancerEmail})
+                        Freelancer: <strong>{wp.assignedFreelancerName || 'Freelancer'}</strong> ({wp.assignedFreelancerEmail})
                       </p>
                       {wp.paypalCaptureId && (
                         <p className="text-[10px] font-mono text-slate-400">
@@ -1460,10 +1460,10 @@ export default function MerchantProjectWorkspacePage() {
                     <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
                       <div className="text-right">
                         <div className="text-xs font-black text-[#10413E] dark:text-[#F0FAF8]">
-                          ${wp.allocatedPrice?.toLocaleString()} USD
+                          ${wp.allocatedPrice?.toLocaleString()}
                         </div>
                         <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                          {isFundedOrActive ? 'Escrow Funded' : 'Planned'}
+                          {isFundedOrActive ? 'Paid' : 'Pending'}
                         </span>
                       </div>
 
@@ -1517,7 +1517,7 @@ export default function MerchantProjectWorkspacePage() {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              Provide constructive feedback to the specialist. The milestone will be marked as <strong>Revision Requested</strong> and escrow release paused until updated.
+              Provide constructive feedback to the freelancer. The milestone will be marked as <strong>Revision Requested</strong> for the freelancer to address.
             </p>
 
             <textarea
@@ -1652,7 +1652,7 @@ export default function MerchantProjectWorkspacePage() {
               <span>Cancel Project Confirmation</span>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Are you sure you want to cancel <strong>&ldquo;{project.projectName}&rdquo;</strong>? This will release any remaining unreleased escrow allocations and mark the project as cancelled.
+              Are you sure you want to cancel <strong>&ldquo;{project.projectName}&rdquo;</strong>? This will cancel any remaining active tasks and mark the project as cancelled.
             </p>
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
@@ -1918,7 +1918,7 @@ export default function MerchantProjectWorkspacePage() {
               ) : (
                 <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>Approved &amp; Escrow Released</span>
+                  <span>Approved &amp; Completed</span>
                 </div>
               )}
             </div>

@@ -939,7 +939,7 @@ export default function CreateProjectPage() {
                 {proposal?.projectName || 'Assembled Specialist Proposal'}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
-                Review your assembled specialist team and budget breakdown. Swap any specialist before funding escrow.
+                Review your assembled specialist team and budget breakdown. Swap any specialist before launching project.
               </p>
             </div>
 
@@ -950,7 +950,7 @@ export default function CreateProjectPage() {
                 <span className="text-lg font-black text-slate-900 dark:text-white">${budget}</span>
               </div>
               <div className="pr-4 border-r border-slate-200 dark:border-slate-800 text-left">
-                <span className="text-[10px] uppercase font-bold text-cyan-500 block">Allocated Escrow</span>
+                <span className="text-[10px] uppercase font-bold text-cyan-500 block">Allocated Budget</span>
                 <span className="text-lg font-black text-cyan-500">${allocatedTotal}</span>
               </div>
               <div className="text-left">
@@ -1010,9 +1010,9 @@ export default function CreateProjectPage() {
                     </div>
 
                     <div className="text-right">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Milestone Escrow</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Milestone Fee</span>
                       <div className="text-xl font-black text-slate-900 dark:text-white">
-                        ${milestonePrice} <span className="text-xs font-semibold text-slate-400">USD</span>
+                        ${milestonePrice}
                       </div>
                     </div>
                   </div>
@@ -1262,7 +1262,7 @@ export default function CreateProjectPage() {
                   <span>Adjust in Chat</span>
                 </button>
                 <div className="hidden sm:block text-xs text-slate-500 dark:text-slate-400">
-                  Total Project Escrow: <strong className="text-cyan-600 dark:text-cyan-400 font-black">${allocatedTotal} USD</strong>
+                  Total Allocated Budget: <strong className="text-cyan-600 dark:text-cyan-400 font-bold">${allocatedTotal}</strong>
                 </div>
               </div>
 

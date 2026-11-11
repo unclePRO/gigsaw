@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
       intent: 'CAPTURE',
       purchase_units,
       application_context: {
-        brand_name: 'Gigsaw AI Escrow',
+        brand_name: 'Gigsaw AI',
         landing_page: 'NO_PREFERENCE',
         user_action: 'PAY_NOW',
         return_url: 'http://localhost:3000/dashboard',

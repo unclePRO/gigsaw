@@ -249,7 +249,7 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
                 <Users className="w-4 h-4 text-cyan-500" />
                 <span>Team Members ({participants.length})</span>
               </span>
-              <span className="text-[10px] text-slate-400">Escrow Protected Room</span>
+              <span className="text-[10px] text-slate-400">Protected Project Chat</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               {participants.map((p, idx) => (
@@ -276,7 +276,7 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
           <div className="flex justify-center">
             <div className="bg-[#FFF4C4] dark:bg-[#182229] border border-[#FFE799] dark:border-slate-800 text-[#54656F] dark:text-[#8696A0] text-[10px] px-3.5 py-1.5 rounded-lg shadow-sm text-center max-w-sm flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span>Messages are encrypted. Held in escrow until milestone completion.</span>
+              <span>Messages are encrypted for secure team collaboration.</span>
             </div>
           </div>
 

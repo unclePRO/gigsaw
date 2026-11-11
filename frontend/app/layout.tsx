@@ -7,7 +7,7 @@ import { Navbar } from '@/components/layout/Navbar';
 
 export const metadata: Metadata = {
   title: 'Gigsaw - AI Project Decomposition & Freelancer Marketplace',
-  description: 'Assemble complete specialist teams with one prompt and single-escrow PayPal Multi-Seller Checkout.',
+  description: 'Assemble complete freelancer teams with one prompt and PayPal Multi-Seller Checkout.',
 };
 
 export default function RootLayout({
@@ -30,7 +30,7 @@ export default function RootLayout({
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-slate-800 dark:text-slate-200 tracking-tight">Gigsaw</span>
                     <span>&bull;</span>
-                    <span>AI Team Assembly & Escrow</span>
+                    <span>AI Team Assembly &amp; Collaboration</span>
                   </div>
                   <div>
                     Next-Generation AI Freelance Platform &bull; &copy; {new Date().getFullYear()}

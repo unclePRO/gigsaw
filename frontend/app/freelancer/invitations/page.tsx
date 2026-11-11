@@ -264,7 +264,7 @@ export default function FreelancerInvitationsPage() {
           <div className="space-y-1">
             <h3 className="text-base font-bold text-slate-900 dark:text-white">No Pending Invitations</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-              You are all caught up! When a merchant launches a project that matches your skills, AI invitations with guaranteed PayPal escrow will arrive here.
+              You are all caught up! When a client launches a project that matches your skills, AI invitations with direct PayPal checkout will arrive here.
             </p>
           </div>
           <div className="pt-2">
@@ -315,7 +315,7 @@ export default function FreelancerInvitationsPage() {
 
                   <div className="text-left sm:text-right">
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Milestone Offer</span>
-                    <span className="text-2xl font-black text-slate-900 dark:text-white">${pkg.allocatedPrice} <span className="text-xs font-semibold text-slate-400">USD</span></span>
+                    <span className="text-2xl font-black text-slate-900 dark:text-white">${pkg.allocatedPrice}</span>
                   </div>
                 </div>
 
@@ -429,7 +429,7 @@ export default function FreelancerInvitationsPage() {
                         {aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_amount && (
                           <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-[11px]">
                             <span className="text-amber-800 dark:text-amber-300">
-                              AI suggests counteroffering at <strong>${aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_amount} USD</strong> ({aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_days} days)
+                              AI suggests counteroffering at <strong>${aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_amount}</strong> ({aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_days} days)
                             </span>
                             <button
                               type="button"
@@ -459,7 +459,7 @@ export default function FreelancerInvitationsPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>Funds authorized in PayPal Escrow &bull; Released on milestone approval</span>
+                    <span>Direct payout via PayPal &bull; Paid upon deliverable verification</span>
                   </span>
 
                   <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">

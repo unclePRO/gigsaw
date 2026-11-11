@@ -165,7 +165,7 @@ export const EmbeddedProjectChat: React.FC<EmbeddedProjectChatProps> = ({
               <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
                 Team Project Chat
               </h3>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live room" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" title="Live room" />
             </div>
             <p className="text-[10px] text-slate-400">
               Active for merchant & all invited talent &bull; Open before & after acceptance

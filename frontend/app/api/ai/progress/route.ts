@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     if (completed_count === totalCount) {
       recommended_actions.push('All milestones completed! Review final assets and finalize project delivery.');
     } else {
-      recommended_actions.push('Verify PayPal escrow funding balance for upcoming milestone releases.');
+      recommended_actions.push('Verify PayPal funding status for upcoming milestone releases.');
     }
 
     const fallbackSummary: IAiProgressSummary = {

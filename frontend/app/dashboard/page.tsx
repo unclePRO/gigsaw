@@ -86,7 +86,7 @@ export default function MerchantDashboardPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setActionSuccessMsg(`Project "${cancelModalProject.projectName}" cancelled. Escrow funds unlocked.`);
+        setActionSuccessMsg(`Project "${cancelModalProject.projectName}" cancelled. Project funds unlocked.`);
         setTimeout(() => setActionSuccessMsg(null), 5000);
         setCancelModalProject(null);
         fetchProjects();
@@ -247,7 +247,7 @@ export default function MerchantDashboardPage() {
                             : isCompleted
                             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                             : proj.status === 'READY_TO_FUND'
-                            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
                             : proj.status === 'ON_HOLD' || proj.status === 'draft' || !proj.status
                             ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-[#D8E9E4] dark:border-[#345451]'
                             : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
@@ -258,10 +258,10 @@ export default function MerchantDashboardPage() {
                           : isCompleted
                           ? 'Completed'
                           : proj.status === 'READY_TO_FUND'
-                          ? 'Ready to Fund (All Accepted)'
+                          ? 'Ready to Fund'
                           : proj.status === 'ON_HOLD' || proj.status === 'draft' || !proj.status
-                          ? 'On Hold (Invites Sent)'
-                          : 'Funded & Active'}
+                          ? 'Awaiting Team Acceptance'
+                          : 'Funded'}
                       </span>
                       <span className="text-[11px] text-slate-400">
                         Launched {proj.createdAt ? new Date(proj.createdAt).toLocaleDateString() : 'Recently'}
@@ -287,9 +287,9 @@ export default function MerchantDashboardPage() {
                     {proj.status === 'READY_TO_FUND' ? (
                       <Link
                         href={`/dashboard/${pId}`}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-all shadow-md animate-pulse"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs"
                       >
-                        <span>Authorize Escrow</span>
+                        <span>Pay &amp; Start Project</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Link>
                     ) : (
@@ -308,7 +308,7 @@ export default function MerchantDashboardPage() {
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-xs font-semibold">
                     <span className="text-slate-700 dark:text-slate-300">
-                      Milestones: {completedPkgs} of {totalPkgs} completed
+                      Tasks: {completedPkgs} of {totalPkgs} completed
                     </span>
                     <span className="text-cyan-600 dark:text-cyan-400">{progress}%</span>
                   </div>
@@ -326,9 +326,9 @@ export default function MerchantDashboardPage() {
                 <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   {/* Team Avatars */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-400 font-medium">Specialists:</span>
+                    <span className="text-[11px] text-slate-400 font-medium">Team:</span>
                     {teamMembers.length === 0 ? (
-                      <span className="text-[11px] text-slate-400 italic">Matching specialists</span>
+                      <span className="text-[11px] text-slate-400 italic">Assigning freelancers</span>
                     ) : (
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {teamMembers.map((tm, idx) => (
@@ -336,7 +336,6 @@ export default function MerchantDashboardPage() {
                             key={idx}
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold"
                           >
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
                             <span>{tm.name}</span>
                             <span className="text-slate-400 uppercase text-[8px]">({tm.category})</span>
                           </span>
@@ -349,10 +348,10 @@ export default function MerchantDashboardPage() {
                   <div className="flex items-center gap-4 text-xs">
                     <div>
                       <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mr-1.5">
-                        Escrow:
+                        Budget:
                       </span>
-                      <strong className="text-slate-900 dark:text-white font-black">
-                        ${proj.totalBudget?.toLocaleString()} USD
+                      <strong className="text-slate-900 dark:text-white font-bold">
+                        ${proj.totalBudget?.toLocaleString()}
                       </strong>
                     </div>
                     {proj.savings ? (
@@ -361,7 +360,7 @@ export default function MerchantDashboardPage() {
                           Savings:
                         </span>
                         <strong className="text-emerald-600 dark:text-emerald-400 font-bold">
-                          +${proj.savings?.toLocaleString()} USD
+                          +${proj.savings?.toLocaleString()}
                         </strong>
                       </div>
                     ) : null}
@@ -392,7 +391,7 @@ export default function MerchantDashboardPage() {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
-              Are you sure you want to cancel this project? All uncompleted milestone contracts will be marked as Cancelled, assigned specialists will be notified, and remaining escrow funds will be unlocked. This action cannot be undone.
+              Are you sure you want to cancel this project? All uncompleted tasks will be marked as Cancelled, assigned freelancers will be notified, and remaining project allocations will be refunded. This action cannot be undone.
             </p>
 
             <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
