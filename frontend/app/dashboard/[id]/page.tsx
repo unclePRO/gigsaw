@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -164,9 +164,11 @@ export default function MerchantProjectWorkspacePage() {
     }
   }, []);
 
-  const fetchProjectDetails = useCallback(async () => {
+  const initialFetchDone = useRef<string | null>(null);
+
+  const fetchProjectDetails = useCallback(async (isInitial = false) => {
     if (!projectId) return;
-    setLoading(true);
+    if (isInitial) setLoading(true);
     setError(null);
     try {
       const [projRes, allRes] = await Promise.all([
@@ -179,7 +181,10 @@ export default function MerchantProjectWorkspacePage() {
 
       if (projData.success && projData.project) {
         setProject(projData.project);
-        if (projData.project.status === 'FUNDED_IN_PROGRESS' || projData.project.status === 'funded') {
+        if (
+          !progressSummary &&
+          (projData.project.status === 'FUNDED_IN_PROGRESS' || projData.project.status === 'funded')
+        ) {
           fetchProgressSummary(projData.project);
         }
       } else {
@@ -193,10 +198,11 @@ export default function MerchantProjectWorkspacePage() {
       console.error('Error fetching project:', err);
       setError(err.message || 'Failed to load project details');
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
-  }, [projectId, fetchProgressSummary]);
+  }, [projectId, fetchProgressSummary, progressSummary]);
 
+  // Auth & role check
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push(`/login?callbackUrl=/dashboard/${projectId}`);
@@ -204,11 +210,17 @@ export default function MerchantProjectWorkspacePage() {
       const user = session?.user as any;
       if (user?.role === 'freelancer') {
         router.push('/freelancer/dashboard');
-        return;
       }
-      fetchProjectDetails();
     }
-  }, [status, session, router, projectId, fetchProjectDetails]);
+  }, [status, session?.user, router, projectId]);
+
+  // Initial data load: runs ONLY ONCE per projectId, avoiding periodic flickering/reloads
+  useEffect(() => {
+    if (status === 'authenticated' && projectId && initialFetchDone.current !== projectId) {
+      initialFetchDone.current = projectId;
+      fetchProjectDetails(true);
+    }
+  }, [status, projectId, fetchProjectDetails]);
 
   // Handler for "Find Someone Else" specialist swap
   const handleSwapSpecialist = async (wp: WorkPackage) => {
@@ -789,7 +801,7 @@ export default function MerchantProjectWorkspacePage() {
           )}
 
           <button
-            onClick={fetchProjectDetails}
+            onClick={() => fetchProjectDetails(false)}
             className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             title="Refresh from MongoDB"
           >

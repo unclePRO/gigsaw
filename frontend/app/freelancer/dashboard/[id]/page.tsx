@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -86,9 +86,11 @@ export default function FreelancerGigWorkspacePage() {
     }
   }, [status, session, router, projectId]);
 
-  const fetchProject = useCallback(async () => {
+  const initialFetchDone = useRef<string | null>(null);
+
+  const fetchProject = useCallback(async (isInitial = false) => {
     if (!projectId) return;
-    setLoading(true);
+    if (isInitial) setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/projects/${projectId}`);
@@ -102,15 +104,16 @@ export default function FreelancerGigWorkspacePage() {
       console.error('Error fetching project:', err);
       setError(err.message || 'Failed to load project details');
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   }, [projectId]);
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      fetchProject();
+    if (status === 'authenticated' && projectId && initialFetchDone.current !== projectId) {
+      initialFetchDone.current = projectId;
+      fetchProject(true);
     }
-  }, [status, fetchProject]);
+  }, [status, projectId, fetchProject]);
 
   const user = session?.user as any;
   const userEmail = user?.email?.toLowerCase();
@@ -357,7 +360,7 @@ export default function FreelancerGigWorkspacePage() {
           </button>
 
           <button
-            onClick={fetchProject}
+            onClick={() => fetchProject(false)}
             className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             title="Refresh"
           >

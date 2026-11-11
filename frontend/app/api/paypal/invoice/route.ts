@@ -206,24 +206,29 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(invoicePayload),
     });
 
-    const createData = await createRes.json();
+    const createData = await createRes.json().catch(() => ({}));
 
-    if (!createRes.ok || !createData.id) {
+    // PayPal Invoicing v2 returns { rel: 'self', href: 'https://.../INV2-...' } on 201 Created
+    const invoiceId =
+      createData.id ||
+      (createData.href ? createData.href.split('/').pop() : null) ||
+      createRes.headers.get('location')?.split('/').pop();
+
+    if (!createRes.ok || !invoiceId) {
       console.error('[PayPal Invoicing Create Error]:', createRes.status, createData);
       return NextResponse.json(
         {
-          error: createData.message || 'Failed to create official PayPal invoice.',
+          error: createData.message || createData.error_description || 'Failed to create official PayPal invoice.',
           rawError: createData,
         },
-        { status: createRes.status }
+        { status: createRes.status || 500 }
       );
     }
 
-    const invoiceId = createData.id;
-
     // 3. Publish Invoice (send) to generate hosted URL without emailing
+    let hostedPayerUrl: string | null = null;
     try {
-      await fetch(`${apiBase}/v2/invoicing/invoices/${invoiceId}/send`, {
+      const sendRes = await fetch(`${apiBase}/v2/invoicing/invoices/${invoiceId}/send`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -234,6 +239,10 @@ export async function POST(req: NextRequest) {
           send_to_recipient: false,
         }),
       });
+      const sendData = await sendRes.json().catch(() => ({}));
+      if (sendData.href) {
+        hostedPayerUrl = sendData.href;
+      }
     } catch (sendErr) {
       console.warn('[PayPal Invoice Send]: Non-fatal send notification:', sendErr);
     }
@@ -261,10 +270,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Construct official PayPal hosted invoice URL
-    // Standard PayPal hosted invoice URL format
     const isSandbox = apiBase.includes('sandbox');
     const domain = isSandbox ? 'www.sandbox.paypal.com' : 'www.paypal.com';
-    const invoiceUrl = `https://${domain}/invoice/p/#${invoiceId}`;
+    const invoiceUrl = hostedPayerUrl || `https://${domain}/invoice/p/#${invoiceId}`;
 
     // Persist to MongoDB
     if (targetPackage) {
