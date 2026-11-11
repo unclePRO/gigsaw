@@ -127,6 +127,7 @@ export default function CreateProjectPage() {
   const [swappingPackageId, setSwappingPackageId] = useState<string | null>(null);
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Authentication guard
@@ -172,6 +173,16 @@ export default function CreateProjectPage() {
       chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatMessages]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-focus chat input whenever AI finishes asking a question or responding
+  useEffect(() => {
+    if (createPhase === 'chat' && !isAiThinking && !isAnalyzing) {
+      const timer = setTimeout(() => {
+        chatInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [createPhase, isAiThinking, isAnalyzing]);
 
   // Scroll to top on every phase change (instant so it always wins)
   useEffect(() => {
@@ -879,12 +890,19 @@ export default function CreateProjectPage() {
                 className="flex items-center gap-2"
               >
                 <input
+                  ref={chatInputRef}
                   type="text"
-                  placeholder="Answer project questions or provide details..."
+                  placeholder={
+                    isAiThinking
+                      ? "AI Project Manager is formulating response..."
+                      : "Answer project questions or provide details..."
+                  }
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  disabled={isAnalyzing || isAiThinking}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors"
+                  readOnly={isAnalyzing || isAiThinking}
+                  className={`flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors ${
+                    isAiThinking ? 'opacity-70 cursor-wait' : ''
+                  }`}
                 />
 
                 <button
