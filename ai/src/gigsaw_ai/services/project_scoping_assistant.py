@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import Sequence
 from decimal import Decimal, InvalidOperation
 from typing import Literal
 
@@ -13,6 +14,7 @@ from gigsaw_ai.schemas.common import SchemaModel
 from gigsaw_ai.schemas.matching import FreelancerMatchingRequest
 from gigsaw_ai.schemas.projects import ProjectAnalysis, ProjectAnalyzeRequest, ProjectAnalyzeResponse, ProjectBudget
 from gigsaw_ai.schemas.scoping import (
+    ChatMessage,
     ProjectScopingChatRequest,
     ProjectScopingChatResponse,
     ProjectScopingFinalizeRequest,
@@ -44,6 +46,7 @@ class _GeminiScopingChatOutput(SchemaModel):
     updated_budget: Decimal | None = None
     currency: str = "USD"
     budget_changed: bool = False
+    refined_goal: str = ""
     reply: str
     clarifying_question: str | None = None
     suggested_replies: list[str] = Field(default_factory=list)
@@ -58,8 +61,135 @@ class _GeminiScopingFinalizeOutput(SchemaModel):
     project_name: str
     final_budget: Decimal | None = None
     currency: str = "USD"
+    business_goal: str = ""
     enriched_brief: str
+    extracted_spec: list[_SpecAttribute] = Field(default_factory=list)
+    additional_details: list[str] = Field(default_factory=list)
     detected_services: list[str] = Field(min_length=1)
+
+
+_TRIVIAL_CONFIRMATIONS = {
+    "looks good",
+    "looks good, ready to finalize",
+    "ready",
+    "ready to finalize",
+    "ok",
+    "okay",
+    "yes",
+    "confirm",
+    "confirmed",
+    "finalize",
+    "finalize details",
+    "proceed",
+    "go ahead",
+}
+
+
+def _merge_spec(base_spec: dict[str, str], additions: Sequence[_SpecAttribute]) -> dict[str, str]:
+    merged = {str(k).strip(): str(v).strip() for k, v in base_spec.items() if str(k).strip() and str(v).strip()}
+    for item in additions:
+        key = item.key.strip()
+        val = item.value.strip()
+        if key and val:
+            merged[key] = val
+    return merged
+
+
+def _extract_user_chat_notes(messages: Sequence[ChatMessage], initial_goal: str) -> list[str]:
+    """Return substantive user clarifications gathered during chat without duplicating confirmations."""
+    initial_norm = re.sub(r"\s+", " ", initial_goal).strip().lower()
+    seen: set[str] = set()
+    notes: list[str] = []
+    for msg in messages:
+        if msg.role != "user":
+            continue
+        text = re.sub(r"\s+", " ", msg.content).strip()
+        if not text:
+            continue
+        norm = text.lower().rstrip(".!")
+        if norm == initial_norm or norm in _TRIVIAL_CONFIRMATIONS or norm in seen:
+            continue
+        seen.add(norm)
+        notes.append(text)
+    return notes
+
+
+def _format_spec_checklist_lines(
+    *,
+    project_name: str | None,
+    budget: Decimal | None,
+    currency: str,
+    goal: str | None,
+    spec: dict[str, str],
+    detected_services: Sequence[str] = (),
+) -> list[str]:
+    lines: list[str] = []
+    if project_name:
+        lines.append(f"- Project Name: {project_name}")
+    if budget is not None:
+        lines.append(f"- Budget: {budget} {currency}")
+    if goal and goal.strip():
+        lines.append(f"- Project Goal: {goal.strip()}")
+    for key, val in spec.items():
+        if key in ("project_name", "budget", "refined_goal"):
+            continue
+        label = key.replace("_", " ").strip().title()
+        lines.append(f"- {label}: {val}")
+    if detected_services:
+        lines.append(f"- Target Services: {', '.join(detected_services)}")
+    return lines
+
+
+def _compose_confirmed_brief(
+    *,
+    executive_brief: str,
+    refined_goal: str,
+    project_name: str | None,
+    budget: Decimal | None,
+    currency: str,
+    spec: dict[str, str],
+    detected_services: Sequence[str],
+    additional_details: Sequence[str],
+) -> str:
+    """Build a concise, plain-English freelancer brief combining the improved intent, key specs, and extra notes."""
+    del project_name, budget, currency, detected_services
+    lead = executive_brief.strip() or refined_goal.strip()
+    sections: list[str] = [lead] if lead else []
+
+    detail_lines: list[str] = []
+    seen_values: set[str] = set()
+    lead_lower = lead.lower()
+    if refined_goal.strip() and refined_goal.strip().lower() not in lead_lower:
+        seen_values.add(refined_goal.strip().lower())
+
+    for key, val in spec.items():
+        if key in ("project_name", "budget", "refined_goal"):
+            continue
+        cleaned_val = re.sub(r"\s+", " ", val).strip()
+        if not cleaned_val:
+            continue
+        val_norm = cleaned_val.lower()
+        if val_norm in seen_values:
+            continue
+        seen_values.add(val_norm)
+        label = key.replace("_", " ").strip().title()
+        detail_lines.append(f"- {label}: {cleaned_val}")
+
+    existing_text_lower = (lead + "\n" + "\n".join(detail_lines)).lower()
+    for item in additional_details:
+        cleaned = re.sub(r"\s+", " ", item).strip()
+        if not cleaned:
+            continue
+        norm = cleaned.lower()
+        if norm in seen_values or norm in existing_text_lower:
+            continue
+        seen_values.add(norm)
+        detail_lines.append(f"- {cleaned}")
+
+    if detail_lines:
+        sections.append("Key Details:\n" + "\n".join(detail_lines))
+
+    return "\n\n".join(sections).strip()
 
 
 def _parse_decimal(raw: object) -> Decimal | None:
@@ -83,19 +213,20 @@ def _format_gathered_review(
     budget: Decimal | None,
     currency: str,
     spec: dict[str, str],
+    refined_goal: str | None = None,
 ) -> str:
     """Render all gathered scoping fields cleanly for merchant verification before finalizing."""
     lines = ["Here are the gathered project details. Please recheck everything carefully:"]
-    if project_name:
-        lines.append(f"- Project Name: {project_name}")
-    if budget is not None:
-        lines.append(f"- Budget: {budget} {currency}")
-    lines.append(f"- Primary Goal: {initial_goal.strip()}")
-    for key, val in spec.items():
-        if key in ("project_name", "budget"):
-            continue
-        label = key.replace("_", " ").strip().title()
-        lines.append(f"- {label}: {val}")
+    resolved_goal = (refined_goal or "").strip() or initial_goal.strip()
+    lines.extend(
+        _format_spec_checklist_lines(
+            project_name=project_name,
+            budget=budget,
+            currency=currency,
+            goal=resolved_goal,
+            spec=spec,
+        )
+    )
     lines.append("")
     lines.append(
         'If anything needs to be changed (project name, budget, timeline, or requirements), reply with the update; otherwise click "Finalize Details & Match Specialists" to proceed.'
@@ -149,12 +280,7 @@ class ProjectScopingAssistant:
         except Exception as exc:
             raise ProviderError(STANDARD_PROVIDER_RETRY_MESSAGE) from exc
 
-        merged_spec = dict(request.extracted_spec)
-        for item in res.extracted_spec:
-            key = item.key.strip()
-            val = item.value.strip()
-            if key and val:
-                merged_spec[key] = val
+        merged_spec = _merge_spec(request.extracted_spec, res.extracted_spec)
 
         resolved_project_name = res.project_name.strip() or current_title
         if resolved_project_name:
@@ -198,6 +324,7 @@ class ProjectScopingAssistant:
                 budget=resolved_budget,
                 currency=resolved_currency,
                 spec=merged_spec,
+                refined_goal=res.refined_goal,
             )
             if is_ready
             else res.reply
@@ -256,15 +383,19 @@ class ProjectScopingAssistant:
             source=res.source,
         )
 
-    def _synthesize_demo_brief(self, request: ProjectScopingFinalizeRequest) -> tuple[str, str, list[str]]:
+    def _synthesize_demo_brief(
+        self,
+        request: ProjectScopingFinalizeRequest,
+        *,
+        budget: Decimal,
+        currency: str,
+    ) -> tuple[str, str, str, list[str], dict[str, str], list[str]]:
         goal = request.initial_goal.strip()
-        spec_parts = [f"Primary Goal: {goal}."]
-        for k, v in request.extracted_spec.items():
-            if k not in ("project_name", "budget"):
-                spec_parts.append(f"{k.replace('_', ' ').title()}: {v}.")
-
-        user_messages = [m.content for m in request.messages if m.role == "user"]
-        combined_text = (goal + " " + " ".join(user_messages)).lower()
+        user_notes = _extract_user_chat_notes(request.messages, goal)
+        spec = dict(request.extracted_spec)
+        combined_text = (
+            goal + " " + " ".join(user_notes) + " " + " ".join(str(v) for v in spec.values())
+        ).lower()
 
         detected = [
             category
@@ -276,18 +407,51 @@ class ProjectScopingAssistant:
             detected = [cleaned[:60] if cleaned else "custom service"]
 
         detected = canonical_service_categories(detected)
-        title = request.project_name or request.extracted_spec.get("project_name") or f"{goal[:60].capitalize()} Launch"
-        enriched_brief = " ".join(spec_parts) + f" Target Deliverables: {', '.join(detected)}."
-        return title, enriched_brief, detected
+        title = (
+            request.project_name
+            or spec.get("project_name")
+            or f"{re.sub(r'^(i need|i want|looking for)\s+', '', goal, flags=re.IGNORECASE).strip()[:50].capitalize()} Launch"
+        )
+        cleaned_core = re.sub(
+            r"^(i need|i want|looking for|please build|create|make)\s+(a|an|some)?\s*",
+            "",
+            goal,
+            flags=re.IGNORECASE,
+        ).strip().rstrip(".")
+        services_phrase = ", ".join(detected)
+        if cleaned_core:
+            refined_goal = f"Create {cleaned_core} covering {services_phrase}."
+        else:
+            refined_goal = f"Deliver {services_phrase} as confirmed during project planning."
+
+        executive_brief = refined_goal
+
+        updated_spec = dict(spec)
+        updated_spec["project_name"] = title
+        updated_spec["budget"] = str(budget)
+
+        full_brief = _compose_confirmed_brief(
+            executive_brief=executive_brief,
+            refined_goal=refined_goal,
+            project_name=title,
+            budget=budget,
+            currency=currency,
+            spec=updated_spec,
+            detected_services=detected,
+            additional_details=user_notes,
+        )
+        return title, refined_goal, full_brief, detected, updated_spec, user_notes
 
     async def finalize(self, request: ProjectScopingFinalizeRequest) -> ProjectScopingFinalizeResponse:
         spec_budget = _parse_decimal(request.extracted_spec.get("budget"))
         fallback_budget = request.budget if request.budget is not None else (spec_budget or Decimal("1200"))
 
         if self.llm.settings.is_demo:
-            title, enriched_brief, detected = self._synthesize_demo_brief(request)
+            currency = (request.currency or "USD").strip().upper() or "USD"
             budget = fallback_budget
-            currency = request.currency
+            title, refined_goal, enriched_brief, detected, updated_spec, additional_details = (
+                self._synthesize_demo_brief(request, budget=budget, currency=currency)
+            )
         else:
             requested_title = request.project_name or request.extracted_spec.get("project_name")
             context = {
@@ -310,14 +474,28 @@ class ProjectScopingAssistant:
                 raise ProviderError(STANDARD_PROVIDER_RETRY_MESSAGE) from exc
 
             title = synthesized.project_name.strip() or requested_title or "New Launch Project"
-            enriched_brief = synthesized.enriched_brief
             detected = canonical_service_categories(synthesized.detected_services)
             budget = synthesized.final_budget if synthesized.final_budget is not None else fallback_budget
             currency = (synthesized.currency or request.currency or "USD").strip().upper() or "USD"
+            updated_spec = _merge_spec(request.extracted_spec, synthesized.extracted_spec)
+            updated_spec["project_name"] = title
+            updated_spec["budget"] = str(budget)
 
-        updated_spec = dict(request.extracted_spec)
-        updated_spec["project_name"] = title
-        updated_spec["budget"] = str(budget)
+            refined_goal = synthesized.business_goal.strip() or synthesized.enriched_brief.strip()
+            additional_details = [d.strip() for d in synthesized.additional_details if d.strip()] or _extract_user_chat_notes(
+                request.messages,
+                request.initial_goal,
+            )
+            enriched_brief = _compose_confirmed_brief(
+                executive_brief=synthesized.enriched_brief,
+                refined_goal=refined_goal,
+                project_name=title,
+                budget=budget,
+                currency=currency,
+                spec=updated_spec,
+                detected_services=detected,
+                additional_details=additional_details,
+            )
 
         analysis_result: ProjectAnalyzeResponse | None = None
         freelancer_matches: list[WorkPackageFreelancerMatch] = []
@@ -329,11 +507,19 @@ class ProjectScopingAssistant:
                     currency=currency,
                     project_name=title,
                 )
-                analysis = await self.project_analyzer.analyze(analyze_req)
+                base_analysis = await self.project_analyzer.analyze(analyze_req)
+                analysis = base_analysis.model_copy(
+                    update={
+                        "project_name": title,
+                        "business_goal": refined_goal,
+                        "summary": enriched_brief,
+                        "required_services": detected or base_analysis.required_services,
+                    }
+                )
             else:
                 analysis = ProjectAnalysis(
                     project_name=title,
-                    business_goal=request.initial_goal.strip(),
+                    business_goal=refined_goal,
                     summary=enriched_brief,
                     required_services=detected,
                     assumptions=[
@@ -368,11 +554,16 @@ class ProjectScopingAssistant:
 
                 async def _match_pkg(pkg):
                     alloc_amt = alloc_by_cat.get(pkg.service_category.lower())
+                    match_brief = (
+                        f"{pkg.description}\n\n{enriched_brief}"
+                        if pkg.description
+                        else enriched_brief
+                    )
                     match_res = await self.freelancer_matcher.match(
                         FreelancerMatchingRequest(
                             service_category=pkg.service_category,
                             required_skills=pkg.required_skills,
-                            brief=pkg.description or enriched_brief,
+                            brief=match_brief,
                             budget=alloc_amt,
                             max_delivery_days=pkg.estimated_days,
                             limit=3,
@@ -395,6 +586,7 @@ class ProjectScopingAssistant:
             suggested_budget=budget,
             currency=currency,
             extracted_spec=updated_spec,
+            additional_details=additional_details,
             analysis_result=analysis_result,
             freelancer_matches=freelancer_matches,
         )

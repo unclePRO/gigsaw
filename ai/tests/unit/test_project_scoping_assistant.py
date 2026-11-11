@@ -256,8 +256,89 @@ def test_project_scoping_finalize(container):
     result = asyncio.run(container.project_scoping_assistant.finalize(finalize_req))
     assert result.project_name
     assert "artisan" in result.enriched_brief.lower()
-    assert len(result.detected_services) > 0
+    assert "key details:" in result.enriched_brief.lower()
+    assert "brand theme: cozy artisan" in result.enriched_brief.lower()
+    assert "cozy modern aesthetic" in result.enriched_brief.lower()
     assert result.analysis_result is not None
+    assert not result.analysis_result.analysis.business_goal.lower().startswith("i need ")
+    assert result.analysis_result.analysis.summary == result.enriched_brief
     assert len(result.analysis_result.work_packages) > 0
+    assert "artisan" in result.analysis_result.work_packages[0].description.lower()
     assert result.analysis_result.budget_plan is not None
     assert len(result.freelancer_matches) == len(result.analysis_result.work_packages)
+
+
+def test_project_scoping_finalize_refines_chat_intent_and_passes_full_brief_to_matcher(container):
+    captured_briefs: list[str] = []
+    original_match = container.freelancer_matcher.match
+
+    async def _recording_match(req):
+        captured_briefs.append(req.brief)
+        return await original_match(req)
+
+    container.freelancer_matcher.match = _recording_match
+    try:
+        assistant = _make_gemini_assistant(
+            container,
+            [
+                _GeminiScopingFinalizeOutput(
+                    project_name="Lumina Roast Store",
+                    final_budget=Decimal("2200"),
+                    currency="USD",
+                    business_goal="Launch a specialty coffee e-commerce store with unified branding and subscription checkout within 3 weeks.",
+                    enriched_brief=(
+                        "Create a conversion-focused e-commerce storefront and minimalist identity for Lumina Roast "
+                        "featuring recurring bean subscriptions, warm terracotta visual styling, and mobile-first UX."
+                    ),
+                    extracted_spec=[
+                        _SpecAttribute(key="brand_theme", value="Minimalist warm terracotta"),
+                        _SpecAttribute(key="tech_stack", value="Next.js + Stripe subscriptions"),
+                        _SpecAttribute(key="target_turnaround", value="3 weeks"),
+                    ],
+                    additional_details=[
+                        "Exclude native mobile app in Phase 1",
+                        "Prioritize subscription checkout flow on homepage",
+                    ],
+                    detected_services=["website development", "logo and branding"],
+                ),
+            ],
+        )
+
+        result = asyncio.run(
+            assistant.finalize(
+                ProjectScopingFinalizeRequest(
+                    initial_goal="i want coffee site",
+                    messages=[
+                        ChatMessage(role="assistant", content="What style and features do you want?"),
+                        ChatMessage(role="user", content="Minimalist terracotta Next.js store with Stripe subscriptions, 3 weeks, no mobile app"),
+                    ],
+                    extracted_spec={"existing_assets": "Product photos ready"},
+                    budget=Decimal("1500"),
+                    auto_decompose=True,
+                )
+            )
+        )
+    finally:
+        container.freelancer_matcher.match = original_match
+
+    assert result.project_name == "Lumina Roast Store"
+    assert result.budget == Decimal("2200")
+    assert result.extracted_spec["tech_stack"] == "Next.js + Stripe subscriptions"
+    assert result.extracted_spec["existing_assets"] == "Product photos ready"
+    assert result.additional_details == [
+        "Exclude native mobile app in Phase 1",
+        "Prioritize subscription checkout flow on homepage",
+    ]
+    assert result.analysis_result is not None
+    # Never copies raw vague opening prompt ("i want coffee site") as business_goal
+    assert result.analysis_result.analysis.business_goal.startswith("Launch a specialty coffee e-commerce store")
+    assert "i want coffee site" not in result.analysis_result.analysis.business_goal.lower()
+    # Enriched brief + summary carry concise improved copy, key chat specs, and extra notes without duplication
+    assert "Key Details:" in result.enriched_brief
+    assert "Tech Stack: Next.js + Stripe subscriptions" in result.enriched_brief
+    assert "Existing Assets: Product photos ready" in result.enriched_brief
+    assert "Exclude native mobile app in Phase 1" in result.enriched_brief
+    assert result.analysis_result.analysis.summary == result.enriched_brief
+    assert len(captured_briefs) == 2
+    assert all("Next.js + Stripe subscriptions" in brief for brief in captured_briefs)
+    assert all("Exclude native mobile app in Phase 1" in brief for brief in captured_briefs)

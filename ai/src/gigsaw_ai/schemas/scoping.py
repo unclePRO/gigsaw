@@ -77,5 +77,6 @@ class ProjectScopingFinalizeResponse(SchemaModel):
     suggested_budget: Decimal | None = None
     currency: str = "USD"
     extracted_spec: dict[str, str] = Field(default_factory=dict)
+    additional_details: list[str] = Field(default_factory=list)
     analysis_result: ProjectAnalyzeResponse | None = None
     freelancer_matches: list[WorkPackageFreelancerMatch] = Field(default_factory=list)
