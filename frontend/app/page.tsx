@@ -67,13 +67,13 @@ export default function HomePage() {
           />
 
           {/* Left-to-Right Color Overlay to Guarantee 100% Text Readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#F8FAFC] via-[#F8FAFC]/90 via-40% to-transparent dark:from-[#090D16] dark:via-[#090D16]/90 dark:via-40% dark:to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#F0F8F6] via-[#F0F8F6]/90 via-40% to-transparent dark:from-[#102B2B] dark:via-[#102B2B]/90 dark:via-40% dark:to-transparent" />
 
           {/* Bottom Fade: image smoothly goes away as the user scrolls into the next section */}
-          <div className="absolute bottom-0 inset-x-0 h-44 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/70 to-transparent dark:from-[#090D16] dark:via-[#090D16]/70 dark:to-transparent" />
+          <div className="absolute bottom-0 inset-x-0 h-44 bg-gradient-to-t from-[#F0F8F6] via-[#F0F8F6]/70 to-transparent dark:from-[#102B2B] dark:via-[#102B2B]/70 dark:to-transparent" />
 
           {/* Subtle Ambient Radial Highlight on the Right */}
-          <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-gradient-to-l from-cyan-500/10 via-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-gradient-to-l from-[#168C80]/15 via-[#32B6A5]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
         </div>
 
         {/* Hero Content (Positioned in relative z-10) */}
@@ -82,7 +82,7 @@ export default function HomePage() {
           {/* Hero Headline */}
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tight max-w-4xl mx-auto leading-[1.08]">
             Hire an entire freelance team with{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#168C80] via-[#32B6A5] to-[#73D8C7]">
               one prompt
             </span>.
           </h1>
@@ -124,7 +124,7 @@ export default function HomePage() {
       <div className="space-y-24 pb-20 pt-8">
 
       {/* How Gigsaw Works: 3 Simple Steps */}
-      <section className="py-16 bg-white dark:bg-[#0B1120] border-y border-slate-200/80 dark:border-slate-800/80 transition-colors">
+      <section className="py-16 bg-white dark:bg-[#142F2E] border-y border-[#D8E9E4] dark:border-[#345451] transition-colors">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-2 max-w-xl mx-auto">
             <span className="text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
@@ -150,7 +150,7 @@ export default function HomePage() {
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 relative">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-extrabold flex items-center justify-center text-sm shadow-sm">
+              <div className="w-9 h-9 rounded-xl bg-[#168C80] text-white font-extrabold flex items-center justify-center text-sm shadow-sm">
                 02
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">AI Assembles Your Team</h3>

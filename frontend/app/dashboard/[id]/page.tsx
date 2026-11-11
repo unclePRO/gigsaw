@@ -469,7 +469,7 @@ export default function MerchantProjectWorkspacePage() {
 
         return (
           <div className="flex items-center gap-2 py-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#168C80] to-[#32B6A5] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
               {name.charAt(0)}
             </div>
             <div className="min-w-0">
@@ -636,13 +636,13 @@ export default function MerchantProjectWorkspacePage() {
               <button
                 onClick={() => handleOpenOfficialInvoice(wp.id)}
                 disabled={loadingInvoice === wp.id}
-                className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-[#E5F5F1] dark:bg-[#254542] hover:bg-[#D8E9E4] dark:hover:bg-[#1B3B39] text-[#168C80] dark:text-[#73D8C7] border border-[#D8E9E4] dark:border-[#345451] transition-colors flex items-center gap-1 cursor-pointer"
                 title="Open official PayPal hosted invoice"
               >
                 {loadingInvoice === wp.id ? (
-                  <RefreshCw className="w-3 h-3 animate-spin text-blue-500" />
+                  <RefreshCw className="w-3 h-3 animate-spin text-[#168C80] dark:text-[#73D8C7]" />
                 ) : (
-                  <FileText className="w-3 h-3 text-blue-500" />
+                  <FileText className="w-3 h-3 text-[#168C80] dark:text-[#73D8C7]" />
                 )}
                 <span>PayPal Invoice</span>
               </button>
@@ -656,7 +656,7 @@ export default function MerchantProjectWorkspacePage() {
   if (loading) {
     return (
       <div className="p-6 max-w-6xl mx-auto space-y-6">
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
           <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-500" />
           <span>Loading project workspace from MongoDB Atlas...</span>
         </div>
@@ -667,7 +667,7 @@ export default function MerchantProjectWorkspacePage() {
   if (error || !project) {
     return (
       <div className="p-6 max-w-6xl mx-auto space-y-6">
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4">
           <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
           <h3 className="text-base font-bold text-slate-900 dark:text-white">Project Not Found</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
@@ -721,7 +721,7 @@ export default function MerchantProjectWorkspacePage() {
             <select
               value={projectId}
               onChange={(e) => router.push(`/dashboard/${e.target.value}`)}
-              className="text-xs font-semibold bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+              className="text-xs font-semibold bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
             >
               {allProjects.map((p) => {
                 const pid = (p as any)._id || p.id;
@@ -737,7 +737,7 @@ export default function MerchantProjectWorkspacePage() {
       </div>
 
       {/* Top Header Card */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors shadow-sm">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors shadow-sm">
         <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span
@@ -749,7 +749,7 @@ export default function MerchantProjectWorkspacePage() {
                   : isReadyToFund
                   ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
                   : isOnHold
-                  ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20'
+                  ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-[#D8E9E4] dark:border-[#345451]'
                   : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
               }`}
             >
@@ -846,9 +846,9 @@ export default function MerchantProjectWorkspacePage() {
       {isOnHold && (
         <div className="space-y-6">
           {/* On Hold Notification Banner */}
-          <div className="p-5 bg-gradient-to-r from-indigo-500/10 via-blue-500/10 to-indigo-500/10 border border-indigo-500/20 rounded-2xl space-y-2 text-xs text-indigo-950 dark:text-indigo-200 shadow-sm">
-            <div className="flex items-center gap-2 font-bold text-sm text-indigo-900 dark:text-indigo-100">
-              <Clock className="w-4 h-4 text-indigo-500 animate-spin" />
+          <div className="p-5 bg-gradient-to-r from-[#168C80]/15 via-[#32B6A5]/10 to-[#73D8C7]/10 border border-[#168C80]/30 rounded-2xl space-y-2 text-xs text-[#10413E] dark:text-[#F0FAF8] shadow-sm">
+            <div className="flex items-center gap-2 font-bold text-sm text-[#10413E] dark:text-[#F0FAF8]">
+              <Clock className="w-4 h-4 text-[#168C80] dark:text-[#32B6A5] animate-spin" />
               <span>Project On Hold &bull; Awaiting Specialist Confirmations</span>
             </div>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -860,7 +860,7 @@ export default function MerchantProjectWorkspacePage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Left Column: People Working & Acceptance Status */}
             <div className="lg:col-span-6 space-y-4">
-              <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-4 shadow-sm">
+              <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-cyan-500" />
@@ -868,7 +868,7 @@ export default function MerchantProjectWorkspacePage() {
                       Invited Specialists Team ({project.workPackages.length})
                     </h2>
                   </div>
-                  <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                  <span className="text-[11px] font-bold text-[#168C80] dark:text-[#73D8C7]">
                     {acceptedTasks} of {totalTasks} Accepted
                   </span>
                 </div>
@@ -915,7 +915,7 @@ export default function MerchantProjectWorkspacePage() {
                         {/* Specialist Info & Status Row */}
                         <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#168C80] to-[#32B6A5] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
                               {(wp.assignedFreelancerName || 'S').charAt(0)}
                             </div>
                             <div className="text-[11px]">
@@ -1011,7 +1011,7 @@ export default function MerchantProjectWorkspacePage() {
           {/* Underneath: Specialist confirmation & Live Team Chat */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             <div className="lg:col-span-6 space-y-4">
-              <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-4 shadow-sm">
+              <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2">
                     <UserCheck className="w-4 h-4 text-emerald-500" />
@@ -1076,11 +1076,11 @@ export default function MerchantProjectWorkspacePage() {
         <div className="space-y-6">
 
           {/* Official PayPal Invoicing & Payout Verification Banner */}
-          <div className="bg-gradient-to-r from-blue-500/10 via-cyan-500/5 to-emerald-500/10 border border-blue-500/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+          <div className="bg-gradient-to-r from-[#168C80]/15 via-[#32B6A5]/10 to-[#73D8C7]/10 border border-[#168C80]/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 rounded-full flex items-center gap-1">
-                  <Receipt className="w-3 h-3 text-blue-500" />
+                <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-[#168C80]/20 text-[#168C80] dark:text-[#73D8C7] border border-[#168C80]/30 rounded-full flex items-center gap-1">
+                  <Receipt className="w-3 h-3 text-[#168C80] dark:text-[#73D8C7]" />
                   Official PayPal Invoicing API v2
                 </span>
                 <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded-full">
@@ -1110,7 +1110,7 @@ export default function MerchantProjectWorkspacePage() {
                 type="button"
                 onClick={() => handleOpenOfficialInvoice()}
                 disabled={loadingInvoice === 'project'}
-                className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#168C80] hover:bg-[#10766D] transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
               >
                 {loadingInvoice === 'project' ? (
                   <>
@@ -1128,7 +1128,7 @@ export default function MerchantProjectWorkspacePage() {
           </div>
 
           {/* AI Dynamic Progress Summary */}
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
+          <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-cyan-500" />
@@ -1169,7 +1169,7 @@ export default function MerchantProjectWorkspacePage() {
           </div>
 
           {/* AG Grid Milestones Table */}
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
+          <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">
@@ -1210,7 +1210,7 @@ export default function MerchantProjectWorkspacePage() {
       {/* Cancel Project Confirmation Modal */}
       {cancelModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#0F172A] border border-rose-500/30 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+          <div className="bg-white dark:bg-[#1B3B39] border border-rose-500/30 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5" />
@@ -1263,7 +1263,7 @@ export default function MerchantProjectWorkspacePage() {
       {/* Review & Rating Modal */}
       {reviewModalPackage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+          <div className="bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
@@ -1369,7 +1369,7 @@ export default function MerchantProjectWorkspacePage() {
       {/* Deliverable Revision Modal */}
       {revisionModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
               Request Deliverable Revision
             </h3>
@@ -1415,7 +1415,7 @@ export default function MerchantProjectWorkspacePage() {
       {/* AI Counteroffer Decision Modal */}
       {counterofferModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+          <div className="bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-500" />

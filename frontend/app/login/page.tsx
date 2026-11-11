@@ -140,7 +140,7 @@ function LoginFormContent() {
   };
 
   return (
-    <div className="max-w-md w-full bg-white dark:bg-[#0F172A] rounded-3xl border border-slate-200/90 dark:border-slate-800 p-7 sm:p-8 shadow-xl shadow-slate-200/40 dark:shadow-none space-y-6 transition-colors">
+    <div className="max-w-md w-full bg-white dark:bg-[#1B3B39] rounded-3xl border border-slate-200/90 dark:border-slate-800 p-7 sm:p-8 shadow-xl shadow-slate-200/40 dark:shadow-none space-y-6 transition-colors">
       {/* Brand Header */}
       <div className="text-center space-y-1.5">
         <Link href="/" className="inline-flex items-center gap-2 group">

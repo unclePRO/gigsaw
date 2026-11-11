@@ -259,7 +259,7 @@ export default function FreelancerGigWorkspacePage() {
   if (loading) {
     return (
       <div className="p-6 max-w-5xl mx-auto space-y-6">
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
           <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-500" />
           <span>Loading gig workspace from MongoDB Atlas...</span>
         </div>
@@ -270,7 +270,7 @@ export default function FreelancerGigWorkspacePage() {
   if (error || !project || !matchingPkg) {
     return (
       <div className="p-6 max-w-5xl mx-auto space-y-6">
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4">
           <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
           <h3 className="text-base font-bold text-slate-900 dark:text-white">Gig Not Found</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
@@ -309,7 +309,7 @@ export default function FreelancerGigWorkspacePage() {
       </div>
 
       {/* Top Header Card */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span
@@ -339,7 +339,7 @@ export default function FreelancerGigWorkspacePage() {
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setChatOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#168C80] hover:bg-[#10766D] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
           >
             <MessageSquare className="w-4 h-4" />
             <span>Team Chat</span>
@@ -348,13 +348,13 @@ export default function FreelancerGigWorkspacePage() {
           <button
             onClick={handleOpenPayPalInvoice}
             disabled={generatingInvoice}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#E5F5F1] dark:bg-[#254542] hover:bg-[#D8E9E4] dark:hover:bg-[#1B3B39] text-[#168C80] dark:text-[#73D8C7] border border-[#D8E9E4] dark:border-[#345451] text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
             title="Open official PayPal hosted invoice"
           >
             {generatingInvoice ? (
-              <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
+              <RefreshCw className="w-4 h-4 animate-spin text-[#168C80] dark:text-[#73D8C7]" />
             ) : (
-              <Receipt className="w-4 h-4 text-blue-500" />
+              <Receipt className="w-4 h-4 text-[#168C80] dark:text-[#73D8C7]" />
             )}
             <span>Official PayPal Invoice</span>
           </button>
@@ -380,7 +380,7 @@ export default function FreelancerGigWorkspacePage() {
 
       {/* Escrow & Contract Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Milestone Escrow Value</span>
           <div className="text-xl font-black text-slate-900 dark:text-white">
             ${matchingPkg.allocatedPrice?.toLocaleString()} USD
@@ -390,7 +390,7 @@ export default function FreelancerGigWorkspacePage() {
           </span>
         </div>
 
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Estimated Turnaround</span>
           <div className="text-xl font-black text-slate-900 dark:text-white">
             {matchingPkg.estimatedDays ? `${matchingPkg.estimatedDays} Days` : '7 Days'}
@@ -398,7 +398,7 @@ export default function FreelancerGigWorkspacePage() {
           <span className="text-[11px] text-slate-400">Delivery schedule agreed</span>
         </div>
 
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Specialty Domain</span>
           <div className="text-xl font-black text-slate-900 dark:text-white uppercase">
             {matchingPkg.category}
@@ -409,11 +409,11 @@ export default function FreelancerGigWorkspacePage() {
 
       {/* Official PayPal Escrow & Invoice Details */}
       {(project.status === 'FUNDED_IN_PROGRESS' || project.status === 'funded' || isCompleted) && (
-        <div className="bg-gradient-to-r from-blue-500/10 via-cyan-500/5 to-emerald-500/10 border border-blue-500/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+        <div className="bg-gradient-to-r from-[#168C80]/15 via-[#32B6A5]/10 to-[#73D8C7]/10 border border-[#168C80]/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 rounded-full flex items-center gap-1">
-                <Receipt className="w-3 h-3 text-blue-500" />
+              <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-[#168C80]/20 text-[#168C80] dark:text-[#73D8C7] border border-[#168C80]/30 rounded-full flex items-center gap-1">
+                <Receipt className="w-3 h-3 text-[#168C80] dark:text-[#73D8C7]" />
                 PayPal Multi-Seller Escrow Active
               </span>
               <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded-full">
@@ -438,7 +438,7 @@ export default function FreelancerGigWorkspacePage() {
               type="button"
               onClick={handleOpenPayPalInvoice}
               disabled={generatingInvoice}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#168C80] hover:bg-[#10766D] transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
             >
               {generatingInvoice ? (
                 <>
@@ -457,7 +457,7 @@ export default function FreelancerGigWorkspacePage() {
       )}
 
       {/* Scope & Deliverables Required */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-3 transition-colors">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-3 transition-colors">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white">Contract Scope & Deliverables</h3>
         <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
           {matchingPkg.description}
@@ -484,7 +484,7 @@ export default function FreelancerGigWorkspacePage() {
 
       {/* Deliverable Approved & Review Status Card */}
       {isCompleted && (
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border-2 border-emerald-500/30 p-6 space-y-4 shadow-sm transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border-2 border-emerald-500/30 p-6 space-y-4 shadow-sm transition-colors">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -583,7 +583,7 @@ export default function FreelancerGigWorkspacePage() {
 
       {/* Submit Deliverable Form */}
       {!isProjectCancelled && (
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
               {isCompleted ? 'Milestone Deliverable Link' : 'Submit Deliverable for Review'}
@@ -652,7 +652,7 @@ export default function FreelancerGigWorkspacePage() {
       )}
 
       {/* Progress Log Section */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors">
         <h3 className="text-base font-bold text-slate-900 dark:text-white">Post Milestone Progress Update</h3>
         <p className="text-xs text-slate-500 dark:text-slate-400">
           Share quick daily status notes directly into the project channel so the merchant stays updated.
@@ -690,10 +690,10 @@ export default function FreelancerGigWorkspacePage() {
       {/* Official PayPal Invoice Modal */}
       {invoiceModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#0F172A] border border-blue-500/30 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-[#1B3B39] border border-[#73D8C7]/40 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-blue-500" />
+                <Receipt className="w-5 h-5 text-[#168C80] dark:text-[#73D8C7]" />
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
                   Official PayPal Invoice (REST API v2)
                 </h3>
@@ -709,7 +709,7 @@ export default function FreelancerGigWorkspacePage() {
 
             {generatingInvoice ? (
               <div className="py-12 text-center text-slate-400 flex flex-col items-center gap-2">
-                <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+                <RefreshCw className="w-6 h-6 animate-spin text-[#168C80] dark:text-[#73D8C7]" />
                 <span className="text-xs">Fetching official hosted invoice from PayPal API...</span>
               </div>
             ) : invoiceError ? (
@@ -729,7 +729,7 @@ export default function FreelancerGigWorkspacePage() {
               </div>
             ) : officialInvoiceUrl ? (
               <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-emerald-500/10 border border-blue-500/20 space-y-3">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#168C80]/15 via-[#32B6A5]/10 to-[#73D8C7]/10 border border-[#168C80]/20 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
                       INVOICE #{officialInvoiceNumber || officialInvoiceId}
@@ -739,7 +739,7 @@ export default function FreelancerGigWorkspacePage() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-blue-500/10">
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-[#168C80]/20">
                     <div>
                       <span className="text-slate-400 block font-sans">Billed Client:</span>
                       <strong className="text-slate-800 dark:text-slate-200">{project.merchantName}</strong>
@@ -752,18 +752,18 @@ export default function FreelancerGigWorkspacePage() {
                     </div>
                   </div>
 
-                  <div className="border-t border-blue-500/10 pt-2 space-y-1 text-xs">
+                  <div className="border-t border-[#168C80]/20 pt-2 space-y-1 text-xs">
                     <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200">
                       <span>{matchingPkg.title} ({matchingPkg.category})</span>
                       <span>${matchingPkg.allocatedPrice?.toFixed(2)} USD</span>
                     </div>
                     <p className="text-[11px] text-slate-400">
-                      Authorized & funded via PayPal Multi-Seller Escrow on GigSaw.
+                      Authorized & funded via PayPal Multi-Seller Escrow on Gigsaw.
                     </p>
                   </div>
 
                   {matchingPkg.paypalCaptureId && (
-                    <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 border-t border-blue-500/10 pt-1.5 flex justify-between">
+                    <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 border-t border-[#168C80]/20 pt-1.5 flex justify-between">
                       <span>PayPal Capture Ref:</span>
                       <span className="text-cyan-600 dark:text-cyan-400">{matchingPkg.paypalCaptureId}</span>
                     </div>
@@ -775,7 +775,7 @@ export default function FreelancerGigWorkspacePage() {
                     href={officialInvoiceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5 shadow-md"
+                    className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-[#168C80] hover:bg-[#10766D] transition-all flex items-center justify-center gap-1.5 shadow-md"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>Open in PayPal</span>

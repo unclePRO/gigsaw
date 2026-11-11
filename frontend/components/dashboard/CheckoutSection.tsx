@@ -159,7 +159,7 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
   };
 
   return (
-    <div className="bg-gradient-to-br from-amber-500/10 via-emerald-500/5 to-cyan-500/10 dark:from-[#0F172A] dark:to-[#0F172A] border-2 border-amber-500/30 dark:border-amber-500/40 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
+    <div className="bg-gradient-to-br from-amber-500/10 via-emerald-500/5 to-cyan-500/10 dark:from-[#1B3B39] dark:to-[#1B3B39] border-2 border-amber-500/30 dark:border-amber-500/40 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
       {/* Glow highlight */}
       <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 dark:bg-amber-400/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -199,7 +199,7 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
       </div>
 
       {/* Accepted Specialists Breakdown & Magic Split */}
-      <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
+      <div className="bg-white dark:bg-[#142F2E] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -318,7 +318,7 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
       )}
 
       {/* PayPal SDK Button Container */}
-      <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center space-y-4 shadow-sm">
+      <div className="bg-white dark:bg-[#142F2E] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center space-y-4 shadow-sm">
         <div className="text-center space-y-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-xs font-black uppercase tracking-wider mb-1">
             <DollarSign className="w-3.5 h-3.5" />
@@ -334,8 +334,8 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
         </div>
 
         {/* Sandbox Credentials Guide */}
-        <div className="w-full max-w-md bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 rounded-xl p-3 text-[11px] text-blue-950 dark:text-blue-200 space-y-1">
-          <div className="flex items-center gap-1.5 font-bold text-blue-700 dark:text-blue-300">
+        <div className="w-full max-w-md bg-[#E5F5F1] dark:bg-[#254542]/50 border border-[#D8E9E4] dark:border-[#345451] rounded-xl p-3 text-[11px] text-[#10413E] dark:text-[#C5EEE6] space-y-1">
+          <div className="flex items-center gap-1.5 font-bold text-[#168C80] dark:text-[#73D8C7]">
             <Info className="w-3.5 h-3.5 shrink-0" />
             <span>Sandbox Credentials To Use In Popup</span>
           </div>

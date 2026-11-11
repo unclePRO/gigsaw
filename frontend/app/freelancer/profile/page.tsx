@@ -312,7 +312,7 @@ function FreelancerProfileContent() {
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
       {/* Top Header & Status */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
@@ -375,13 +375,13 @@ function FreelancerProfileContent() {
 
       {/* Ratings & Metrics Banner - Real MongoDB Atlas Data Only */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Specialty Domain</span>
           <div className="text-xl font-black text-slate-900 dark:text-white uppercase">{category}</div>
           <span className="text-[11px] text-cyan-600 dark:text-cyan-400 font-bold">Verified for {category} milestones</span>
         </div>
 
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-2 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-2 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Merchant Rating</span>
           <div className="text-xl font-black text-amber-500 flex items-center gap-1.5">
             <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
@@ -402,7 +402,7 @@ function FreelancerProfileContent() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed Milestones</span>
           <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
             {completedProjects === 0 ? '0 Finished' : `${completedProjects} Finished`}
@@ -414,7 +414,7 @@ function FreelancerProfileContent() {
       </div>
 
       {/* Basic Info & Rates Card */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-5 transition-colors">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-5 transition-colors">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Professional Details & AI Parameters</h2>
           <span className="text-[11px] text-slate-400 italic">* All fields required for AI matchmaking</span>
@@ -539,7 +539,7 @@ function FreelancerProfileContent() {
       </div>
 
       {/* Skills & Languages Selection Card */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Skills & Languages</h2>
@@ -629,7 +629,7 @@ function FreelancerProfileContent() {
       </div>
 
       {/* Past Projects & Existing Portfolio Card */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 transition-colors">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Portfolio & Previous Projects</h2>
@@ -801,7 +801,7 @@ function FreelancerProfileContent() {
       {/* Written Reviews Modal */}
       {showReviewsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl max-h-[85vh] flex flex-col">
+          <div className="bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">

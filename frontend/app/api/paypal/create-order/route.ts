@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     );
 
     const packagesToFund = acceptedPackages.length > 0 ? acceptedPackages : rawPackages;
-    const effectiveProjectName = targetProject?.projectName || projectName || 'GigSaw Project';
+    const effectiveProjectName = targetProject?.projectName || projectName || 'Gigsaw Project';
 
     // Fetch PayPal payout emails from MongoDB users for each accepted freelancer
     const purchase_units = await Promise.all(
@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
       intent: 'CAPTURE',
       purchase_units,
       application_context: {
-        brand_name: 'GigSaw AI Escrow',
+        brand_name: 'Gigsaw AI Escrow',
         landing_page: 'NO_PREFERENCE',
         user_action: 'PAY_NOW',
         return_url: 'http://localhost:3000/dashboard',

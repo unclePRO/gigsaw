@@ -125,7 +125,7 @@ export default function FreelancerDashboardPage() {
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Top Header Card */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
@@ -169,7 +169,7 @@ export default function FreelancerDashboardPage() {
 
       {/* Metrics Banner */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Workspaces</span>
           <div className="text-xl font-black text-cyan-600 dark:text-cyan-400">
             {activeGigsCount}
@@ -177,7 +177,7 @@ export default function FreelancerDashboardPage() {
           <span className="text-[11px] text-slate-400">In execution</span>
         </div>
 
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed Milestones</span>
           <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
             {completedGigsCount}
@@ -185,7 +185,7 @@ export default function FreelancerDashboardPage() {
           <span className="text-[11px] text-slate-400">Accepted by merchants</span>
         </div>
 
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Contract Value</span>
           <div className="text-xl font-black text-slate-900 dark:text-white">
             ${totalContractEarnings.toLocaleString()} USD
@@ -193,7 +193,7 @@ export default function FreelancerDashboardPage() {
           <span className="text-[11px] text-slate-400">Secured in escrow</span>
         </div>
 
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Invites</span>
           <div className="text-xl font-black text-amber-500">
             {pendingInvitesCount}
@@ -227,12 +227,12 @@ export default function FreelancerDashboardPage() {
 
       {/* Gigs List */}
       {loading ? (
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
           <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-500" />
           <span>Synchronizing your client gigs from MongoDB Atlas...</span>
         </div>
       ) : filteredGigs.length === 0 ? (
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4 shadow-sm transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4 shadow-sm transition-colors">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
             <Briefcase className="w-6 h-6" />
           </div>
@@ -268,7 +268,7 @@ export default function FreelancerDashboardPage() {
             return (
               <div
                 key={`${pId}-${pkg.id}`}
-                className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm"
+                className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">

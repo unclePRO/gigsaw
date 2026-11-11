@@ -67,7 +67,7 @@ export const Navbar: React.FC = () => {
   }, [isFreelancer, fetchInviteCount]);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
+    <header className="sticky top-0 z-50 bg-white/95 dark:bg-[#142F2E]/95 backdrop-blur-md border-b border-[#D8E9E4] dark:border-[#345451] transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Brand Logo */}
         <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
@@ -220,7 +220,7 @@ export const Navbar: React.FC = () => {
               </button>
 
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#0F172A] rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 text-xs z-50">
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#142F2E] rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 text-xs z-50">
                   <div className="px-3.5 py-2.5 border-b border-slate-100 dark:border-slate-800">
                     <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
                     <p className="text-slate-400 text-[11px] truncate">{user.email}</p>
