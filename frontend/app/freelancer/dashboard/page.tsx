@@ -216,8 +216,8 @@ export default function FreelancerDashboardPage() {
             onClick={() => setStatusFilter(tab)}
             className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer ${
               statusFilter === tab
-                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-slate-900 dark:bg-[#32B6A5] text-white dark:text-[#102B2B] shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#142F2E]'
             }`}
           >
             {tab === 'all' ? `All Gigs (${totalGigsCount})` : tab === 'active' ? `Active (${activeGigsCount})` : `Completed (${completedGigsCount})`}
@@ -312,7 +312,7 @@ export default function FreelancerDashboardPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <Link
                       href={`/freelancer/dashboard/${pId}?pkg=${pkg.id}`}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#168C80] hover:bg-[#126B64] dark:bg-[#32B6A5] dark:hover:bg-[#168C80] text-white dark:text-[#102B2B] dark:hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
                     >
                       <span>Open Workspace</span>
                       <ArrowRight className="w-3.5 h-3.5" />

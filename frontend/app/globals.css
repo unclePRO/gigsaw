@@ -100,22 +100,23 @@ footer {
 }
 
 /* Standardize card borders */
-.border-slate-200,
-.border-slate-300,
-[class*="border-slate-200"] {
+html:not(.dark) .border-slate-200,
+html:not(.dark) .border-slate-300,
+html:not(.dark) [class*="border-slate-200"] {
   border-color: #D8E9E4 !important;
 }
 
 .dark .border-slate-800,
 .dark .border-slate-700,
 .dark [class*="dark:border-slate-800"],
-.dark [class*="dark:border-slate-700"] {
+.dark [class*="dark:border-slate-700"],
+.dark [class*="dark:border-[#345451]"] {
   border-color: #345451 !important;
 }
 
 /* Clean up lingering legacy pure-blue utility classes to Ocean Teal / Aqua */
-.bg-blue-600,
-.bg-blue-500 {
+html:not(.dark) .bg-blue-600,
+html:not(.dark) .bg-blue-500 {
   background-color: #168C80 !important;
 }
 
@@ -124,8 +125,8 @@ footer {
   background-color: #10766D !important;
 }
 
-.text-blue-600,
-.text-blue-500 {
+html:not(.dark) .text-blue-600,
+html:not(.dark) .text-blue-500 {
   color: #168C80 !important;
 }
 
@@ -134,8 +135,8 @@ footer {
   color: #32B6A5 !important;
 }
 
-.bg-blue-50,
-.bg-indigo-50 {
+html:not(.dark) .bg-blue-50,
+html:not(.dark) .bg-indigo-50 {
   background-color: #E5F5F1 !important;
 }
 
@@ -146,9 +147,9 @@ footer {
   background-color: #254542 !important;
 }
 
-.border-blue-200,
-.border-blue-500,
-.border-indigo-500 {
+html:not(.dark) .border-blue-200,
+html:not(.dark) .border-blue-500,
+html:not(.dark) .border-indigo-500 {
   border-color: #D8E9E4 !important;
 }
 
@@ -211,13 +212,19 @@ footer {
    Emphasis: Clean surfaces, financial metrics hierarchy, restrained accents
    ========================================================================== */
 
-/* Merchant Scoped Selectors */
-body:has(nav a[href="/create"]),
-body:has(nav a[href="/dashboard"]),
-body:has(main a[href*="/dashboard/"]),
-body:has(main a[href="/create"]),
-main:has(a[href*="/dashboard/"]),
-main:has(a[href="/create"]) {
+/* ==========================================================================
+   EXPERIENCE 1: MERCHANT EXPERIENCE
+   Visual personality: Professional, Business-oriented, Structured, Reliable
+   Emphasis: Clean surfaces, financial metrics hierarchy, restrained accents
+   ========================================================================== */
+
+/* Merchant Scoped Selectors - LIGHT THEME ONLY */
+html:not(.dark) body:has(nav a[href="/create"]),
+html:not(.dark) body:has(nav a[href="/dashboard"]),
+html:not(.dark) body:has(main a[href^="/dashboard"]),
+html:not(.dark) body:has(main a[href="/create"]),
+html:not(.dark) main:has(a[href^="/dashboard"]),
+html:not(.dark) main:has(a[href="/create"]) {
   --card-bg: #FFFFFF;
   --border-color: #D8E9E4;
   --primary-accent: #168C80;
@@ -226,42 +233,46 @@ main:has(a[href="/create"]) {
 /* Dark mode merchant */
 .dark:has(nav a[href="/create"]),
 .dark:has(nav a[href="/dashboard"]),
-.dark:has(main a[href*="/dashboard/"]),
+.dark:has(main a[href^="/dashboard"]),
 .dark:has(main a[href="/create"]),
-.dark main:has(a[href*="/dashboard/"]),
+.dark main:has(a[href^="/dashboard"]),
 .dark main:has(a[href="/create"]) {
   --card-bg: #1B3B39;
   --border-color: #345451;
   --primary-accent: #32B6A5;
 }
 
-/* Merchant Card Surfaces */
-body:has(nav a[href="/create"]) .bg-white,
-body:has(nav a[href="/dashboard"]) .bg-white,
-body:has(main a[href*="/dashboard"]) .bg-white,
-body:has(main a[href="/create"]) .bg-white,
-main:has(a[href*="/dashboard"]) .bg-white,
-main:has(a[href="/create"]) .bg-white {
+/* Merchant Card Surfaces - LIGHT THEME ONLY */
+html:not(.dark) body:has(nav a[href="/create"]) .bg-white,
+html:not(.dark) body:has(nav a[href="/dashboard"]) .bg-white,
+html:not(.dark) body:has(main a[href^="/dashboard"]) .bg-white,
+html:not(.dark) body:has(main a[href="/create"]) .bg-white,
+html:not(.dark) main:has(a[href^="/dashboard"]) .bg-white,
+html:not(.dark) main:has(a[href="/create"]) .bg-white {
   background-color: #FFFFFF !important;
   border-color: #D8E9E4 !important;
 }
 
 /* Merchant Dark Card Surfaces */
+.dark:has(nav a[href="/create"]) [class*="dark:bg-[#1B3B39]"],
+.dark:has(nav a[href="/dashboard"]) [class*="dark:bg-[#1B3B39]"],
+.dark:has(main a[href^="/dashboard"]) [class*="dark:bg-[#1B3B39]"],
+.dark:has(main a[href="/create"]) [class*="dark:bg-[#1B3B39]"],
 .dark:has(nav a[href="/create"]) [class*="dark:bg-[#0F172A]"],
 .dark:has(nav a[href="/dashboard"]) [class*="dark:bg-[#0F172A]"],
-.dark:has(main a[href*="/dashboard"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(main a[href^="/dashboard"]) [class*="dark:bg-[#0F172A]"],
 .dark:has(main a[href="/create"]) [class*="dark:bg-[#0F172A]"],
-.dark:has(nav a[href="/create"]) [class*="dark:bg-[#0B1120]"],
-.dark:has(nav a[href="/dashboard"]) [class*="dark:bg-[#0B1120]"],
-.dark:has(main a[href*="/dashboard"]) [class*="dark:bg-[#0B1120]"],
-.dark:has(main a[href="/create"]) [class*="dark:bg-[#0B1120]"] {
+.dark:has(nav a[href="/create"]) [class*="dark:bg-[#142F2E]"],
+.dark:has(nav a[href="/dashboard"]) [class*="dark:bg-[#142F2E]"],
+.dark:has(main a[href^="/dashboard"]) [class*="dark:bg-[#142F2E]"],
+.dark:has(main a[href="/create"]) [class*="dark:bg-[#142F2E]"] {
   background-color: #1B3B39 !important;
   border-color: #345451 !important;
 }
 
 /* Merchant Active Nav Links */
-body:has(nav a[href="/create"]) nav a.bg-cyan-50,
-body:has(nav a[href="/dashboard"]) nav a.bg-cyan-50 {
+html:not(.dark) body:has(nav a[href="/create"]) nav a.bg-cyan-50,
+html:not(.dark) body:has(nav a[href="/dashboard"]) nav a.bg-cyan-50 {
   background-color: #E5F5F1 !important;
   color: #168C80 !important;
   border-bottom: 2px solid #168C80 !important;
@@ -274,16 +285,16 @@ body:has(nav a[href="/dashboard"]) nav a.bg-cyan-50 {
   border-bottom: 2px solid #32B6A5 !important;
 }
 
-/* Merchant Headings & Hierarchy */
-body:has(nav a[href="/create"]) h1,
-body:has(nav a[href="/create"]) h2,
-body:has(nav a[href="/create"]) h3,
-body:has(nav a[href="/dashboard"]) h1,
-body:has(nav a[href="/dashboard"]) h2,
-body:has(nav a[href="/dashboard"]) h3,
-body:has(main a[href*="/dashboard"]) h1,
-body:has(main a[href*="/dashboard"]) h2,
-body:has(main a[href*="/dashboard"]) h3 {
+/* Merchant Headings & Hierarchy - LIGHT THEME ONLY */
+html:not(.dark) body:has(nav a[href="/create"]) h1,
+html:not(.dark) body:has(nav a[href="/create"]) h2,
+html:not(.dark) body:has(nav a[href="/create"]) h3,
+html:not(.dark) body:has(nav a[href="/dashboard"]) h1,
+html:not(.dark) body:has(nav a[href="/dashboard"]) h2,
+html:not(.dark) body:has(nav a[href="/dashboard"]) h3,
+html:not(.dark) body:has(main a[href^="/dashboard"]) h1,
+html:not(.dark) body:has(main a[href^="/dashboard"]) h2,
+html:not(.dark) body:has(main a[href^="/dashboard"]) h3 {
   color: #10413E;
 }
 
@@ -293,9 +304,9 @@ body:has(main a[href*="/dashboard"]) h3 {
 .dark:has(nav a[href="/dashboard"]) h1,
 .dark:has(nav a[href="/dashboard"]) h2,
 .dark:has(nav a[href="/dashboard"]) h3,
-.dark:has(main a[href*="/dashboard"]) h1,
-.dark:has(main a[href*="/dashboard"]) h2,
-.dark:has(main a[href*="/dashboard"]) h3 {
+.dark:has(main a[href^="/dashboard"]) h1,
+.dark:has(main a[href^="/dashboard"]) h2,
+.dark:has(main a[href^="/dashboard"]) h3 {
   color: #F0FAF8 !important;
 }
 
@@ -305,10 +316,10 @@ body:has(main a[href*="/dashboard"]) h3 {
    Emphasis: Soft Aqua highlights, opportunity badges, personal progress
    ========================================================================== */
 
-/* Freelancer Scoped Selectors */
-body:has(nav a[href*="/freelancer"]),
-body:has(main a[href*="/freelancer"]),
-main:has(a[href*="/freelancer"]) {
+/* Freelancer Scoped Selectors - LIGHT THEME ONLY */
+html:not(.dark) body:has(nav a[href*="/freelancer"]),
+html:not(.dark) body:has(main a[href*="/freelancer"]),
+html:not(.dark) main:has(a[href*="/freelancer"]) {
   --primary-accent: #168C80;
   --secondary-accent: #73D8C7;
   --opportunity-highlight: #C5EEE6;
@@ -323,29 +334,32 @@ main:has(a[href*="/freelancer"]) {
   --opportunity-highlight: #254542;
 }
 
-/* Freelancer Card Surfaces */
-body:has(nav a[href*="/freelancer"]) .bg-white,
-body:has(main a[href*="/freelancer"]) .bg-white,
-main:has(a[href*="/freelancer"]) .bg-white {
+/* Freelancer Card Surfaces - LIGHT THEME ONLY */
+html:not(.dark) body:has(nav a[href*="/freelancer"]) .bg-white,
+html:not(.dark) body:has(main a[href*="/freelancer"]) .bg-white,
+html:not(.dark) main:has(a[href*="/freelancer"]) .bg-white {
   background-color: #FFFFFF !important;
   border-color: #D8E9E4 !important;
 }
 
 /* Freelancer Dark Card Surfaces */
+.dark:has(nav a[href*="/freelancer"]) [class*="dark:bg-[#1B3B39]"],
+.dark:has(main a[href*="/freelancer"]) [class*="dark:bg-[#1B3B39]"],
+.dark main:has(a[href*="/freelancer"]) [class*="dark:bg-[#1B3B39]"],
 .dark:has(nav a[href*="/freelancer"]) [class*="dark:bg-[#0F172A]"],
 .dark:has(main a[href*="/freelancer"]) [class*="dark:bg-[#0F172A]"],
 .dark main:has(a[href*="/freelancer"]) [class*="dark:bg-[#0F172A]"],
-.dark:has(nav a[href*="/freelancer"]) [class*="dark:bg-[#0B1120]"],
-.dark:has(main a[href*="/freelancer"]) [class*="dark:bg-[#0B1120]"],
-.dark main:has(a[href*="/freelancer"]) [class*="dark:bg-[#0B1120]"] {
+.dark:has(nav a[href*="/freelancer"]) [class*="dark:bg-[#142F2E]"],
+.dark:has(main a[href*="/freelancer"]) [class*="dark:bg-[#142F2E]"],
+.dark main:has(a[href*="/freelancer"]) [class*="dark:bg-[#142F2E]"] {
   background-color: #1B3B39 !important;
   border-color: #345451 !important;
 }
 
 /* Freelancer Opportunity Cards - Subtle Soft Aqua Ambient Highlight */
-body:has(nav a[href*="/freelancer"]) .border-slate-200\/90:hover,
-body:has(main a[href*="/freelancer"]) .border-slate-200\/90:hover,
-main:has(a[href*="/freelancer"]) .border-slate-200\/90:hover {
+html:not(.dark) body:has(nav a[href*="/freelancer"]) .border-slate-200\/90:hover,
+html:not(.dark) body:has(main a[href*="/freelancer"]) .border-slate-200\/90:hover,
+html:not(.dark) main:has(a[href*="/freelancer"]) .border-slate-200\/90:hover {
   border-color: #73D8C7 !important;
   box-shadow: 0 4px 20px -2px rgba(115, 216, 199, 0.25) !important;
   transition: all 0.2s ease-in-out;
@@ -360,9 +374,9 @@ main:has(a[href*="/freelancer"]) .border-slate-200\/90:hover {
 }
 
 /* Freelancer Skill Tags and Badges (Soft Aqua Identity) */
-body:has(nav a[href*="/freelancer"]) .bg-cyan-500\/10,
-body:has(main a[href*="/freelancer"]) .bg-cyan-500\/10,
-main:has(a[href*="/freelancer"]) .bg-cyan-500\/10 {
+html:not(.dark) body:has(nav a[href*="/freelancer"]) .bg-cyan-500\/10,
+html:not(.dark) body:has(main a[href*="/freelancer"]) .bg-cyan-500\/10,
+html:not(.dark) main:has(a[href*="/freelancer"]) .bg-cyan-500\/10 {
   background-color: #C5EEE6 !important;
   color: #10413E !important;
   border-color: #73D8C7 !important;
@@ -380,28 +394,29 @@ main:has(a[href*="/freelancer"]) .bg-cyan-500\/10 {
 }
 
 /* Freelancer Active Nav Link */
-body:has(nav a[href*="/freelancer"]) nav a.bg-cyan-50 {
+html:not(.dark) body:has(nav a[href*="/freelancer"]) nav a.bg-cyan-50 {
   background-color: #E5F5F1 !important;
   color: #168C80 !important;
   border-bottom: 2px solid #73D8C7 !important;
 }
 
-.dark:has(nav a[href*="/freelancer"]) nav a[class*="dark:bg-cyan-950"] {
+.dark:has(nav a[href*="/freelancer"]) nav a[class*="dark:bg-cyan-950"],
+.dark:has(nav a[href*="/freelancer"]) nav a[class*="dark:bg-white"] {
   background-color: #254542 !important;
   color: #73D8C7 !important;
   border-bottom: 2px solid #32B6A5 !important;
 }
 
 /* Freelancer Earnings & Milestone Indicator Accents */
-body:has(nav a[href*="/freelancer"]) .text-cyan-600,
-body:has(main a[href*="/freelancer"]) .text-cyan-600,
-main:has(a[href*="/freelancer"]) .text-cyan-600 {
+html:not(.dark) body:has(nav a[href*="/freelancer"]) .text-cyan-600,
+html:not(.dark) body:has(main a[href*="/freelancer"]) .text-cyan-600,
+html:not(.dark) main:has(a[href*="/freelancer"]) .text-cyan-600 {
   color: #168C80 !important;
 }
 
 .dark:has(nav a[href*="/freelancer"]) .text-cyan-400,
 .dark:has(main a[href*="/freelancer"]) .text-cyan-400,
-main:has(a[href*="/freelancer"]) .text-cyan-400 {
+.dark main:has(a[href*="/freelancer"]) .text-cyan-400 {
   color: #73D8C7 !important;
 }
 
@@ -411,4 +426,70 @@ main:has(a[href*="/freelancer"]) .from-cyan-500 {
   --tw-gradient-from: #73D8C7 var(--tw-gradient-from-position) !important;
   --tw-gradient-to: #168C80 var(--tw-gradient-to-position) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+/* ==========================================================================
+   UNIVERSAL DARK THEME SAFETY NET
+   Guarantees that all card surfaces and boxes in dark theme render rich dark teal (#1B3B39)
+   and never leak light/white backgrounds or unreadable text.
+   ========================================================================== */
+.dark .dark\:bg-\[\#1B3B39\],
+.dark [class*="dark:bg-[#1B3B39]"] {
+  background-color: #1B3B39 !important;
+  border-color: #345451 !important;
+}
+
+.dark .dark\:bg-\[\#142F2E\],
+.dark [class*="dark:bg-[#142F2E]"] {
+  background-color: #142F2E !important;
+  border-color: #345451 !important;
+}
+
+.dark .dark\:bg-\[\#102B2B\],
+.dark [class*="dark:bg-[#102B2B]"],
+.dark [class*="dark:bg-[#080E1A]"],
+.dark [class*="dark:bg-[#090D16]"],
+.dark .dark\:bg-slate-950,
+.dark [class*="dark:bg-slate-950"] {
+  background-color: #102B2B !important;
+}
+
+/* Dark Theme Inner Input / Containers */
+.dark [class*="dark:bg-slate-900/60"],
+.dark [class*="dark:bg-slate-900/40"],
+.dark [class*="dark:bg-slate-900"],
+.dark [class*="dark:bg-slate-800/80"],
+.dark [class*="dark:bg-slate-800"] {
+  background-color: #142F2E !important;
+  border-color: #345451 !important;
+}
+
+/* Dark Theme Text Colors */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark .dark\:text-white,
+.dark [class*="dark:text-white"],
+.dark [class*="dark:text-slate-100"] {
+  color: #F0FAF8 !important;
+}
+
+.dark [class*="dark:text-slate-300"],
+.dark [class*="dark:text-slate-400"] {
+  color: #A3C5BF !important;
+}
+
+.dark [class*="dark:text-cyan-400"],
+.dark [class*="dark:text-cyan-300"] {
+  color: #73D8C7 !important;
+}
+
+/* Fix any buttons that had dark:bg-white to proper bright aqua */
+.dark .dark\:bg-white {
+  background-color: #32B6A5 !important;
+  color: #102B2B !important;
+}
+.dark .dark\:bg-white:hover {
+  background-color: #168C80 !important;
+  color: #FFFFFF !important;
 }

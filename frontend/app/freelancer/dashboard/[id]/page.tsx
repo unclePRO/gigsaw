@@ -278,7 +278,7 @@ export default function FreelancerGigWorkspacePage() {
           </p>
           <Link
             href="/freelancer/dashboard"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#168C80] hover:bg-[#126B64] dark:bg-[#32B6A5] dark:hover:bg-[#168C80] text-white dark:text-[#102B2B] dark:hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm"
           >
             <ChevronLeft className="w-4 h-4" />
             <span>Return to My Gigs</span>
@@ -669,7 +669,7 @@ export default function FreelancerGigWorkspacePage() {
           <button
             type="submit"
             disabled={postingProgress || !progressText.trim()}
-            className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-xl text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+            className="px-5 py-2.5 bg-[#168C80] hover:bg-[#126B64] dark:bg-[#32B6A5] dark:hover:bg-[#168C80] text-white dark:text-[#102B2B] dark:hover:text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
           >
             {postingProgress ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             <span>Post Update</span>

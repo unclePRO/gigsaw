@@ -295,7 +295,7 @@ export default function MerchantDashboardPage() {
                     ) : (
                       <Link
                         href={`/dashboard/${pId}`}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-xl transition-all shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#168C80] hover:bg-[#126B64] dark:bg-[#32B6A5] dark:hover:bg-[#168C80] text-white dark:text-[#102B2B] dark:hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm"
                       >
                         <span>Open Workspace</span>
                         <ArrowRight className="w-3.5 h-3.5" />
