@@ -461,22 +461,27 @@ export async function POST(req: NextRequest) {
     const allocatedTotal = convertedPackages.reduce((s, p) => s + (p.allocatedPrice || 0), 0);
     const savings = Math.max(0, finalBudget - allocatedTotal);
 
+    const enrichedMerchantPrompt =
+      finalizeRes.enriched_brief ||
+      finalizeRes.analysis_result?.analysis?.summary ||
+      cleanGoal;
+
     const proposal: ProjectProposal = {
       merchantId: '',
       merchantName: '',
       merchantEmail: '',
       projectName: finalProjectName,
-      merchantPrompt: cleanGoal,
+      merchantPrompt: enrichedMerchantPrompt,
       totalBudget: finalBudget,
       allocatedTotal,
       savings,
       workPackages: convertedPackages,
       status: 'draft',
       createdAt: new Date().toISOString(),
-      aiAnalysis: finalizeRes.analysis_result.analysis,
-      dependencyPlan: finalizeRes.analysis_result.dependency_plan,
-      assumptions: finalizeRes.analysis_result.analysis?.assumptions || [],
-      risks: finalizeRes.analysis_result.analysis?.risks || [],
+      aiAnalysis: finalizeRes.analysis_result?.analysis,
+      dependencyPlan: finalizeRes.analysis_result?.dependency_plan,
+      assumptions: finalizeRes.analysis_result?.analysis?.assumptions || [],
+      risks: finalizeRes.analysis_result?.analysis?.risks || [],
     };
 
     return NextResponse.json({
@@ -485,10 +490,11 @@ export async function POST(req: NextRequest) {
       budget: finalBudget,
       workPackages: convertedPackages,
       proposal,
-      aiAnalysis: finalizeRes.analysis_result.analysis,
-      dependencyPlan: finalizeRes.analysis_result.dependency_plan,
-      assumptions: finalizeRes.analysis_result.analysis?.assumptions || [],
-      risks: finalizeRes.analysis_result.analysis?.risks || [],
+      enrichedBrief: finalizeRes.enriched_brief,
+      aiAnalysis: finalizeRes.analysis_result?.analysis,
+      dependencyPlan: finalizeRes.analysis_result?.dependency_plan,
+      assumptions: finalizeRes.analysis_result?.analysis?.assumptions || [],
+      risks: finalizeRes.analysis_result?.analysis?.risks || [],
     });
   } catch (err: any) {
     console.error('[Scoping Finalize API] Error:', err);

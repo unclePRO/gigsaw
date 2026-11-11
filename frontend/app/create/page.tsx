@@ -539,7 +539,7 @@ export default function CreateProjectPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectName: projectName || proposal?.projectName || `${prompt.slice(0, 30)} Project`,
-          merchantPrompt: prompt,
+          merchantPrompt: proposal?.merchantPrompt || aiAnalysis?.summary || prompt,
           totalBudget: budget,
           allocatedTotal: workPackages.reduce((s, w) => s + w.allocatedPrice, 0),
           savings: Math.max(0, budget - workPackages.reduce((s, w) => s + w.allocatedPrice, 0)),

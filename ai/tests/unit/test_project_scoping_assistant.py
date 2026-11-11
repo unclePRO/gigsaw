@@ -14,6 +14,7 @@ from gigsaw_ai.schemas.scoping import (
     ChatMessage,
     ProjectScopingChatRequest,
     ProjectScopingFinalizeRequest,
+    ProjectScopingTitleResponse,
 )
 from gigsaw_ai.services.project_scoping_assistant import (
     ProjectScopingAssistant,
@@ -21,6 +22,7 @@ from gigsaw_ai.services.project_scoping_assistant import (
     _GeminiScopingFinalizeOutput,
     _SpecAttribute,
 )
+from gigsaw_ai.services.task_decomposer import TaskDecompositionOutput
 
 
 def _make_gemini_assistant(container, side_effect):
@@ -33,25 +35,35 @@ def _make_gemini_assistant(container, side_effect):
         task_decomposer=container.task_decomposer,
         dependency_planner=container.dependency_planner,
         budget_planner=container.budget_planner,
+        freelancer_matcher=container.freelancer_matcher,
     )
 
 
-def test_project_scoping_chat_uses_gemini_and_accumulates_spec(container):
+def test_project_scoping_chat_uses_gemini_tracks_title_and_budget_change(container):
     assistant = _make_gemini_assistant(
         container,
         [
             _GeminiScopingChatOutput(
+                project_name="B2B SaaS Analytics Platform",
+                updated_budget=Decimal("1500"),
+                currency="USD",
+                budget_changed=False,
                 reply="What features should your SaaS dashboard support first?",
                 clarifying_question="What features should your SaaS dashboard support first?",
                 suggested_replies=["Analytics & Billing", "User Management", "API Webhooks"],
                 extracted_spec=[_SpecAttribute(key="domain", value="B2B SaaS")],
                 completeness_score=0.4,
-                is_ready_to_finalize=False,
-                ready_for_decomposition=False,
-                recommended_action="continue_asking",
+                # Even if an LLM mistakenly tries to pre-finalize on Turn 0, code prevents it
+                is_ready_to_finalize=True,
+                ready_for_decomposition=True,
+                recommended_action="ready_to_finalize",
             ),
             _GeminiScopingChatOutput(
-                reply="Great! I have captured your SaaS dashboard scope and 3-week timeline.",
+                project_name="PulseMetrics Portal",
+                updated_budget=Decimal("2500"),
+                currency="USD",
+                budget_changed=True,
+                reply="Updated project title to PulseMetrics Portal and budget to $2500 USD for your 3-week timeline.",
                 clarifying_question=None,
                 suggested_replies=["Finalize Details & Build Team"],
                 extracted_spec=[_SpecAttribute(key="target_turnaround", value="3 weeks")],
@@ -68,11 +80,13 @@ def test_project_scoping_chat_uses_gemini_and_accumulates_spec(container):
             ProjectScopingChatRequest(
                 initial_goal="I need a B2B SaaS analytics web app",
                 messages=[],
+                current_budget=Decimal("1500"),
             )
         )
     )
-    assert res1.reply == "What features should your SaaS dashboard support first?"
-    assert res1.extracted_spec == {"domain": "B2B SaaS"}
+    assert res1.project_name == "B2B SaaS Analytics Platform"
+    assert res1.current_budget == Decimal("1500")
+    assert not res1.budget_changed
     assert not res1.is_ready_to_finalize
     assert res1.recommended_action == "continue_asking"
 
@@ -82,17 +96,87 @@ def test_project_scoping_chat_uses_gemini_and_accumulates_spec(container):
                 initial_goal="I need a B2B SaaS analytics web app",
                 messages=[
                     ChatMessage(role="assistant", content=res1.reply),
-                    ChatMessage(role="user", content="Analytics & Billing, launching in 3 weeks"),
+                    ChatMessage(role="user", content="Let's take project name as PulseMetrics Portal and increase budget to $2500, 3 weeks"),
                 ],
+                current_budget=res1.current_budget,
+                project_name=res1.project_name,
                 extracted_spec=res1.extracted_spec,
             )
         )
     )
-    assert res2.extracted_spec == {"domain": "B2B SaaS", "target_turnaround": "3 weeks"}
+    assert res2.project_name == "PulseMetrics Portal"
+    assert res2.current_budget == Decimal("2500")
+    assert res2.budget_changed is True
+    assert res2.extracted_spec["budget"] == "2500"
+    assert res2.extracted_spec["project_name"] == "PulseMetrics Portal"
     assert res2.is_ready_to_finalize
     assert res2.ready_for_decomposition
-    assert res2.recommended_action == "ready_to_finalize"
-    assert res2.clarifying_question is None
+    assert "PulseMetrics Portal" in res2.reply
+    assert "2500 USD" in res2.reply
+    assert "Domain: B2B SaaS" in res2.reply
+    assert "Target Turnaround: 3 weeks" in res2.reply
+    assert "recheck" in res2.reply.lower()
+
+
+def test_project_scoping_finalize_uses_updated_chat_budget_and_verifies_freelancers(container):
+    assistant = _make_gemini_assistant(
+        container,
+        [
+            _GeminiScopingFinalizeOutput(
+                project_name="PulseMetrics Portal",
+                final_budget=Decimal("2500"),
+                currency="USD",
+                enriched_brief="Build PulseMetrics Portal B2B SaaS website and brand identity in 3 weeks.",
+                detected_services=["website development", "logo and branding"],
+            )
+        ],
+    )
+    # task_decomposer runs in demo mode here with container.llm, returning deterministic packages
+    result = asyncio.run(
+        assistant.finalize(
+            ProjectScopingFinalizeRequest(
+                initial_goal="I need a SaaS web app",
+                messages=[
+                    ChatMessage(role="user", content="Name it PulseMetrics Portal and change budget to $2500"),
+                ],
+                budget=Decimal("1500"),
+                auto_decompose=True,
+            )
+        )
+    )
+    assert result.project_name == "PulseMetrics Portal"
+    assert result.budget == Decimal("2500")
+    assert result.suggested_budget == Decimal("2500")
+    assert result.analysis_result is not None
+    assert result.analysis_result.budget_plan.total_budget == Decimal("2500.00")
+    assert len(result.freelancer_matches) == len(result.analysis_result.work_packages)
+    assert all(item.match_result.matches for item in result.freelancer_matches)
+
+
+def test_project_scoping_title_endpoint(container):
+    app = create_app()
+    assistant = _make_gemini_assistant(
+        container,
+        [ProjectScopingTitleResponse(project_name="Copper Cup Cafe", source="user_specified")],
+    )
+    original_assistant = container.project_scoping_assistant
+    container.project_scoping_assistant = assistant
+    app.dependency_overrides[get_container] = lambda: container
+    try:
+        client = TestClient(app)
+        response = client.post(
+            "/api/v1/projects/scoping/title",
+            json={
+                "initial_goal": "I need a coffee shop website and branding",
+                "messages": [{"role": "user", "content": "title is Copper Cup Cafe"}],
+            },
+        )
+    finally:
+        container.project_scoping_assistant = original_assistant
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"project_name": "Copper Cup Cafe", "source": "user_specified"}
 
 
 def test_project_scoping_chat_raises_standardized_retry_error_on_gemini_failure(container):
@@ -172,7 +256,89 @@ def test_project_scoping_finalize(container):
     result = asyncio.run(container.project_scoping_assistant.finalize(finalize_req))
     assert result.project_name
     assert "artisan" in result.enriched_brief.lower()
-    assert len(result.detected_services) > 0
+    assert "key details:" in result.enriched_brief.lower()
+    assert "brand theme: cozy artisan" in result.enriched_brief.lower()
+    assert "cozy modern aesthetic" in result.enriched_brief.lower()
     assert result.analysis_result is not None
+    assert not result.analysis_result.analysis.business_goal.lower().startswith("i need ")
+    assert result.analysis_result.analysis.summary == result.enriched_brief
     assert len(result.analysis_result.work_packages) > 0
+    assert "artisan" in result.analysis_result.work_packages[0].description.lower()
     assert result.analysis_result.budget_plan is not None
+    assert len(result.freelancer_matches) == len(result.analysis_result.work_packages)
+
+
+def test_project_scoping_finalize_refines_chat_intent_and_passes_full_brief_to_matcher(container):
+    captured_briefs: list[str] = []
+    original_match = container.freelancer_matcher.match
+
+    async def _recording_match(req):
+        captured_briefs.append(req.brief)
+        return await original_match(req)
+
+    container.freelancer_matcher.match = _recording_match
+    try:
+        assistant = _make_gemini_assistant(
+            container,
+            [
+                _GeminiScopingFinalizeOutput(
+                    project_name="Lumina Roast Store",
+                    final_budget=Decimal("2200"),
+                    currency="USD",
+                    business_goal="Launch a specialty coffee e-commerce store with unified branding and subscription checkout within 3 weeks.",
+                    enriched_brief=(
+                        "Create a conversion-focused e-commerce storefront and minimalist identity for Lumina Roast "
+                        "featuring recurring bean subscriptions, warm terracotta visual styling, and mobile-first UX."
+                    ),
+                    extracted_spec=[
+                        _SpecAttribute(key="brand_theme", value="Minimalist warm terracotta"),
+                        _SpecAttribute(key="tech_stack", value="Next.js + Stripe subscriptions"),
+                        _SpecAttribute(key="target_turnaround", value="3 weeks"),
+                    ],
+                    additional_details=[
+                        "Exclude native mobile app in Phase 1",
+                        "Prioritize subscription checkout flow on homepage",
+                    ],
+                    detected_services=["website development", "logo and branding"],
+                ),
+            ],
+        )
+
+        result = asyncio.run(
+            assistant.finalize(
+                ProjectScopingFinalizeRequest(
+                    initial_goal="i want coffee site",
+                    messages=[
+                        ChatMessage(role="assistant", content="What style and features do you want?"),
+                        ChatMessage(role="user", content="Minimalist terracotta Next.js store with Stripe subscriptions, 3 weeks, no mobile app"),
+                    ],
+                    extracted_spec={"existing_assets": "Product photos ready"},
+                    budget=Decimal("1500"),
+                    auto_decompose=True,
+                )
+            )
+        )
+    finally:
+        container.freelancer_matcher.match = original_match
+
+    assert result.project_name == "Lumina Roast Store"
+    assert result.budget == Decimal("2200")
+    assert result.extracted_spec["tech_stack"] == "Next.js + Stripe subscriptions"
+    assert result.extracted_spec["existing_assets"] == "Product photos ready"
+    assert result.additional_details == [
+        "Exclude native mobile app in Phase 1",
+        "Prioritize subscription checkout flow on homepage",
+    ]
+    assert result.analysis_result is not None
+    # Never copies raw vague opening prompt ("i want coffee site") as business_goal
+    assert result.analysis_result.analysis.business_goal.startswith("Launch a specialty coffee e-commerce store")
+    assert "i want coffee site" not in result.analysis_result.analysis.business_goal.lower()
+    # Enriched brief + summary carry concise improved copy, key chat specs, and extra notes without duplication
+    assert "Key Details:" in result.enriched_brief
+    assert "Tech Stack: Next.js + Stripe subscriptions" in result.enriched_brief
+    assert "Existing Assets: Product photos ready" in result.enriched_brief
+    assert "Exclude native mobile app in Phase 1" in result.enriched_brief
+    assert result.analysis_result.analysis.summary == result.enriched_brief
+    assert len(captured_briefs) == 2
+    assert all("Next.js + Stripe subscriptions" in brief for brief in captured_briefs)
+    assert all("Exclude native mobile app in Phase 1" in brief for brief in captured_briefs)

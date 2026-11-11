@@ -282,6 +282,15 @@ export default function FreelancerInvitationsPage() {
           {pendingInvites.map(({ project, pkg }) => {
             const projId = (project as any)._id || project.id;
             const isProcessing = processingId === `${projId}-${pkg.id}`;
+            const briefText = ((project as any).merchantPrompt || (project as any).aiAnalysis?.summary || '').trim();
+            const descText = (pkg.description || '').trim();
+            const isDuplicate = Boolean(
+              briefText &&
+              descText &&
+              (briefText.toLowerCase() === descText.toLowerCase() ||
+                briefText.toLowerCase().includes(descText.toLowerCase()) ||
+                descText.toLowerCase().includes(briefText.toLowerCase()))
+            );
 
             return (
               <div
@@ -310,20 +319,35 @@ export default function FreelancerInvitationsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{pkg.title}</span>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{pkg.description}</p>
-                </div>
-
-                {/* Extended project context */}
+                {/* 2 Side-by-Side Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  {(project as any).merchantPrompt && (
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Project Brief</span>
-                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3">{(project as any).merchantPrompt}</p>
-                    </div>
-                  )}
-                  <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                  {/* Left Box: Project Brief */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                      Project Brief
+                    </span>
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                      {pkg.title}
+                    </h3>
+                    {descText && (
+                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                        {descText}
+                      </p>
+                    )}
+                    {briefText && !isDuplicate && (
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                          Merchant Context:
+                        </span>
+                        <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                          {briefText}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Box: Required Skills, Deliverables, Timeline */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
                     {pkg.requiredSkills && pkg.requiredSkills.length > 0 && (
                       <div>
                         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Required Skills</span>

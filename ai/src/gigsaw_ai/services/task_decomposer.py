@@ -32,6 +32,14 @@ class TaskDecomposer:
     @staticmethod
     def _demo_output(analysis: ProjectAnalysis) -> TaskDecompositionOutput:
         category_ids = {category: f"wp-{index:02d}" for index, category in enumerate(analysis.required_services, start=1)}
+        summary_lines = [line.strip() for line in (analysis.summary or "").splitlines() if line.strip()]
+        lead_brief = summary_lines[0] if summary_lines else analysis.business_goal.strip()
+        spec_highlights = [
+            line[2:].strip()
+            for line in summary_lines[1:]
+            if line.startswith("- ")
+        ]
+        extra_context = f" Key details: {'; '.join(spec_highlights[:4])}." if spec_highlights else ""
         packages = []
         for category in analysis.required_services:
             name, skills, deliverables, days, dependency_categories = TEMPLATES.get(
@@ -39,7 +47,7 @@ class TaskDecomposer:
             )
             package = WorkPackage(
                 work_package_id=category_ids[category], name=name, service_category=category,
-                description=f"Deliver {category} work supporting {analysis.project_name}.",
+                description=f"{lead_brief}{extra_context}",
                 required_skills=skills, deliverables=deliverables,
                 dependencies=[category_ids[item] for item in dependency_categories if item in category_ids],
                 estimated_days=days,

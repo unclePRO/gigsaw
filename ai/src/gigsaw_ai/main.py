@@ -106,6 +106,7 @@ async def build_container(settings: Settings) -> ApplicationContainer:
         task_decomposer=task_decomposer,
         dependency_planner=dependency_planner,
         budget_planner=budget_planner,
+        freelancer_matcher=freelancer_matcher,
     )
     project_chat_room_assistant = ProjectChatRoomAssistant(llm=llm)
     invitation_assistant = InvitationAssistant(service_repository=service_repository, llm=llm)
