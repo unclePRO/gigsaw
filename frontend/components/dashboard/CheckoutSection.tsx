@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { PayPalButtons } from '@paypal/react-paypal-js';
+import React, { useState, useEffect } from 'react';
+import { PayPalButtons, usePayPalScriptReducer, DISPATCH_ACTION } from '@paypal/react-paypal-js';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -34,6 +34,37 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [rawErrorDetails, setRawErrorDetails] = useState<any | null>(null);
   const [showRawDetails, setShowRawDetails] = useState(false);
+
+  const [{ options }, dispatch] = usePayPalScriptReducer();
+
+  // Ensure PayPal SDK script options strictly match multi-seller marketplace requirements
+  useEffect(() => {
+    const rawMerchantIds =
+      process.env.NEXT_PUBLIC_PAYPAL_MERCHANT_IDS || 'CPAVCGFAR2STW,K5DDYMC3HD53N';
+    const clientId =
+      process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ||
+      'ATHuST02ZWliopS0gXnO6ZGroO6O0N6TxZUhQZMr553nOR76h-kYQE5TxPn5UJA8_UPG6tjkbXgAzA3V';
+
+    if (
+      options['merchant-id'] !== '*' ||
+      options['data-merchant-id'] !== rawMerchantIds ||
+      options.clientId !== clientId
+    ) {
+      dispatch({
+        type: DISPATCH_ACTION.RESET_OPTIONS,
+        value: {
+          ...options,
+          clientId,
+          currency: 'USD',
+          intent: 'capture',
+          'merchant-id': '*',
+          'data-merchant-id': rawMerchantIds,
+          dataMerchantId: rawMerchantIds,
+          merchantId: rawMerchantIds.split(',').map((s) => s.trim()).filter(Boolean),
+        },
+      });
+    }
+  }, [dispatch, options]);
 
   const acceptedPackages = (project.workPackages || []).filter(
     (wp) => wp.inviteStatus === 'accepted' || (project.workPackages || []).length === 1

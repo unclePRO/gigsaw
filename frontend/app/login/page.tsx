@@ -147,20 +147,20 @@ function LoginFormContent() {
           <div className="h-10 flex items-center">
             {/* Light mode: logo with dark text */}
             <Image
-              src="/logo-light.jpg"
+              src="/logo-light.png"
               alt="Gigsaw"
               width={160}
               height={42}
-              className="h-10 w-auto dark:hidden object-contain rounded-lg"
+              className="h-10 w-auto dark:hidden object-contain"
               priority
             />
             {/* Dark mode: logo with white text */}
             <Image
-              src="/logo-dark.jpg"
+              src="/logo-dark.png"
               alt="Gigsaw"
               width={160}
               height={42}
-              className="h-10 w-auto hidden dark:block object-contain rounded-lg"
+              className="h-10 w-auto hidden dark:block object-contain"
               priority
             />
           </div>

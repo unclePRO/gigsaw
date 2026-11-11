@@ -74,20 +74,20 @@ export const Navbar: React.FC = () => {
           <div className="h-9 flex items-center">
             {/* Light mode: logo with dark text */}
             <Image
-              src="/logo-light.jpg"
+              src="/logo-light.png"
               alt="Gigsaw"
               width={140}
               height={36}
-              className="h-8 w-auto dark:hidden object-contain rounded-md mix-blend-multiply"
+              className="h-8 w-auto dark:hidden object-contain"
               priority
             />
             {/* Dark mode: logo with white text */}
             <Image
-              src="/logo-dark.jpg"
+              src="/logo-dark.png"
               alt="Gigsaw"
               width={140}
               height={36}
-              className="h-8 w-auto hidden dark:block object-contain rounded-md"
+              className="h-8 w-auto hidden dark:block object-contain"
               priority
             />
           </div>
