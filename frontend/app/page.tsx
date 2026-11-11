@@ -52,11 +52,25 @@ export default function HomePage() {
       <section className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center items-center overflow-hidden px-4 sm:px-6 lg:px-8 w-full">
         {/* Background Layer with Right-Side Visibility (~20%) & Multi-Stop Fade to Transparency */}
         <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
-          {/* Base Background Image with CSS Mask for Right 20-25% Visibility and Smooth Fade */}
+          {/* Light Theme Background Image */}
           <div
-            className="absolute inset-0 bg-no-repeat bg-cover bg-right"
+            className="absolute inset-0 bg-no-repeat bg-cover bg-right dark:hidden"
             style={{
-              backgroundImage: "url('/hero-bg.png')",
+              backgroundImage: "url('/hero-bg-light.jpg')",
+              maskImage:
+                'linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.65) 15%, rgba(0,0,0,0.2) 28%, transparent 45%), linear-gradient(to bottom, rgba(0,0,0,1) 70%, transparent 100%)',
+              WebkitMaskImage:
+                'linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.65) 15%, rgba(0,0,0,0.2) 28%, transparent 45%), linear-gradient(to bottom, rgba(0,0,0,1) 70%, transparent 100%)',
+              WebkitMaskComposite: 'destination-in',
+              maskComposite: 'intersect',
+            }}
+          />
+
+          {/* Dark Theme Background Image */}
+          <div
+            className="absolute inset-0 bg-no-repeat bg-cover bg-right hidden dark:block"
+            style={{
+              backgroundImage: "url('/hero-bg-dark.jpg')",
               maskImage:
                 'linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.65) 15%, rgba(0,0,0,0.2) 28%, transparent 45%), linear-gradient(to bottom, rgba(0,0,0,1) 70%, transparent 100%)',
               WebkitMaskImage:
