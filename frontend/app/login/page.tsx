@@ -144,16 +144,26 @@ function LoginFormContent() {
       {/* Brand Header */}
       <div className="text-center space-y-1.5">
         <Link href="/" className="inline-flex items-center gap-2 group">
-          <div className="w-9 h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-105">
+          <div className="h-10 flex items-center">
+            {/* Light mode: logo with dark text */}
             <Image
-              src="/logo.jpg"
-              alt="GigSaw"
-              width={36}
-              height={36}
-              className="object-contain w-full h-full"
+              src="/logo-light.jpg"
+              alt="Gigsaw"
+              width={160}
+              height={42}
+              className="h-10 w-auto dark:hidden object-contain rounded-lg"
+              priority
+            />
+            {/* Dark mode: logo with white text */}
+            <Image
+              src="/logo-dark.jpg"
+              alt="Gigsaw"
+              width={160}
+              height={42}
+              className="h-10 w-auto hidden dark:block object-contain rounded-lg"
+              priority
             />
           </div>
-          <span className="font-extrabold text-2xl text-slate-900 dark:text-white tracking-tight">GigSaw</span>
         </Link>
         <h1 className="text-xl font-bold text-slate-900 dark:text-white pt-1">
           {tab === 'login' ? 'Welcome Back' : 'Create an Account'}

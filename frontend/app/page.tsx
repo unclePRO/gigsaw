@@ -78,22 +78,18 @@ export default function HomePage() {
 
         {/* Hero Content (Positioned in relative z-10) */}
         <div className="relative z-10 max-w-5xl mx-auto text-center space-y-8 py-16 sm:py-24">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold tracking-wide shadow-sm">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Project Decomposition &amp; PayPal Multi-Seller Escrow</span>
-          </div>
 
           {/* Hero Headline */}
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tight max-w-4xl mx-auto leading-[1.08]">
             Hire an entire freelance team with{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600">
-              one prompt &amp; budget
+              one prompt
             </span>.
           </h1>
 
           {/* Concise Subtitle */}
           <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
-            Skip searching, negotiating, and paying multiple freelancers separately. Enter your project goal and total budget. GigSaw decomposes the work, pairs verified talent, and coordinates everything through a single PayPal checkout.
+            Skip searching, negotiating, and paying multiple freelancers separately. Enter your project goal and total budget. Gigsaw disassembles the work, pairs verified talent, and coordinates everything through a single PayPal checkout.
           </p>
 
           {/* 2 Primary Clear Options: 'Hire Freelancers' and 'Find Work' */}
@@ -127,7 +123,7 @@ export default function HomePage() {
       {/* Subsequent Sections with Spacing */}
       <div className="space-y-24 pb-20 pt-8">
 
-      {/* How GigSaw Works: 3 Simple Steps */}
+      {/* How Gigsaw Works: 3 Simple Steps */}
       <section className="py-16 bg-white dark:bg-[#0B1120] border-y border-slate-200/80 dark:border-slate-800/80 transition-colors">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-2 max-w-xl mx-auto">
@@ -138,7 +134,7 @@ export default function HomePage() {
               From one sentence to complete launch
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
-              How GigSaw eliminates the friction of traditional freelance platforms.
+              How Gigsaw eliminates the friction of traditional freelance platforms.
             </p>
           </div>
 

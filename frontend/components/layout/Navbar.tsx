@@ -71,21 +71,25 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Brand Logo */}
         <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
-          <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-105">
+          <div className="h-9 flex items-center">
+            {/* Light mode: logo with dark text */}
             <Image
-              src="/logo.jpg"
-              alt="GigSaw"
-              width={32}
-              height={32}
-              className="object-contain w-full h-full"
+              src="/logo-light.jpg"
+              alt="Gigsaw"
+              width={140}
+              height={36}
+              className="h-8 w-auto dark:hidden object-contain rounded-md"
               priority
             />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-xl text-slate-900 dark:text-white tracking-tight">GigSaw</span>
-            <span className="hidden sm:inline-block text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-              AI
-            </span>
+            {/* Dark mode: logo with white text */}
+            <Image
+              src="/logo-dark.jpg"
+              alt="Gigsaw"
+              width={140}
+              height={36}
+              className="h-8 w-auto hidden dark:block object-contain rounded-md"
+              priority
+            />
           </div>
         </Link>
 
@@ -208,9 +212,6 @@ export const Navbar: React.FC = () => {
               >
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[110px] truncate">
                   {user.name}
-                </span>
-                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {user.role === 'freelancer' && user.category ? user.category : user.role}
                 </span>
                 <div className="w-6 h-6 rounded-full bg-cyan-500 text-white font-bold flex items-center justify-center text-xs">
                   {user.name?.charAt(0) || 'U'}

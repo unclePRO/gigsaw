@@ -6,24 +6,76 @@
 @import 'ag-grid-community/styles/ag-grid.css';
 @import 'ag-grid-community/styles/ag-theme-alpine.css';
 
+/* ==========================================================================
+   GIGSAW SHARED BRAND PALETTE & CSS TOKENS
+   Deep Teal:     #10413E
+   Ocean Teal:    #168C80
+   Dark Teal:     #126B64
+   Hover Teal:    #10766D
+   Aqua:          #32B6A5
+   Soft Aqua:     #73D8C7
+   Pale Aqua:     #C5EEE6
+   Mint Surface:  #E5F5F1
+   ========================================================================== */
+
 :root {
-  --background: #F8FAFC;
-  --foreground: #0F172A;
+  /* Shared Base Tokens */
+  --teal-deep: #10413E;
+  --teal-ocean: #168C80;
+  --teal-dark: #126B64;
+  --teal-hover: #10766D;
+  --aqua-primary: #32B6A5;
+  --aqua-soft: #73D8C7;
+  --aqua-pale: #C5EEE6;
+  --mint-surface: #E5F5F1;
+
+  /* Global Light Theme (Merchant baseline) */
+  --background: #F0F8F6;
+  --foreground: #10413E;
+  --text-muted: #527773;
+  --card-bg: #FFFFFF;
+  --navbar-bg: #FFFFFF;
+  --border-color: #D8E9E4;
+  --primary-accent: #168C80;
+  --active-nav: #E5F5F1;
+  --opportunity-highlight: #C5EEE6;
 }
 
 .dark {
-  --background: #090D16;
-  --foreground: #F8FAFC;
+  /* Global Dark Theme (Merchant baseline) */
+  --background: #102B2B;
+  --foreground: #F0FAF8;
+  --text-muted: #A3C5BF;
+  --card-bg: #1B3B39;
+  --navbar-bg: #142F2E;
+  --border-color: #345451;
+  --primary-accent: #32B6A5;
+  --active-nav: #254542;
+  --opportunity-highlight: #254542;
 }
 
+/* Global Body Styling */
 body {
   color: var(--foreground);
-  background: var(--background);
+  background-color: var(--background) !important;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbars */
+/* Global Navbar & Header Refinement */
+header {
+  background-color: var(--navbar-bg) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+/* Global Footer Refinement */
+footer {
+  background-color: var(--navbar-bg) !important;
+  border-top-color: var(--border-color) !important;
+  color: var(--text-muted) !important;
+}
+
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -32,40 +84,262 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #B2D6CE;
   border-radius: 9999px;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #345451;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #168C80;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #73D8C7;
 }
 
-/* Custom AG Grid styling for Light & Dark mode */
+/* Custom AG Grid styling with Gigsaw Ocean Teal palette */
 .ag-theme-alpine {
-  --ag-header-background-color: #0F172A;
-  --ag-header-foreground-color: #F8FAFC;
-  --ag-border-color: #E2E8F0;
-  --ag-row-border-color: #F1F5F9;
-  --ag-odd-row-background-color: #FAFAFA;
-  --ag-row-hover-color: #F0FDF4;
-  --ag-selected-row-background-color: #E0F2FE;
+  --ag-header-background-color: #10413E;
+  --ag-header-foreground-color: #F0FAF8;
+  --ag-border-color: #D8E9E4;
+  --ag-row-border-color: #D8E9E4;
+  --ag-odd-row-background-color: #F8FCFB;
+  --ag-row-hover-color: #E5F5F1;
+  --ag-selected-row-background-color: #C5EEE6;
   font-family: inherit;
   font-size: 13px;
 }
 
 .dark .ag-theme-alpine {
-  --ag-background-color: #0b1120;
-  --ag-foreground-color: #e2e8f0;
-  --ag-header-background-color: #020617;
-  --ag-header-foreground-color: #f8fafc;
-  --ag-border-color: #1e293b;
-  --ag-row-border-color: #1e293b;
-  --ag-odd-row-background-color: #0f172a;
-  --ag-row-hover-color: #1e293b;
-  --ag-selected-row-background-color: #1e3a5f;
+  --ag-background-color: #1B3B39;
+  --ag-foreground-color: #F0FAF8;
+  --ag-header-background-color: #142F2E;
+  --ag-header-foreground-color: #F0FAF8;
+  --ag-border-color: #345451;
+  --ag-row-border-color: #345451;
+  --ag-odd-row-background-color: #102B2B;
+  --ag-row-hover-color: #254542;
+  --ag-selected-row-background-color: #254542;
+}
+
+/* ==========================================================================
+   EXPERIENCE 1: MERCHANT EXPERIENCE
+   Visual personality: Professional, Business-oriented, Structured, Reliable
+   Emphasis: Clarity, Control, Financial information, Structured layout
+   ========================================================================== */
+
+/* Merchant Scoped Selectors */
+body:has(nav a[href="/create"]),
+body:has(nav a[href="/dashboard"]),
+body:has(main a[href*="/dashboard/"]),
+body:has(main a[href="/create"]),
+main:has(a[href*="/dashboard/"]),
+main:has(a[href="/create"]) {
+  /* Merchant Light Tokens */
+  --merchant-card-bg: #FFFFFF;
+  --merchant-border: #D8E9E4;
+  --merchant-heading: #10413E;
+  --merchant-body: #527773;
+}
+
+/* Merchant Dark Tokens */
+.dark:has(nav a[href="/create"]),
+.dark:has(nav a[href="/dashboard"]),
+.dark:has(main a[href*="/dashboard/"]),
+.dark:has(main a[href="/create"]),
+.dark main:has(a[href*="/dashboard/"]),
+.dark main:has(a[href="/create"]) {
+  --merchant-card-bg: #1B3B39;
+  --merchant-border: #345451;
+  --merchant-heading: #F0FAF8;
+  --merchant-body: #A3C5BF;
+}
+
+/* Merchant Card Surfaces */
+body:has(nav a[href="/create"]) .bg-white,
+body:has(nav a[href="/dashboard"]) .bg-white,
+body:has(main a[href*="/dashboard"]) .bg-white,
+body:has(main a[href="/create"]) .bg-white,
+main:has(a[href*="/dashboard"]) .bg-white,
+main:has(a[href="/create"]) .bg-white {
+  background-color: #FFFFFF !important;
+  border-color: #D8E9E4 !important;
+}
+
+/* Merchant Dark Card Surfaces */
+.dark:has(nav a[href="/create"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(nav a[href="/dashboard"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(main a[href*="/dashboard"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(main a[href="/create"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(nav a[href="/create"]) [class*="dark:bg-[#0B1120]"],
+.dark:has(nav a[href="/dashboard"]) [class*="dark:bg-[#0B1120]"],
+.dark:has(main a[href*="/dashboard"]) [class*="dark:bg-[#0B1120]"],
+.dark:has(main a[href="/create"]) [class*="dark:bg-[#0B1120]"] {
+  background-color: #1B3B39 !important;
+  border-color: #345451 !important;
+}
+
+/* Merchant Active Nav Links */
+body:has(nav a[href="/create"]) nav a.bg-cyan-50,
+body:has(nav a[href="/dashboard"]) nav a.bg-cyan-50 {
+  background-color: #E5F5F1 !important;
+  color: #168C80 !important;
+}
+
+.dark:has(nav a[href="/create"]) nav a[class*="dark:bg-cyan-950"],
+.dark:has(nav a[href="/dashboard"]) nav a[class*="dark:bg-cyan-950"] {
+  background-color: #254542 !important;
+  color: #32B6A5 !important;
+}
+
+/* Merchant Headings & Text hierarchy */
+body:has(nav a[href="/create"]) h1,
+body:has(nav a[href="/create"]) h2,
+body:has(nav a[href="/create"]) h3,
+body:has(nav a[href="/dashboard"]) h1,
+body:has(nav a[href="/dashboard"]) h2,
+body:has(nav a[href="/dashboard"]) h3,
+body:has(main a[href*="/dashboard"]) h1,
+body:has(main a[href*="/dashboard"]) h2,
+body:has(main a[href*="/dashboard"]) h3 {
+  color: #10413E;
+}
+
+.dark:has(nav a[href="/create"]) h1,
+.dark:has(nav a[href="/create"]) h2,
+.dark:has(nav a[href="/create"]) h3,
+.dark:has(nav a[href="/dashboard"]) h1,
+.dark:has(nav a[href="/dashboard"]) h2,
+.dark:has(nav a[href="/dashboard"]) h3,
+.dark:has(main a[href*="/dashboard"]) h1,
+.dark:has(main a[href*="/dashboard"]) h2,
+.dark:has(main a[href*="/dashboard"]) h3 {
+  color: #F0FAF8 !important;
+}
+
+/* Merchant Financial Metric Emphasis */
+body:has(main a[href*="/dashboard"]) .text-emerald-600,
+body:has(main a[href*="/dashboard"]) .text-cyan-600 {
+  color: #168C80 !important;
+}
+
+.dark:has(main a[href*="/dashboard"]) .text-emerald-400,
+.dark:has(main a[href*="/dashboard"]) .text-cyan-400 {
+  color: #32B6A5 !important;
+}
+
+/* ==========================================================================
+   EXPERIENCE 2: FREELANCER EXPERIENCE
+   Visual personality: Welcoming, Human, Opportunity-focused, Creative
+   Emphasis: Opportunities, Skills, Personal progress, Earnings, Collaboration
+   ========================================================================== */
+
+/* Freelancer Scoped Selectors */
+body:has(nav a[href*="/freelancer"]),
+body:has(main a[href*="/freelancer"]),
+main:has(a[href*="/freelancer"]) {
+  --freelancer-card-bg: #FFFFFF;
+  --freelancer-border: #D8E9E4;
+  --freelancer-secondary: #73D8C7;
+  --freelancer-highlight: #C5EEE6;
+}
+
+/* Freelancer Dark Tokens */
+.dark:has(nav a[href*="/freelancer"]),
+.dark:has(main a[href*="/freelancer"]),
+.dark main:has(a[href*="/freelancer"]) {
+  --freelancer-card-bg: #1B3B39;
+  --freelancer-border: #345451;
+  --freelancer-secondary: #73D8C7;
+  --freelancer-highlight: #254542;
+}
+
+/* Freelancer Card Surfaces */
+body:has(nav a[href*="/freelancer"]) .bg-white,
+body:has(main a[href*="/freelancer"]) .bg-white,
+main:has(a[href*="/freelancer"]) .bg-white {
+  background-color: #FFFFFF !important;
+  border-color: #D8E9E4 !important;
+}
+
+/* Freelancer Dark Card Surfaces */
+.dark:has(nav a[href*="/freelancer"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(main a[href*="/freelancer"]) [class*="dark:bg-[#0F172A]"],
+.dark main:has(a[href*="/freelancer"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(nav a[href*="/freelancer"]) [class*="dark:bg-[#0B1120]"],
+.dark:has(main a[href*="/freelancer"]) [class*="dark:bg-[#0B1120]"],
+.dark main:has(a[href*="/freelancer"]) [class*="dark:bg-[#0B1120]"] {
+  background-color: #1B3B39 !important;
+  border-color: #345451 !important;
+}
+
+/* Freelancer Opportunity Cards - Distinct Soft Aqua Ambient Highlight */
+body:has(nav a[href*="/freelancer"]) .border-slate-200\/90:hover,
+body:has(main a[href*="/freelancer"]) .border-slate-200\/90:hover,
+main:has(a[href*="/freelancer"]) .border-slate-200\/90:hover {
+  border-color: #73D8C7 !important;
+  box-shadow: 0 4px 20px -2px rgba(115, 216, 199, 0.22) !important;
+  transition: all 0.2s ease-in-out;
+}
+
+.dark:has(nav a[href*="/freelancer"]) .dark\:border-slate-800:hover,
+.dark:has(main a[href*="/freelancer"]) .dark\:border-slate-800:hover,
+.dark main:has(a[href*="/freelancer"]) .dark\:border-slate-800:hover {
+  border-color: #32B6A5 !important;
+  box-shadow: 0 4px 20px -2px rgba(50, 182, 165, 0.25) !important;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Freelancer Skill Tags and Opportunity Badges (Soft Aqua identity) */
+body:has(nav a[href*="/freelancer"]) .bg-cyan-500\/10,
+body:has(main a[href*="/freelancer"]) .bg-cyan-500\/10,
+main:has(a[href*="/freelancer"]) .bg-cyan-500\/10 {
+  background-color: #C5EEE6 !important;
+  color: #10413E !important;
+  border-color: #73D8C7 !important;
+}
+
+.dark:has(nav a[href*="/freelancer"]) .bg-cyan-500\/10,
+.dark:has(main a[href*="/freelancer"]) .bg-cyan-500\/10,
+.dark main:has(a[href*="/freelancer"]) .bg-cyan-500\/10,
+.dark:has(nav a[href*="/freelancer"]) [class*="dark:bg-cyan-950"],
+.dark:has(main a[href*="/freelancer"]) [class*="dark:bg-cyan-950"],
+.dark main:has(a[href*="/freelancer"]) [class*="dark:bg-cyan-950"] {
+  background-color: #254542 !important;
+  color: #73D8C7 !important;
+  border-color: #345451 !important;
+}
+
+/* Freelancer Active Nav Link */
+body:has(nav a[href*="/freelancer"]) nav a.bg-cyan-50 {
+  background-color: #E5F5F1 !important;
+  color: #168C80 !important;
+  border-bottom: 2px solid #73D8C7 !important;
+}
+
+.dark:has(nav a[href*="/freelancer"]) nav a[class*="dark:bg-cyan-950"] {
+  background-color: #254542 !important;
+  color: #73D8C7 !important;
+  border-bottom: 2px solid #32B6A5 !important;
+}
+
+/* Freelancer Earnings & Milestone Indicator Accents */
+body:has(nav a[href*="/freelancer"]) .text-cyan-600,
+body:has(main a[href*="/freelancer"]) .text-cyan-600,
+main:has(a[href*="/freelancer"]) .text-cyan-600 {
+  color: #168C80 !important;
+}
+
+.dark:has(nav a[href*="/freelancer"]) .text-cyan-400,
+.dark:has(main a[href*="/freelancer"]) .text-cyan-400,
+main:has(a[href*="/freelancer"]) .text-cyan-400 {
+  color: #73D8C7 !important;
+}
+
+/* Freelancer Progress Bar Accent */
+body:has(main a[href*="/freelancer"]) .from-cyan-500,
+main:has(a[href*="/freelancer"]) .from-cyan-500 {
+  --tw-gradient-from: #73D8C7 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: #168C80 var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
 }

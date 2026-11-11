@@ -258,7 +258,7 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/20">
-                  GigSaw Fee
+                  Gigsaw Fee
                 </span>
                 <span className="text-xs font-bold text-purple-900 dark:text-purple-200">
                   5% Platform Commission

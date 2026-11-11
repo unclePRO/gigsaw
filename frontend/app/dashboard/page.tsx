@@ -133,42 +133,6 @@ export default function MerchantDashboardPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
-      {/* Top Header */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-              Merchant Portfolio Hub
-            </span>
-            <span className="text-xs font-semibold text-slate-400">
-              {totalProjectsCount} Total Project{totalProjectsCount !== 1 ? 's' : ''}
-            </span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
-            My Projects
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Select a project to inspect milestone deliverables, coordinate specialist teams, and manage escrow payouts.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={fetchProjects}
-            className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-            title="Refresh from MongoDB"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <Link
-            href="/create"
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold rounded-xl shadow-glow-cyan transition-all"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Launch New Project</span>
-          </Link>
-        </div>
-      </div>
 
       {actionSuccessMsg && (
         <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
@@ -183,41 +147,6 @@ export default function MerchantDashboardPage() {
           <span>{error}</span>
         </div>
       )}
-
-      {/* Portfolio Overview Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Projects</span>
-          <div className="text-xl font-black text-slate-900 dark:text-white">
-            {totalProjectsCount}
-          </div>
-          <span className="text-[11px] text-slate-400">In MongoDB Atlas</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Workspaces</span>
-          <div className="text-xl font-black text-cyan-600 dark:text-cyan-400">
-            {activeProjectsCount}
-          </div>
-          <span className="text-[11px] text-cyan-600 dark:text-cyan-400 font-semibold">Under active execution</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed Projects</span>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-            {completedProjectsCount}
-          </div>
-          <span className="text-[11px] text-slate-400">All deliverables verified</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Escrow Budget</span>
-          <div className="text-xl font-black text-slate-900 dark:text-white">
-            ${totalBudgetSpent.toLocaleString()} USD
-          </div>
-          <span className="text-[11px] text-slate-400">Secured via PayPal</span>
-        </div>
-      </div>
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#0F172A] p-3.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 transition-colors">
@@ -342,9 +271,6 @@ export default function MerchantDashboardPage() {
                     <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                       {proj.projectName}
                     </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 max-w-2xl">
-                      {proj.merchantPrompt}
-                    </p>
                   </div>
 
                   {/* Actions */}
@@ -397,7 +323,7 @@ export default function MerchantDashboardPage() {
                 </div>
 
                 {/* Footer Metrics Row */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-850 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   {/* Team Avatars */}
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-slate-400 font-medium">Specialists:</span>

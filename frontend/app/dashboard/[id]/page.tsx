@@ -1074,43 +1074,6 @@ export default function MerchantProjectWorkspacePage() {
       {/* ============================================================== */}
       {(isFundedOrActive || isCompleted) && (
         <div className="space-y-6">
-          {/* Escrow & Financial Overview */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Project Budget</span>
-              <div className="text-xl font-black text-slate-900 dark:text-white">
-                ${project.totalBudget?.toLocaleString()} USD
-              </div>
-              <span className="text-[11px] text-slate-400">Initial client investment</span>
-            </div>
-
-            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Allocated to Specialists</span>
-              <div className="text-xl font-black text-cyan-600 dark:text-cyan-400">
-                ${project.allocatedTotal?.toLocaleString()} USD
-              </div>
-              <span className="text-[11px] text-slate-400">Across {totalTasks} work packages</span>
-            </div>
-
-            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Remaining Buffer</span>
-              <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-                ${project.savings?.toLocaleString() || 0} USD
-              </div>
-              <span className="text-[11px] text-slate-400">Retained reserve buffer</span>
-            </div>
-
-            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Escrow Security</span>
-              <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>{isCancelled ? 'Escrow Released' : 'PayPal Escrow Active'}</span>
-              </div>
-              <span className="text-[11px] text-slate-400">
-                {isCancelled ? 'Project closed' : 'Funds release only upon your approval'}
-              </span>
-            </div>
-          </div>
 
           {/* Official PayPal Invoicing & Payout Verification Banner */}
           <div className="bg-gradient-to-r from-blue-500/10 via-cyan-500/5 to-emerald-500/10 border border-blue-500/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">

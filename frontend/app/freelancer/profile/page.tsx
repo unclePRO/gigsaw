@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -51,7 +51,7 @@ const SUGGESTED_LANGUAGES_AND_SKILLS = [
   'Hindi',
 ];
 
-export default function FreelancerProfilePage() {
+function FreelancerProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isSetupParam = searchParams.get('setup') === 'required';
@@ -884,5 +884,13 @@ export default function FreelancerProfilePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FreelancerProfilePage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Loading profile...</div>}>
+      <FreelancerProfileContent />
+    </Suspense>
   );
 }
