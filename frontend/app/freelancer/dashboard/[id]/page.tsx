@@ -30,6 +30,7 @@ import {
   XCircle,
   AlertTriangle,
   Star,
+  Receipt,
 } from 'lucide-react';
 import { WorkPackage, ProjectProposal, IAiInvoiceDraft } from '@/types';
 import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
@@ -63,10 +64,14 @@ export default function FreelancerGigWorkspacePage() {
   // Chat modal state
   const [chatOpen, setChatOpen] = useState(false);
 
-  // AI Invoice draft state
+  // Official PayPal Invoice state
   const [invoiceModalOpen, setInvoiceModalOpen] = useState<boolean>(false);
-  const [invoiceDraft, setInvoiceDraft] = useState<IAiInvoiceDraft | null>(null);
+  const [officialInvoiceUrl, setOfficialInvoiceUrl] = useState<string | null>(null);
+  const [officialInvoiceId, setOfficialInvoiceId] = useState<string | null>(null);
+  const [officialInvoiceNumber, setOfficialInvoiceNumber] = useState<string | null>(null);
+  const [invoiceStatus, setInvoiceStatus] = useState<string | null>(null);
   const [generatingInvoice, setGeneratingInvoice] = useState<boolean>(false);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const [copiedInvoice, setCopiedInvoice] = useState<boolean>(false);
 
   useEffect(() => {
@@ -216,36 +221,33 @@ export default function FreelancerGigWorkspacePage() {
     }
   };
 
-  const handleGenerateInvoice = async () => {
+  const handleOpenPayPalInvoice = async () => {
     if (!project || !matchingPkg || generatingInvoice) return;
     setGeneratingInvoice(true);
+    setInvoiceError(null);
     setInvoiceModalOpen(true);
     try {
-      const res = await fetch('/api/ai/invoice', {
+      const res = await fetch('/api/paypal/invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          freelancer_id: user?.id || matchingPkg.assignedFreelancerId || 'fl-current',
-          freelancer_name: user?.name || matchingPkg.assignedFreelancerName || 'Specialist',
-          freelancer_email: user?.email || matchingPkg.assignedFreelancerEmail || 'freelancer@example.com',
-          merchant_name: project.merchantName,
-          merchant_email: project.merchantEmail,
-          project_id: (project as any)._id || project.id,
-          project_name: project.projectName,
-          work_package_title: matchingPkg.title,
-          amount: matchingPkg.allocatedPrice,
-          currency: 'USD',
-          completion_summary:
-            matchingPkg.deliverableNotes ||
-            `Delivered ${matchingPkg.title} adhering to project specifications.`,
+          projectId: (project as any)._id || project.id,
+          packageId: matchingPkg.id,
         }),
       });
       const data = await res.json();
-      if (data.success && data.invoice) {
-        setInvoiceDraft(data.invoice);
+      if (res.ok && data.invoiceUrl) {
+        setOfficialInvoiceUrl(data.invoiceUrl);
+        setOfficialInvoiceId(data.invoiceId);
+        setOfficialInvoiceNumber(data.invoiceNumber);
+        setInvoiceStatus(data.status || 'PAID');
+        window.open(data.invoiceUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        setInvoiceError(data.error || 'Failed to retrieve official PayPal invoice.');
       }
-    } catch (err) {
-      console.error('Failed to generate invoice draft:', err);
+    } catch (err: any) {
+      console.error('Failed to generate official PayPal invoice:', err);
+      setInvoiceError(err.message || 'Error communicating with PayPal Invoicing API.');
     } finally {
       setGeneratingInvoice(false);
     }
@@ -341,11 +343,17 @@ export default function FreelancerGigWorkspacePage() {
           </button>
 
           <button
-            onClick={handleGenerateInvoice}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer"
+            onClick={handleOpenPayPalInvoice}
+            disabled={generatingInvoice}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
+            title="Open official PayPal hosted invoice"
           >
-            <FileText className="w-4 h-4 text-cyan-500" />
-            <span>AI Invoice</span>
+            {generatingInvoice ? (
+              <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
+            ) : (
+              <Receipt className="w-4 h-4 text-blue-500" />
+            )}
+            <span>Official PayPal Invoice</span>
           </button>
 
           <button
@@ -395,6 +403,55 @@ export default function FreelancerGigWorkspacePage() {
           <span className="text-[11px] text-slate-400">Verified specialist contract</span>
         </div>
       </div>
+
+      {/* Official PayPal Escrow & Invoice Details */}
+      {(project.status === 'FUNDED_IN_PROGRESS' || project.status === 'funded' || isCompleted) && (
+        <div className="bg-gradient-to-r from-blue-500/10 via-cyan-500/5 to-emerald-500/10 border border-blue-500/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 rounded-full flex items-center gap-1">
+                <Receipt className="w-3 h-3 text-blue-500" />
+                PayPal Multi-Seller Escrow Active
+              </span>
+              <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded-full">
+                Status: {matchingPkg.paypalInvoiceStatus || 'PAID'}
+              </span>
+            </div>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white">
+              Direct Payout Guaranteed by PayPal Orders v2
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+              Your <strong>${matchingPkg.allocatedPrice?.toLocaleString()} USD</strong> milestone fee is funded upfront and routed into your PayPal Business Sandbox account upon deliverable approval.
+            </p>
+            {matchingPkg.paypalCaptureId && (
+              <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 pt-0.5">
+                PayPal Capture Reference: <span className="font-bold text-cyan-600 dark:text-cyan-400">{matchingPkg.paypalCaptureId}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="shrink-0">
+            <button
+              type="button"
+              onClick={handleOpenPayPalInvoice}
+              disabled={generatingInvoice}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+            >
+              {generatingInvoice ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Loading PayPal Invoice...</span>
+                </>
+              ) : (
+                <>
+                  <ExternalLink className="w-4 h-4" />
+                  <span>View Official PayPal Invoice</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Scope & Deliverables Required */}
       <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-3 transition-colors">
@@ -627,21 +684,21 @@ export default function FreelancerGigWorkspacePage() {
         />
       )}
 
-      {/* AI Invoice Draft Modal */}
+      {/* Official PayPal Invoice Modal */}
       {invoiceModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-[#0F172A] border border-blue-500/30 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-cyan-500" />
+                <Receipt className="w-5 h-5 text-blue-500" />
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  AI Generated Invoice Draft
+                  Official PayPal Invoice (REST API v2)
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setInvoiceModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600"
+                className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 &times;
               </button>
@@ -649,52 +706,108 @@ export default function FreelancerGigWorkspacePage() {
 
             {generatingInvoice ? (
               <div className="py-12 text-center text-slate-400 flex flex-col items-center gap-2">
-                <RefreshCw className="w-6 h-6 animate-spin text-cyan-500" />
-                <span className="text-xs">Generating formal invoice with Gemini AI...</span>
+                <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+                <span className="text-xs">Fetching official hosted invoice from PayPal API...</span>
               </div>
-            ) : invoiceDraft ? (
-              <div className="space-y-4 text-xs font-mono bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-                <div className="flex justify-between border-b pb-2">
-                  <span className="font-bold text-slate-900 dark:text-white">INVOICE #{invoiceDraft.invoice_number}</span>
-                  <span className="text-slate-500">{invoiceDraft.currency}</span>
+            ) : invoiceError ? (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs text-rose-700 dark:text-rose-300 space-y-2">
+                <div className="flex items-center gap-2 font-bold">
+                  <AlertCircle className="w-4 h-4 text-rose-500" />
+                  <span>Invoice Generation Notice</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div>
-                    <span className="text-slate-400 block font-sans">Billed To:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{invoiceDraft.client_name}</strong>
+                <p>{invoiceError}</p>
+                <button
+                  type="button"
+                  onClick={handleOpenPayPalInvoice}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition-colors"
+                >
+                  Retry Request
+                </button>
+              </div>
+            ) : officialInvoiceUrl ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-emerald-500/10 border border-blue-500/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                      INVOICE #{officialInvoiceNumber || officialInvoiceId}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                      {invoiceStatus || 'PAID'}
+                    </span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-slate-400 block font-sans">Payable To:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{invoiceDraft.freelancer_name}</strong>
-                  </div>
-                </div>
 
-                <div className="border-t pt-2 space-y-1">
-                  {invoiceDraft.line_items?.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-slate-700 dark:text-slate-300">
-                      <span>{item.description}</span>
-                      <span>${item.amount}</span>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-blue-500/10">
+                    <div>
+                      <span className="text-slate-400 block font-sans">Billed Client:</span>
+                      <strong className="text-slate-800 dark:text-slate-200">{project.merchantName}</strong>
+                      <span className="text-[10px] text-slate-400 block truncate">{project.merchantEmail}</span>
                     </div>
-                  ))}
-                  {invoiceDraft.payment_note && (
-                    <p className="text-[11px] text-slate-500 pt-1 italic">{invoiceDraft.payment_note}</p>
+                    <div className="text-right">
+                      <span className="text-slate-400 block font-sans">Payable Specialist:</span>
+                      <strong className="text-slate-800 dark:text-slate-200">{matchingPkg.assignedFreelancerName}</strong>
+                      <span className="text-[10px] text-slate-400 block truncate">{matchingPkg.assignedFreelancerEmail}</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-blue-500/10 pt-2 space-y-1 text-xs">
+                    <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200">
+                      <span>{matchingPkg.title} ({matchingPkg.category})</span>
+                      <span>${matchingPkg.allocatedPrice?.toFixed(2)} USD</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Authorized & funded via PayPal Multi-Seller Escrow on GigSaw.
+                    </p>
+                  </div>
+
+                  {matchingPkg.paypalCaptureId && (
+                    <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 border-t border-blue-500/10 pt-1.5 flex justify-between">
+                      <span>PayPal Capture Ref:</span>
+                      <span className="text-cyan-600 dark:text-cyan-400">{matchingPkg.paypalCaptureId}</span>
+                    </div>
                   )}
                 </div>
 
-                <div className="border-t pt-2 flex justify-between font-bold text-sm text-cyan-600 dark:text-cyan-400">
-                  <span>Total Escrow Release:</span>
-                  <span>${invoiceDraft.total} {invoiceDraft.currency}</span>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={officialInvoiceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5 shadow-md"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open in PayPal</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(officialInvoiceUrl);
+                      setCopiedInvoice(true);
+                      setTimeout(() => setCopiedInvoice(false), 2000);
+                    }}
+                    className="py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-1"
+                  >
+                    {copiedInvoice ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy URL</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
-            ) : (
-              <p className="text-xs text-slate-500">Could not generate invoice draft.</p>
-            )}
+            ) : null}
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setInvoiceModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 Close
               </button>

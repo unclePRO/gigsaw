@@ -20,9 +20,10 @@ export const PayPalProvider: React.FC<PayPalProviderProps> = ({ children }) => {
     clientId: clientId,
     currency: 'USD',
     intent: 'capture',
-    // In multi-seller marketplace checkout, passing an array of merchant IDs automatically
-    // configures the PayPal SDK with merchant-id=* in the script URL and data-merchant-id="..." on the script tag.
-    merchantId: merchantIdArray.length > 0 ? merchantIdArray : ['*'],
+    // In multi-seller marketplace checkout, PayPal requires merchant-id=* in the script URL
+    // and data-merchant-id="..." attribute on the script tag.
+    'merchant-id': '*',
+    dataMerchantId: rawMerchantIds,
   };
 
   return (

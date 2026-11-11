@@ -109,6 +109,12 @@ export interface WorkPackage {
   reviewRating?: number;
   reviewText?: string;
   reviewedAt?: string;
+  // Official PayPal Invoicing & Capture Integration
+  paypalCaptureId?: string;
+  paypalInvoiceId?: string;
+  paypalInvoiceUrl?: string;
+  paypalInvoiceNumber?: string;
+  paypalInvoiceStatus?: string;
 }
 
 export interface IReview {
@@ -169,6 +175,10 @@ export interface ProjectProposal {
   messages?: IChatMessage[];
   status: 'draft' | 'ON_HOLD' | 'READY_TO_FUND' | 'funded' | 'FUNDED_IN_PROGRESS' | 'completed' | 'cancelled';
   paypalOrderId?: string;
+  paypalCaptureData?: any;
+  paypalInvoiceId?: string;
+  paypalInvoiceUrl?: string;
+  paypalInvoiceNumber?: string;
   createdAt: string;
   // Extended AI metadata
   aiAnalysis?: IAiAnalysis;

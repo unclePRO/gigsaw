@@ -50,26 +50,21 @@ export async function POST(req: NextRequest) {
       orderID.startsWith('TEST-');
 
     if (isSimulated || !clientSecret || clientSecret.includes('your_paypal')) {
-      // Update MongoDB project document status to FUNDED_IN_PROGRESS
-      if (projectId) {
-        await ProjectModel.findByIdAndUpdate(projectId, {
-          $set: {
-            status: 'FUNDED_IN_PROGRESS',
-            paypalOrderId: orderID,
-            'workPackages.$[].status': 'In Progress',
-          },
-        });
-      } else {
-        await ProjectModel.findOneAndUpdate(
-          { $or: [{ paypalOrderId: orderID }, { status: 'READY_TO_FUND' }] },
-          {
-            $set: {
-              status: 'FUNDED_IN_PROGRESS',
-              paypalOrderId: orderID,
-              'workPackages.$[].status': 'In Progress',
-            },
+      // Update MongoDB project document status to FUNDED_IN_PROGRESS and assign capture IDs
+      const projectDoc = projectId
+        ? await ProjectModel.findById(projectId)
+        : await ProjectModel.findOne({ $or: [{ paypalOrderId: orderID }, { status: 'READY_TO_FUND' }] });
+
+      if (projectDoc) {
+        projectDoc.status = 'FUNDED_IN_PROGRESS';
+        projectDoc.paypalOrderId = orderID;
+        projectDoc.workPackages.forEach((wp, idx) => {
+          wp.status = 'In Progress';
+          if (!wp.paypalCaptureId) {
+            wp.paypalCaptureId = `PP-SIM-${Date.now()}-${idx + 1}`;
           }
-        );
+        });
+        await projectDoc.save();
       }
 
       return NextResponse.json({
@@ -119,26 +114,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Update MongoDB project document status to "FUNDED_IN_PROGRESS"
-    if (projectId) {
-      await ProjectModel.findByIdAndUpdate(projectId, {
-        $set: {
-          status: 'FUNDED_IN_PROGRESS',
-          paypalOrderId: orderID,
-          'workPackages.$[].status': 'In Progress',
-        },
-      });
-    } else {
-      await ProjectModel.findOneAndUpdate(
-        { $or: [{ paypalOrderId: orderID }, { status: 'READY_TO_FUND' }] },
-        {
-          $set: {
-            status: 'FUNDED_IN_PROGRESS',
-            paypalOrderId: orderID,
-            'workPackages.$[].status': 'In Progress',
-          },
+    // Update MongoDB project document status to "FUNDED_IN_PROGRESS" and map capture IDs
+    const purchaseUnits: any[] = captureData.purchase_units || [];
+
+    const projectDoc = projectId
+      ? await ProjectModel.findById(projectId)
+      : await ProjectModel.findOne({ $or: [{ paypalOrderId: orderID }, { status: 'READY_TO_FUND' }] });
+
+    if (projectDoc) {
+      projectDoc.status = 'FUNDED_IN_PROGRESS';
+      projectDoc.paypalOrderId = orderID;
+      projectDoc.paypalCaptureData = captureData;
+
+      projectDoc.workPackages.forEach((wp, idx) => {
+        wp.status = 'In Progress';
+        // Match purchase unit by reference_id or index
+        const unit = purchaseUnits.find((u: any) =>
+          u.reference_id && (u.reference_id.includes(wp.id) || (wp.title && u.reference_id.includes(wp.title.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 20))))
+        ) || purchaseUnits[idx];
+
+        if (unit && unit.payments && unit.payments.captures && unit.payments.captures.length > 0) {
+          wp.paypalCaptureId = unit.payments.captures[0].id;
+        } else if (!wp.paypalCaptureId) {
+          wp.paypalCaptureId = `CAP-${orderID.slice(-8)}-${idx + 1}`;
         }
-      );
+      });
+
+      await projectDoc.save();
     }
 
     return NextResponse.json({

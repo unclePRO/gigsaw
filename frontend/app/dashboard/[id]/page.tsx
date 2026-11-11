@@ -35,6 +35,8 @@ import {
   DollarSign,
   UserCheck,
   RotateCcw,
+  FileText,
+  Receipt,
 } from 'lucide-react';
 import { WorkPackage, ProjectProposal, IAiProgressSummary, IAiCounterofferAnalysis } from '@/types';
 import { ProjectChatModal } from '@/components/chat/ProjectChatModal';
@@ -93,6 +95,37 @@ export default function MerchantProjectWorkspacePage() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancellingProject, setCancellingProject] = useState(false);
   const [cancelSuccessMsg, setCancelSuccessMsg] = useState<string | null>(null);
+
+  // Official PayPal Invoicing state
+  const [loadingInvoice, setLoadingInvoice] = useState<string | null>(null);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+
+  const handleOpenOfficialInvoice = async (packageId?: string) => {
+    if (!project) return;
+    const key = packageId || 'project';
+    setLoadingInvoice(key);
+    setInvoiceError(null);
+    try {
+      const res = await fetch('/api/paypal/invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: (project as any)._id || project.id,
+          packageId,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.invoiceUrl) {
+        window.open(data.invoiceUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        setInvoiceError(data.error || 'Failed to generate official PayPal invoice.');
+      }
+    } catch (err: any) {
+      setInvoiceError(err.message || 'Error communicating with PayPal Invoicing API.');
+    } finally {
+      setLoadingInvoice(null);
+    }
+  };
 
   const fetchProgressSummary = useCallback(async (proj: ProjectProposal) => {
     // Only fetch AI progress summary if project is active / funded
@@ -529,13 +562,14 @@ export default function MerchantProjectWorkspacePage() {
     },
     {
       headerName: 'Actions',
-      width: 220,
+      width: 320,
       cellRenderer: (params: ICellRendererParams<WorkPackage>) => {
         const wp = params.data;
         if (!wp || !projectId) return null;
 
         const isCompleted = wp.status === 'Completed';
         const isProjectCancelled = project?.status === 'cancelled';
+        const isFunded = project?.status === 'FUNDED_IN_PROGRESS' || project?.status === 'funded';
 
         if (isProjectCancelled) {
           return (
@@ -546,7 +580,7 @@ export default function MerchantProjectWorkspacePage() {
         }
 
         return (
-          <div className="flex items-center gap-1.5 py-2.5">
+          <div className="flex items-center gap-1.5 py-2.5 flex-wrap">
             {!isCompleted ? (
               <button
                 onClick={async () => {
@@ -583,6 +617,22 @@ export default function MerchantProjectWorkspacePage() {
                 className="px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
               >
                 Revision
+              </button>
+            )}
+
+            {(isFunded || isCompleted) && (
+              <button
+                onClick={() => handleOpenOfficialInvoice(wp.id)}
+                disabled={loadingInvoice === wp.id}
+                className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors flex items-center gap-1 cursor-pointer"
+                title="Open official PayPal hosted invoice"
+              >
+                {loadingInvoice === wp.id ? (
+                  <RefreshCw className="w-3 h-3 animate-spin text-blue-500" />
+                ) : (
+                  <FileText className="w-3 h-3 text-blue-500" />
+                )}
+                <span>PayPal Invoice</span>
               </button>
             )}
           </div>
@@ -1047,6 +1097,58 @@ export default function MerchantProjectWorkspacePage() {
               <span className="text-[11px] text-slate-400">
                 {isCancelled ? 'Project closed' : 'Funds release only upon your approval'}
               </span>
+            </div>
+          </div>
+
+          {/* Official PayPal Invoicing & Payout Verification Banner */}
+          <div className="bg-gradient-to-r from-blue-500/10 via-cyan-500/5 to-emerald-500/10 border border-blue-500/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 rounded-full flex items-center gap-1">
+                  <Receipt className="w-3 h-3 text-blue-500" />
+                  Official PayPal Invoicing API v2
+                </span>
+                <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded-full">
+                  Status: PAID
+                </span>
+              </div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                Multi-Seller Payout & Hosted PayPal Invoice
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                Single checkout of <strong>${(project.allocatedTotal || project.totalBudget)?.toLocaleString()} USD</strong> was captured via PayPal Orders v2. Each specialist's share was automatically routed into their PayPal Business Sandbox account. Access your official PayPal-hosted invoice with itemized line items below.
+              </p>
+              {project.paypalOrderId && (
+                <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 pt-0.5">
+                  PayPal Order Reference: <span className="font-bold text-cyan-600 dark:text-cyan-400">{project.paypalOrderId}</span>
+                </div>
+              )}
+              {invoiceError && (
+                <div className="text-xs text-rose-500 font-medium pt-1">
+                  {invoiceError}
+                </div>
+              )}
+            </div>
+
+            <div className="shrink-0 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleOpenOfficialInvoice()}
+                disabled={loadingInvoice === 'project'}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {loadingInvoice === 'project' ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Loading Invoice...</span>
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="w-4 h-4" />
+                    <span>View Official PayPal Invoice</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
 

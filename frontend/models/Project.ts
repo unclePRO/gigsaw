@@ -45,6 +45,12 @@ export interface IWorkPackage {
   reviewRating?: number;
   reviewText?: string;
   reviewedAt?: Date;
+  // Official PayPal Invoicing & Capture Integration
+  paypalCaptureId?: string;
+  paypalInvoiceId?: string;
+  paypalInvoiceUrl?: string;
+  paypalInvoiceNumber?: string;
+  paypalInvoiceStatus?: string;
 }
 
 export interface IProjectDocument extends Document {
@@ -60,6 +66,10 @@ export interface IProjectDocument extends Document {
   messages: IChatMessage[];
   status: 'draft' | 'ON_HOLD' | 'READY_TO_FUND' | 'funded' | 'FUNDED_IN_PROGRESS' | 'completed' | 'cancelled';
   paypalOrderId?: string;
+  paypalCaptureData?: any;
+  paypalInvoiceId?: string;
+  paypalInvoiceUrl?: string;
+  paypalInvoiceNumber?: string;
   aiAnalysis?: any;
   dependencyPlan?: any;
   assumptions?: string[];
@@ -147,6 +157,12 @@ const WorkPackageSchema = new Schema<IWorkPackage>({
   reviewRating: { type: Number },
   reviewText: { type: String },
   reviewedAt: { type: Date },
+  // Official PayPal Invoicing & Capture Integration
+  paypalCaptureId: { type: String },
+  paypalInvoiceId: { type: String },
+  paypalInvoiceUrl: { type: String },
+  paypalInvoiceNumber: { type: String },
+  paypalInvoiceStatus: { type: String },
 });
 
 const ProjectSchema = new Schema<IProjectDocument>(
@@ -167,6 +183,10 @@ const ProjectSchema = new Schema<IProjectDocument>(
       default: 'ON_HOLD',
     },
     paypalOrderId: { type: String },
+    paypalCaptureData: { type: Schema.Types.Mixed },
+    paypalInvoiceId: { type: String },
+    paypalInvoiceUrl: { type: String },
+    paypalInvoiceNumber: { type: String },
     aiAnalysis: { type: Schema.Types.Mixed },
     dependencyPlan: { type: Schema.Types.Mixed },
     assumptions: [{ type: String }],
