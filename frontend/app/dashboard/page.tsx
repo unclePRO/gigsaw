@@ -86,7 +86,7 @@ export default function MerchantDashboardPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setActionSuccessMsg(`Project "${cancelModalProject.projectName}" cancelled. Escrow funds unlocked.`);
+        setActionSuccessMsg(`Project "${cancelModalProject.projectName}" cancelled. Project funds unlocked.`);
         setTimeout(() => setActionSuccessMsg(null), 5000);
         setCancelModalProject(null);
         fetchProjects();
@@ -133,42 +133,6 @@ export default function MerchantDashboardPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
-      {/* Top Header */}
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-              Merchant Portfolio Hub
-            </span>
-            <span className="text-xs font-semibold text-slate-400">
-              {totalProjectsCount} Total Project{totalProjectsCount !== 1 ? 's' : ''}
-            </span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
-            My Projects
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Select a project to inspect milestone deliverables, coordinate specialist teams, and manage escrow payouts.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={fetchProjects}
-            className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-            title="Refresh from MongoDB"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <Link
-            href="/create"
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold rounded-xl shadow-glow-cyan transition-all"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Launch New Project</span>
-          </Link>
-        </div>
-      </div>
 
       {actionSuccessMsg && (
         <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
@@ -184,43 +148,8 @@ export default function MerchantDashboardPage() {
         </div>
       )}
 
-      {/* Portfolio Overview Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Projects</span>
-          <div className="text-xl font-black text-slate-900 dark:text-white">
-            {totalProjectsCount}
-          </div>
-          <span className="text-[11px] text-slate-400">In MongoDB Atlas</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Workspaces</span>
-          <div className="text-xl font-black text-cyan-600 dark:text-cyan-400">
-            {activeProjectsCount}
-          </div>
-          <span className="text-[11px] text-cyan-600 dark:text-cyan-400 font-semibold">Under active execution</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed Projects</span>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-            {completedProjectsCount}
-          </div>
-          <span className="text-[11px] text-slate-400">All deliverables verified</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Escrow Budget</span>
-          <div className="text-xl font-black text-slate-900 dark:text-white">
-            ${totalBudgetSpent.toLocaleString()} USD
-          </div>
-          <span className="text-[11px] text-slate-400">Secured via PayPal</span>
-        </div>
-      </div>
-
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#0F172A] p-3.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 transition-colors">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#1B3B39] p-3.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 transition-colors">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           <input
@@ -251,12 +180,12 @@ export default function MerchantDashboardPage() {
 
       {/* Projects List */}
       {loading ? (
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
           <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-500" />
           <span>Synchronizing projects from MongoDB Atlas...</span>
         </div>
       ) : filteredProjects.length === 0 ? (
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4 shadow-sm transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4 shadow-sm transition-colors">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
             <FolderOpen className="w-6 h-6" />
           </div>
@@ -305,7 +234,7 @@ export default function MerchantDashboardPage() {
             return (
               <div
                 key={pId}
-                className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm"
+                className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm"
               >
                 {/* Project Header Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -318,9 +247,9 @@ export default function MerchantDashboardPage() {
                             : isCompleted
                             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                             : proj.status === 'READY_TO_FUND'
-                            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
                             : proj.status === 'ON_HOLD' || proj.status === 'draft' || !proj.status
-                            ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20'
+                            ? 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-[#D8E9E4] dark:border-[#345451]'
                             : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
                         }`}
                       >
@@ -329,10 +258,10 @@ export default function MerchantDashboardPage() {
                           : isCompleted
                           ? 'Completed'
                           : proj.status === 'READY_TO_FUND'
-                          ? 'Ready to Fund (All Accepted)'
+                          ? 'Ready to Fund'
                           : proj.status === 'ON_HOLD' || proj.status === 'draft' || !proj.status
-                          ? 'On Hold (Invites Sent)'
-                          : 'Funded & Active'}
+                          ? 'Awaiting Team Acceptance'
+                          : 'Funded'}
                       </span>
                       <span className="text-[11px] text-slate-400">
                         Launched {proj.createdAt ? new Date(proj.createdAt).toLocaleDateString() : 'Recently'}
@@ -342,9 +271,6 @@ export default function MerchantDashboardPage() {
                     <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                       {proj.projectName}
                     </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 max-w-2xl">
-                      {proj.merchantPrompt}
-                    </p>
                   </div>
 
                   {/* Actions */}
@@ -361,15 +287,15 @@ export default function MerchantDashboardPage() {
                     {proj.status === 'READY_TO_FUND' ? (
                       <Link
                         href={`/dashboard/${pId}`}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-all shadow-md animate-pulse"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs"
                       >
-                        <span>Authorize Escrow</span>
+                        <span>Pay &amp; Start Project</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Link>
                     ) : (
                       <Link
                         href={`/dashboard/${pId}`}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-xl transition-all shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#168C80] hover:bg-[#126B64] dark:bg-[#32B6A5] dark:hover:bg-[#168C80] text-white dark:text-[#102B2B] dark:hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm"
                       >
                         <span>Open Workspace</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -382,7 +308,7 @@ export default function MerchantDashboardPage() {
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-xs font-semibold">
                     <span className="text-slate-700 dark:text-slate-300">
-                      Milestones: {completedPkgs} of {totalPkgs} completed
+                      Tasks: {completedPkgs} of {totalPkgs} completed
                     </span>
                     <span className="text-cyan-600 dark:text-cyan-400">{progress}%</span>
                   </div>
@@ -397,12 +323,12 @@ export default function MerchantDashboardPage() {
                 </div>
 
                 {/* Footer Metrics Row */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-850 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   {/* Team Avatars */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-400 font-medium">Specialists:</span>
+                    <span className="text-[11px] text-slate-400 font-medium">Team:</span>
                     {teamMembers.length === 0 ? (
-                      <span className="text-[11px] text-slate-400 italic">Matching specialists</span>
+                      <span className="text-[11px] text-slate-400 italic">Assigning freelancers</span>
                     ) : (
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {teamMembers.map((tm, idx) => (
@@ -410,7 +336,6 @@ export default function MerchantDashboardPage() {
                             key={idx}
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold"
                           >
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
                             <span>{tm.name}</span>
                             <span className="text-slate-400 uppercase text-[8px]">({tm.category})</span>
                           </span>
@@ -423,10 +348,10 @@ export default function MerchantDashboardPage() {
                   <div className="flex items-center gap-4 text-xs">
                     <div>
                       <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mr-1.5">
-                        Escrow:
+                        Budget:
                       </span>
-                      <strong className="text-slate-900 dark:text-white font-black">
-                        ${proj.totalBudget?.toLocaleString()} USD
+                      <strong className="text-slate-900 dark:text-white font-bold">
+                        ${proj.totalBudget?.toLocaleString()}
                       </strong>
                     </div>
                     {proj.savings ? (
@@ -435,7 +360,7 @@ export default function MerchantDashboardPage() {
                           Savings:
                         </span>
                         <strong className="text-emerald-600 dark:text-emerald-400 font-bold">
-                          +${proj.savings?.toLocaleString()} USD
+                          +${proj.savings?.toLocaleString()}
                         </strong>
                       </div>
                     ) : null}
@@ -450,7 +375,7 @@ export default function MerchantDashboardPage() {
       {/* Cancel Project Confirmation Modal */}
       {cancelModalProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#0F172A] border border-rose-500/30 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+          <div className="bg-white dark:bg-[#1B3B39] border border-rose-500/30 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5" />
@@ -466,7 +391,7 @@ export default function MerchantDashboardPage() {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
-              Are you sure you want to cancel this project? All uncompleted milestone contracts will be marked as Cancelled, assigned specialists will be notified, and remaining escrow funds will be unlocked. This action cannot be undone.
+              Are you sure you want to cancel this project? All uncompleted tasks will be marked as Cancelled, assigned freelancers will be notified, and remaining project allocations will be refunded. This action cannot be undone.
             </p>
 
             <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">

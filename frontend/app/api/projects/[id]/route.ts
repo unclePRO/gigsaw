@@ -103,7 +103,7 @@ export async function PATCH(
       project.messages.push({
         id: `msg-swap-${Date.now()}`,
         senderId: 'system',
-        senderName: 'GigSaw AI Assistant',
+        senderName: 'Gigsaw AI Assistant',
         senderEmail: 'assistant@gigsaw.com',
         senderRole: 'ai_assistant',
         message: `🔄 Specialist Update: ${newFreelancer.name} has been invited to replace ${oldName} for milestone "${pkg.title}".`,

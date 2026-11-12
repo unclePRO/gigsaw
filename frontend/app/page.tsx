@@ -52,11 +52,25 @@ export default function HomePage() {
       <section className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center items-center overflow-hidden px-4 sm:px-6 lg:px-8 w-full">
         {/* Background Layer with Right-Side Visibility (~20%) & Multi-Stop Fade to Transparency */}
         <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
-          {/* Base Background Image with CSS Mask for Right 20-25% Visibility and Smooth Fade */}
+          {/* Light Theme Background Image */}
           <div
-            className="absolute inset-0 bg-no-repeat bg-cover bg-right"
+            className="absolute inset-0 bg-no-repeat bg-cover bg-right dark:hidden"
             style={{
-              backgroundImage: "url('/hero-bg.png')",
+              backgroundImage: "url('/hero-bg-light.jpg')",
+              maskImage:
+                'linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.65) 15%, rgba(0,0,0,0.2) 28%, transparent 45%), linear-gradient(to bottom, rgba(0,0,0,1) 70%, transparent 100%)',
+              WebkitMaskImage:
+                'linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.65) 15%, rgba(0,0,0,0.2) 28%, transparent 45%), linear-gradient(to bottom, rgba(0,0,0,1) 70%, transparent 100%)',
+              WebkitMaskComposite: 'destination-in',
+              maskComposite: 'intersect',
+            }}
+          />
+
+          {/* Dark Theme Background Image */}
+          <div
+            className="absolute inset-0 bg-no-repeat bg-cover bg-right hidden dark:block"
+            style={{
+              backgroundImage: "url('/hero-bg-dark.jpg')",
               maskImage:
                 'linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.65) 15%, rgba(0,0,0,0.2) 28%, transparent 45%), linear-gradient(to bottom, rgba(0,0,0,1) 70%, transparent 100%)',
               WebkitMaskImage:
@@ -67,33 +81,29 @@ export default function HomePage() {
           />
 
           {/* Left-to-Right Color Overlay to Guarantee 100% Text Readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#F8FAFC] via-[#F8FAFC]/90 via-40% to-transparent dark:from-[#090D16] dark:via-[#090D16]/90 dark:via-40% dark:to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#F0F8F6] via-[#F0F8F6]/90 via-40% to-transparent dark:from-[#102B2B] dark:via-[#102B2B]/90 dark:via-40% dark:to-transparent" />
 
           {/* Bottom Fade: image smoothly goes away as the user scrolls into the next section */}
-          <div className="absolute bottom-0 inset-x-0 h-44 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/70 to-transparent dark:from-[#090D16] dark:via-[#090D16]/70 dark:to-transparent" />
+          <div className="absolute bottom-0 inset-x-0 h-44 bg-gradient-to-t from-[#F0F8F6] via-[#F0F8F6]/70 to-transparent dark:from-[#102B2B] dark:via-[#102B2B]/70 dark:to-transparent" />
 
           {/* Subtle Ambient Radial Highlight on the Right */}
-          <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-gradient-to-l from-cyan-500/10 via-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-gradient-to-l from-[#168C80]/15 via-[#32B6A5]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
         </div>
 
         {/* Hero Content (Positioned in relative z-10) */}
         <div className="relative z-10 max-w-5xl mx-auto text-center space-y-8 py-16 sm:py-24">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold tracking-wide shadow-sm">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Project Decomposition &amp; PayPal Multi-Seller Escrow</span>
-          </div>
 
           {/* Hero Headline */}
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tight max-w-4xl mx-auto leading-[1.08]">
             Hire an entire freelance team with{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600">
-              one prompt &amp; budget
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#168C80] via-[#32B6A5] to-[#73D8C7]">
+              one prompt
             </span>.
           </h1>
 
           {/* Concise Subtitle */}
           <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
-            Skip searching, negotiating, and paying multiple freelancers separately. Enter your project goal and total budget. GigSaw decomposes the work, pairs verified talent, and coordinates everything through a single PayPal checkout.
+            Skip searching, negotiating, and paying multiple freelancers separately. Enter your project goal and total budget. Gigsaw disassembles the work, pairs verified talent, and coordinates everything through a single PayPal checkout.
           </p>
 
           {/* 2 Primary Clear Options: 'Hire Freelancers' and 'Find Work' */}
@@ -127,8 +137,8 @@ export default function HomePage() {
       {/* Subsequent Sections with Spacing */}
       <div className="space-y-24 pb-20 pt-8">
 
-      {/* How GigSaw Works: 3 Simple Steps */}
-      <section className="py-16 bg-white dark:bg-[#0B1120] border-y border-slate-200/80 dark:border-slate-800/80 transition-colors">
+      {/* How Gigsaw Works: 3 Simple Steps */}
+      <section className="py-16 bg-white dark:bg-[#142F2E] border-y border-[#D8E9E4] dark:border-[#345451] transition-colors">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-2 max-w-xl mx-auto">
             <span className="text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
@@ -138,7 +148,7 @@ export default function HomePage() {
               From one sentence to complete launch
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
-              How GigSaw eliminates the friction of traditional freelance platforms.
+              How Gigsaw eliminates the friction of traditional freelance platforms.
             </p>
           </div>
 
@@ -154,7 +164,7 @@ export default function HomePage() {
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 relative">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-extrabold flex items-center justify-center text-sm shadow-sm">
+              <div className="w-9 h-9 rounded-xl bg-[#168C80] text-white font-extrabold flex items-center justify-center text-sm shadow-sm">
                 02
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">AI Assembles Your Team</h3>

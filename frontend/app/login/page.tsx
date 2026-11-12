@@ -140,20 +140,30 @@ function LoginFormContent() {
   };
 
   return (
-    <div className="max-w-md w-full bg-white dark:bg-[#0F172A] rounded-3xl border border-slate-200/90 dark:border-slate-800 p-7 sm:p-8 shadow-xl shadow-slate-200/40 dark:shadow-none space-y-6 transition-colors">
+    <div className="max-w-md w-full bg-white dark:bg-[#1B3B39] rounded-3xl border border-slate-200/90 dark:border-slate-800 p-7 sm:p-8 shadow-xl shadow-slate-200/40 dark:shadow-none space-y-6 transition-colors">
       {/* Brand Header */}
       <div className="text-center space-y-1.5">
         <Link href="/" className="inline-flex items-center gap-2 group">
-          <div className="w-9 h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-105">
+          <div className="h-10 flex items-center">
+            {/* Light mode: logo with dark text */}
             <Image
-              src="/logo.jpg"
-              alt="GigSaw"
-              width={36}
-              height={36}
-              className="object-contain w-full h-full"
+              src="/logo-light.png"
+              alt="Gigsaw"
+              width={160}
+              height={42}
+              className="h-10 w-auto dark:hidden object-contain"
+              priority
+            />
+            {/* Dark mode: logo with white text */}
+            <Image
+              src="/logo-dark.png"
+              alt="Gigsaw"
+              width={160}
+              height={42}
+              className="h-10 w-auto hidden dark:block object-contain"
+              priority
             />
           </div>
-          <span className="font-extrabold text-2xl text-slate-900 dark:text-white tracking-tight">GigSaw</span>
         </Link>
         <h1 className="text-xl font-bold text-slate-900 dark:text-white pt-1">
           {tab === 'login' ? 'Welcome Back' : 'Create an Account'}

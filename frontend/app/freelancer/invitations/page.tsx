@@ -213,7 +213,7 @@ export default function FreelancerInvitationsPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
-      <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
+      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
@@ -257,14 +257,14 @@ export default function FreelancerInvitationsPage() {
       )}
 
       {pendingInvites.length === 0 ? (
-        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4 shadow-sm transition-colors">
+        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center space-y-4 shadow-sm transition-colors">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
             <FolderOpen className="w-6 h-6" />
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-slate-900 dark:text-white">No Pending Invitations</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-              You are all caught up! When a merchant launches a project that matches your skills, AI invitations with guaranteed PayPal escrow will arrive here.
+              You are all caught up! When a client launches a project that matches your skills, AI invitations with direct PayPal checkout will arrive here.
             </p>
           </div>
           <div className="pt-2">
@@ -282,11 +282,20 @@ export default function FreelancerInvitationsPage() {
           {pendingInvites.map(({ project, pkg }) => {
             const projId = (project as any)._id || project.id;
             const isProcessing = processingId === `${projId}-${pkg.id}`;
+            const briefText = ((project as any).merchantPrompt || (project as any).aiAnalysis?.summary || '').trim();
+            const descText = (pkg.description || '').trim();
+            const isDuplicate = Boolean(
+              briefText &&
+              descText &&
+              (briefText.toLowerCase() === descText.toLowerCase() ||
+                briefText.toLowerCase().includes(descText.toLowerCase()) ||
+                descText.toLowerCase().includes(briefText.toLowerCase()))
+            );
 
             return (
               <div
                 key={`${projId}-${pkg.id}`}
-                className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors"
+                className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 shadow-sm transition-colors"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
@@ -306,24 +315,39 @@ export default function FreelancerInvitationsPage() {
 
                   <div className="text-left sm:text-right">
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Milestone Offer</span>
-                    <span className="text-2xl font-black text-slate-900 dark:text-white">${pkg.allocatedPrice} <span className="text-xs font-semibold text-slate-400">USD</span></span>
+                    <span className="text-2xl font-black text-slate-900 dark:text-white">${pkg.allocatedPrice}</span>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{pkg.title}</span>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{pkg.description}</p>
-                </div>
-
-                {/* Extended project context */}
+                {/* 2 Side-by-Side Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  {(project as any).merchantPrompt && (
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Project Brief</span>
-                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3">{(project as any).merchantPrompt}</p>
-                    </div>
-                  )}
-                  <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                  {/* Left Box: Project Brief */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                      Project Brief
+                    </span>
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                      {pkg.title}
+                    </h3>
+                    {descText && (
+                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                        {descText}
+                      </p>
+                    )}
+                    {briefText && !isDuplicate && (
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                          Merchant Context:
+                        </span>
+                        <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                          {briefText}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Box: Required Skills, Deliverables, Timeline */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
                     {pkg.requiredSkills && pkg.requiredSkills.length > 0 && (
                       <div>
                         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Required Skills</span>
@@ -360,7 +384,7 @@ export default function FreelancerInvitationsPage() {
 
                 {/* AI Invitation Feasibility Drawer */}
                 {expandedAiReview === `${projId}-${pkg.id}` && (
-                  <div className="p-4 bg-gradient-to-r from-cyan-950/20 to-blue-950/20 border border-cyan-500/30 rounded-xl space-y-3 animate-fadeIn text-xs">
+                  <div className="p-4 bg-gradient-to-r from-[#10413E]/20 to-[#168C80]/20 border border-cyan-500/30 rounded-xl space-y-3 animate-fadeIn text-xs">
                     <div className="flex items-center justify-between pb-2 border-b border-cyan-500/20">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-cyan-400" />
@@ -405,7 +429,7 @@ export default function FreelancerInvitationsPage() {
                         {aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_amount && (
                           <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-[11px]">
                             <span className="text-amber-800 dark:text-amber-300">
-                              AI suggests counteroffering at <strong>${aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_amount} USD</strong> ({aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_days} days)
+                              AI suggests counteroffering at <strong>${aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_amount}</strong> ({aiReviews[`${projId}-${pkg.id}`].recommended_counteroffer_days} days)
                             </span>
                             <button
                               type="button"
@@ -435,7 +459,7 @@ export default function FreelancerInvitationsPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>Funds authorized in PayPal Escrow &bull; Released on milestone approval</span>
+                    <span>Direct payout via PayPal &bull; Paid upon deliverable verification</span>
                   </span>
 
                   <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
@@ -512,7 +536,7 @@ export default function FreelancerInvitationsPage() {
       {/* Counteroffer Submission Modal */}
       {counterofferModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full space-y-5 shadow-2xl">
+          <div className="bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full space-y-5 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">

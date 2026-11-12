@@ -153,11 +153,11 @@ export const EmbeddedProjectChat: React.FC<EmbeddedProjectChatProps> = ({
   const currentUserEmail = session?.user?.email?.toLowerCase();
 
   return (
-    <div className={`bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col h-[560px] shadow-sm overflow-hidden ${className}`}>
+    <div className={`bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col h-[560px] shadow-sm overflow-hidden ${className}`}>
       {/* Header */}
       <div className="p-4 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+          <div className="w-8 h-8 rounded-xl bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] flex items-center justify-center font-bold">
             <MessageSquare className="w-4 h-4" />
           </div>
           <div>
@@ -165,7 +165,7 @@ export const EmbeddedProjectChat: React.FC<EmbeddedProjectChatProps> = ({
               <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
                 Team Project Chat
               </h3>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live room" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" title="Live room" />
             </div>
             <p className="text-[10px] text-slate-400">
               Active for merchant & all invited talent &bull; Open before & after acceptance
@@ -271,7 +271,7 @@ export const EmbeddedProjectChat: React.FC<EmbeddedProjectChatProps> = ({
                         className={`text-[8px] uppercase font-black px-1.5 py-0.2 rounded ${
                           isMerchant
                             ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
-                            : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                            : 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7]'
                         }`}
                       >
                         {msg.senderRole}
@@ -300,7 +300,7 @@ export const EmbeddedProjectChat: React.FC<EmbeddedProjectChatProps> = ({
       {/* Input Form */}
       <form
         onSubmit={handleSendMessage}
-        className="p-3 border-t border-slate-100 dark:border-slate-800/80 bg-white dark:bg-[#0F172A] flex items-center gap-2"
+        className="p-3 border-t border-slate-100 dark:border-slate-800/80 bg-white dark:bg-[#1B3B39] flex items-center gap-2"
       >
         <input
           type="text"

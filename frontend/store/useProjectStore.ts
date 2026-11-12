@@ -53,7 +53,7 @@ interface ProjectState {
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   prompt: '',
-  budget: 1500,
+  budget: 0,
   isAnalyzing: false,
   currentStep: 1,
   workPackages: [],
@@ -134,7 +134,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   resetDraft: () => {
     set({
       prompt: '',
-      budget: 1500,
+      budget: 0,
       isAnalyzing: false,
       currentStep: 1,
       workPackages: [],

@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       market_rate_evaluation: `Offered milestone budget of $${price} equates to ~$${effectiveHourly}/hr for ~${estimatedHours} estimated working hours.`,
       estimated_hours: estimatedHours,
       pros: [
-        `100% Escrow Protection: Funds held securely in PayPal escrow for '${work_package_title}'.`,
+        `100% Payment Protection: Funds authorized via PayPal Multi-Seller Checkout for '${work_package_title}'.`,
         `Direct communication channel with client inside project workspace.`,
       ],
       watchouts: [

@@ -56,7 +56,7 @@ LINE ITEMS:
 3. Staging Deployment & Review Revisions ........ $100.00
 -------------------------------------------------------
 Total Milestone Amount:                          $600.00
-Payment Status: Milestone Escrow Active
+Payment Status: Paid via PayPal Multi-Seller Checkout
 =======================================================`);
       setIsGenerating(false);
     }, 600);

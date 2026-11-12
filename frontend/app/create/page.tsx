@@ -47,8 +47,8 @@ function CategoryBadge({ category }: { category: string }) {
   }
   if (cat === 'designer') {
     return (
-      <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900 flex items-center gap-1">
-        <Layers className="w-3 h-3 text-blue-400" />
+      <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border bg-[#E5F5F1] dark:bg-[#1B3B39] text-[#168C80] dark:text-[#73D8C7] border-[#D8E9E4] dark:border-[#345451] flex items-center gap-1">
+        <Layers className="w-3 h-3 text-[#168C80] dark:text-[#32B6A5]" />
         <span>UI/UX Designer</span>
       </span>
     );
@@ -97,6 +97,11 @@ export default function CreateProjectPage() {
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [showIntelligenceDetails, setShowIntelligenceDetails] = useState<boolean>(false);
   const [chatInput, setChatInput] = useState('');
+  const [budgetStr, setBudgetStr] = useState<string>(budget ? String(budget) : '0');
+
+  useEffect(() => {
+    setBudgetStr(String(budget || 0));
+  }, [budget]);
 
   // Conversational Scoping AI State
   const [projectName, setProjectName] = useState<string>('');
@@ -122,6 +127,7 @@ export default function CreateProjectPage() {
   const [swappingPackageId, setSwappingPackageId] = useState<string | null>(null);
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Authentication guard
@@ -168,6 +174,16 @@ export default function CreateProjectPage() {
     }
   }, [chatMessages]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-focus chat input whenever AI finishes asking a question or responding
+  useEffect(() => {
+    if (createPhase === 'chat' && !isAiThinking && !isAnalyzing) {
+      const timer = setTimeout(() => {
+        chatInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [createPhase, isAiThinking, isAnalyzing]);
+
   // Scroll to top on every phase change (instant so it always wins)
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -198,7 +214,7 @@ export default function CreateProjectPage() {
   // Guard: freelancers cannot launch projects
   if (session?.user && (session.user as any).role === 'freelancer') {
     return (
-      <div className="p-8 max-w-md mx-auto text-center space-y-4 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-slate-800 mt-12 shadow-sm">
+      <div className="p-8 max-w-md mx-auto text-center space-y-4 bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200 dark:border-slate-800 mt-12 shadow-sm">
         <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Merchant Only Studio</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -523,7 +539,7 @@ export default function CreateProjectPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectName: projectName || proposal?.projectName || `${prompt.slice(0, 30)} Project`,
-          merchantPrompt: prompt,
+          merchantPrompt: proposal?.merchantPrompt || aiAnalysis?.summary || prompt,
           totalBudget: budget,
           allocatedTotal: workPackages.reduce((s, w) => s + w.allocatedPrice, 0),
           savings: Math.max(0, budget - workPackages.reduce((s, w) => s + w.allocatedPrice, 0)),
@@ -612,7 +628,7 @@ export default function CreateProjectPage() {
 
             {/* Main Centered Chatbox — fades + shrinks when transitioning */}
             <div
-              className={`bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-6 sm:p-7 space-y-5 transition-all duration-500 ease-in-out ${
+              className={`bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-6 sm:p-7 space-y-5 transition-all duration-500 ease-in-out ${
                 cardSlidingDown
                   ? 'scale-95 opacity-0'
                   : 'scale-100 opacity-100'
@@ -668,10 +684,27 @@ export default function CreateProjectPage() {
                   <input
                     id="budget-input"
                     type="number"
-                    min={100}
+                    min={0}
                     step={50}
-                    value={budget}
-                    onChange={(e) => setBudget(Number(e.target.value))}
+                    value={budgetStr}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={() => {
+                      if (!budgetStr || budgetStr.trim() === '') {
+                        setBudgetStr('0');
+                        setBudget(0);
+                      }
+                    }}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      // Override leading zero if user typed after a 0 (e.g. was '0', user typed '1' -> '01' or '010')
+                      if (val.length > 1 && val.startsWith('0') && val[1] !== '.') {
+                        val = val.replace(/^0+/, '');
+                        if (val === '') val = '0';
+                      }
+                      setBudgetStr(val);
+                      const num = Number(val);
+                      setBudget(isNaN(num) ? 0 : Math.max(0, num));
+                    }}
                     className="w-full pl-8 pr-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors"
                   />
                 </div>
@@ -704,10 +737,10 @@ export default function CreateProjectPage() {
       {createPhase === 'chat' && (
         <div className="min-h-screen flex flex-col transition-all duration-700 ease-in-out animate-fadeIn">
           {/* Top Sticky Bar */}
-          <div className="sticky top-16 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3">
+          <div className="sticky top-16 z-30 bg-white/95 dark:bg-[#142F2E]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3">
             <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#168C80] to-[#32B6A5] flex items-center justify-center text-white shrink-0 shadow-sm">
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
@@ -764,7 +797,7 @@ export default function CreateProjectPage() {
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
                 >
                   {msg.role === 'ai' && (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center shrink-0 mt-1 mr-2.5 shadow-sm">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#168C80] to-[#32B6A5] text-white flex items-center justify-center shrink-0 mt-1 mr-2.5 shadow-sm">
                       <Sparkles className="w-4 h-4" />
                     </div>
                   )}
@@ -773,7 +806,7 @@ export default function CreateProjectPage() {
                     className={`max-w-lg px-4 py-3 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
                       msg.role === 'user'
                         ? 'bg-cyan-500 text-white rounded-br-none shadow-sm font-medium'
-                        : 'bg-white dark:bg-[#0F172A] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-bl-none shadow-sm'
+                        : 'bg-white dark:bg-[#1B3B39] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-bl-none shadow-sm'
                     }`}
                   >
                     {msg.content}
@@ -782,14 +815,14 @@ export default function CreateProjectPage() {
               ))}
 
               {isAiThinking && (
-                <div className="flex justify-start items-center gap-2.5 p-3 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm text-xs text-slate-500 animate-pulse">
+                <div className="flex justify-start items-center gap-2.5 p-3 bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm text-xs text-slate-500 animate-pulse">
                   <Sparkles className="w-4 h-4 text-cyan-500 animate-spin" />
                   <span>AI Project Manager is analyzing specifications...</span>
                 </div>
               )}
 
               {isAnalyzing && (
-                <div className="flex justify-start items-center gap-2.5 p-3 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm text-xs text-slate-500 animate-pulse">
+                <div className="flex justify-start items-center gap-2.5 p-3 bg-white dark:bg-[#1B3B39] border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm text-xs text-slate-500 animate-pulse">
                   <RefreshCw className="w-4 h-4 animate-spin text-cyan-500 shrink-0" />
                   <span>Decomposing milestones & calculating budget plan...</span>
                 </div>
@@ -800,7 +833,7 @@ export default function CreateProjectPage() {
           </div>
 
           {/* Bottom Chat Input Bar & Finalize Trigger */}
-          <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-4 py-3 shadow-lg">
+          <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#142F2E]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-4 py-3 shadow-lg">
             <div className="max-w-3xl mx-auto space-y-2.5">
               {/* Clickable Quick Suggestion Chips */}
               {suggestedReplies.length > 0 && !isAiThinking && (
@@ -826,7 +859,7 @@ export default function CreateProjectPage() {
                 onClick={handleFinalizeDetails}
                 className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 text-white ${
                   isReadyToFinalize || completenessScore >= 0.75
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 active:scale-[0.99] shadow-glow-cyan'
+                    ? 'bg-gradient-to-r from-[#168C80] to-[#32B6A5] hover:from-[#126B64] hover:to-[#168C80] active:scale-[0.99] shadow-glow-cyan'
                     : 'bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-600'
                 }`}
               >
@@ -857,12 +890,19 @@ export default function CreateProjectPage() {
                 className="flex items-center gap-2"
               >
                 <input
+                  ref={chatInputRef}
                   type="text"
-                  placeholder="Answer project questions or provide details..."
+                  placeholder={
+                    isAiThinking
+                      ? "AI Project Manager is formulating response..."
+                      : "Answer project questions or provide details..."
+                  }
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  disabled={isAnalyzing || isAiThinking}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors"
+                  readOnly={isAnalyzing || isAiThinking}
+                  className={`flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors ${
+                    isAiThinking ? 'opacity-70 cursor-wait' : ''
+                  }`}
                 />
 
                 <button
@@ -889,7 +929,7 @@ export default function CreateProjectPage() {
       {createPhase === 'results' && (
         <div className="max-w-5xl mx-auto px-4 py-8 space-y-6 animate-fadeIn pb-32">
           {/* Clean Executive Summary Banner */}
-          <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-xs font-bold mb-2">
                 <Sparkles className="w-3.5 h-3.5" />
@@ -899,7 +939,7 @@ export default function CreateProjectPage() {
                 {proposal?.projectName || 'Assembled Specialist Proposal'}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
-                Review your assembled specialist team and budget breakdown. Swap any specialist before funding escrow.
+                Review your assembled specialist team and budget breakdown. Swap any specialist before launching project.
               </p>
             </div>
 
@@ -910,7 +950,7 @@ export default function CreateProjectPage() {
                 <span className="text-lg font-black text-slate-900 dark:text-white">${budget}</span>
               </div>
               <div className="pr-4 border-r border-slate-200 dark:border-slate-800 text-left">
-                <span className="text-[10px] uppercase font-bold text-cyan-500 block">Allocated Escrow</span>
+                <span className="text-[10px] uppercase font-bold text-cyan-500 block">Allocated Budget</span>
                 <span className="text-lg font-black text-cyan-500">${allocatedTotal}</span>
               </div>
               <div className="text-left">
@@ -955,7 +995,7 @@ export default function CreateProjectPage() {
               return (
                 <div
                   key={wp.id}
-                  className={`bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ${
+                  className={`bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 ${
                     isSwapping ? 'opacity-50 scale-[0.99] animate-pulse' : ''
                   }`}
                 >
@@ -970,9 +1010,9 @@ export default function CreateProjectPage() {
                     </div>
 
                     <div className="text-right">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Milestone Escrow</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Milestone Fee</span>
                       <div className="text-xl font-black text-slate-900 dark:text-white">
-                        ${milestonePrice} <span className="text-xs font-semibold text-slate-400">USD</span>
+                        ${milestonePrice}
                       </div>
                     </div>
                   </div>
@@ -1025,7 +1065,7 @@ export default function CreateProjectPage() {
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                           {/* Avatar & Personal Details */}
                           <div className="flex items-start gap-3.5 min-w-0">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#168C80] to-[#32B6A5] text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md">
                               {wp.assignedFreelancerName.charAt(0).toUpperCase()}
                             </div>
 
@@ -1163,7 +1203,7 @@ export default function CreateProjectPage() {
                               {wp.assignedFreelancerPastProjects.slice(0, 2).map((item: any, pIdx: number) => (
                                 <div
                                   key={pIdx}
-                                  className="p-2.5 rounded-xl bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 space-y-1 shadow-2xs"
+                                  className="p-2.5 rounded-xl bg-white dark:bg-[#142F2E] border border-slate-200 dark:border-slate-800 space-y-1 shadow-2xs"
                                 >
                                   <div className="flex items-center justify-between">
                                     <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
@@ -1210,7 +1250,7 @@ export default function CreateProjectPage() {
           </div>
 
           {/* Sticky Bottom Control Bar: "Finalize Team & Send Invites" */}
-          <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 p-4 shadow-2xl">
+          <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#142F2E]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 p-4 shadow-2xl">
             <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <button
@@ -1222,7 +1262,7 @@ export default function CreateProjectPage() {
                   <span>Adjust in Chat</span>
                 </button>
                 <div className="hidden sm:block text-xs text-slate-500 dark:text-slate-400">
-                  Total Project Escrow: <strong className="text-cyan-600 dark:text-cyan-400 font-black">${allocatedTotal} USD</strong>
+                  Total Allocated Budget: <strong className="text-cyan-600 dark:text-cyan-400 font-bold">${allocatedTotal}</strong>
                 </div>
               </div>
 

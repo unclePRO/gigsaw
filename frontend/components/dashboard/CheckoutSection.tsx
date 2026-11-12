@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { PayPalButtons } from '@paypal/react-paypal-js';
+import React, { useState, useEffect } from 'react';
+import { PayPalButtons, usePayPalScriptReducer, DISPATCH_ACTION } from '@paypal/react-paypal-js';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -34,6 +34,37 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [rawErrorDetails, setRawErrorDetails] = useState<any | null>(null);
   const [showRawDetails, setShowRawDetails] = useState(false);
+
+  const [{ options }, dispatch] = usePayPalScriptReducer();
+
+  // Ensure PayPal SDK script options strictly match multi-seller marketplace requirements
+  useEffect(() => {
+    const rawMerchantIds =
+      process.env.NEXT_PUBLIC_PAYPAL_MERCHANT_IDS || 'CPAVCGFAR2STW,K5DDYMC3HD53N';
+    const clientId =
+      process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ||
+      'ATHuST02ZWliopS0gXnO6ZGroO6O0N6TxZUhQZMr553nOR76h-kYQE5TxPn5UJA8_UPG6tjkbXgAzA3V';
+
+    if (
+      options['merchant-id'] !== '*' ||
+      options['data-merchant-id'] !== rawMerchantIds ||
+      options.clientId !== clientId
+    ) {
+      dispatch({
+        type: DISPATCH_ACTION.RESET_OPTIONS,
+        value: {
+          ...options,
+          clientId,
+          currency: 'USD',
+          intent: 'capture',
+          'merchant-id': '*',
+          'data-merchant-id': rawMerchantIds,
+          dataMerchantId: rawMerchantIds,
+          merchantId: rawMerchantIds.split(',').map((s) => s.trim()).filter(Boolean),
+        },
+      });
+    }
+  }, [dispatch, options]);
 
   const acceptedPackages = (project.workPackages || []).filter(
     (wp) => wp.inviteStatus === 'accepted' || (project.workPackages || []).length === 1
@@ -105,7 +136,7 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
         const errorMsg =
           captureResult.error ||
           captureResult.message ||
-          'Failed to capture PayPal multi-seller escrow payment.';
+          'Failed to capture PayPal multi-seller payment.';
         console.error('[PayPal Capture Error]:', captureResult.rawError || captureResult);
         setErrorMessage(errorMsg);
         setRawErrorDetails(captureResult.rawError || captureResult);
@@ -114,7 +145,7 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
       }
 
       setSuccessMessage(
-        'PayPal Multi-Seller Escrow payment captured successfully! Project status updated to FUNDED_IN_PROGRESS.'
+        'PayPal Multi-Seller payment captured successfully! Project status updated to FUNDED_IN_PROGRESS.'
       );
       if (onPaymentSuccess) {
         onPaymentSuccess(captureResult);
@@ -159,7 +190,7 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
   };
 
   return (
-    <div className="bg-gradient-to-br from-amber-500/10 via-emerald-500/5 to-cyan-500/10 dark:from-[#0F172A] dark:to-[#0F172A] border-2 border-amber-500/30 dark:border-amber-500/40 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
+    <div className="bg-gradient-to-br from-amber-500/10 via-emerald-500/5 to-cyan-500/10 dark:from-[#1B3B39] dark:to-[#1B3B39] border-2 border-amber-500/30 dark:border-amber-500/40 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
       {/* Glow highlight */}
       <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 dark:bg-amber-400/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -169,28 +200,28 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
           <div className="flex items-center gap-2 mb-1.5">
             <span className="px-3 py-1 text-[11px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-full flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              All Specialists Confirmed & Accepted
+              All Freelancers Confirmed &amp; Accepted
             </span>
             <span className="px-2.5 py-1 text-[11px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-full">
               Status: READY_TO_FUND
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            Authorize Multi-Seller Escrow Checkout
+            Pay &amp; Start Project &bull; PayPal Multi-Seller Checkout
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-2xl leading-relaxed">
             Every assigned freelancer has accepted their milestone invitation.
             Authorize a single consolidated transaction via PayPal Orders v2.
-            Funds are routed directly into individual escrow purchase units for each specialist and disbursed upon deliverable review.
+            Funds are transferred directly to each freelancer upon checkout.
           </p>
         </div>
 
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:text-right shrink-0">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-            Consolidated Escrow Total
+            Total Budget Amount
           </span>
           <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-            ${totalToFund.toFixed(2)} USD
+            ${totalToFund.toFixed(2)}
           </span>
           <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
             {acceptedPackages.length} accepted milestone{acceptedPackages.length > 1 ? 's' : ''}
@@ -198,16 +229,16 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
         </div>
       </div>
 
-      {/* Accepted Specialists Breakdown & Magic Split */}
-      <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
+      {/* Accepted Freelancers Breakdown & Payment Distribution */}
+      <div className="bg-white dark:bg-[#142F2E] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Users className="w-4 h-4 text-cyan-500" />
-              The Magic Split: Individual Specialist Payees & Platform Cut
+              Payment Distribution: Direct Freelancer Payouts &amp; Platform Fee
             </span>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              When approved, PayPal automatically disburses individual escrow amounts directly to each specialist's account upfront.
+              When approved, PayPal automatically splits and transfers payments directly to each freelancer.
             </p>
           </div>
           <span className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400">
@@ -231,7 +262,7 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
-                  Specialist: <strong className="text-slate-800 dark:text-slate-100">{wp.assignedFreelancerName || 'Assigned Talent'}</strong>
+                  Freelancer: <strong className="text-slate-800 dark:text-slate-100">{wp.assignedFreelancerName || 'Assigned Talent'}</strong>
                 </div>
                 <div className="text-[10px] text-slate-400 font-mono truncate flex items-center gap-1">
                   <span>PayPal:</span>
@@ -258,14 +289,14 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/20">
-                  GigSaw Fee
+                  Gigsaw Fee
                 </span>
                 <span className="text-xs font-bold text-purple-900 dark:text-purple-200">
                   5% Platform Commission
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Escrow management, AI mediation, and buyer protection guarantee
+                Secure transaction routing, AI mediation, and buyer protection guarantee
               </p>
             </div>
             <div className="text-right shrink-0">
@@ -318,7 +349,7 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
       )}
 
       {/* PayPal SDK Button Container */}
-      <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center space-y-4 shadow-sm">
+      <div className="bg-white dark:bg-[#142F2E] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center space-y-4 shadow-sm">
         <div className="text-center space-y-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-xs font-black uppercase tracking-wider mb-1">
             <DollarSign className="w-3.5 h-3.5" />
@@ -326,16 +357,16 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
           </div>
           <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            <span>Secure Multi-Seller Escrow Authorization</span>
+            <span>Secure PayPal Multi-Seller Checkout</span>
           </div>
           <p className="text-[11px] text-slate-400 max-w-sm">
-            Log in once with PayPal to approve the complete ${totalToFund.toLocaleString()} USD budget. PayPal will automatically split the funds to each specialist while securing escrow protection.
+            Log in once with PayPal to approve the complete ${totalToFund.toLocaleString()} budget. PayPal will automatically split the funds to each freelancer with buyer protection.
           </p>
         </div>
 
         {/* Sandbox Credentials Guide */}
-        <div className="w-full max-w-md bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 rounded-xl p-3 text-[11px] text-blue-950 dark:text-blue-200 space-y-1">
-          <div className="flex items-center gap-1.5 font-bold text-blue-700 dark:text-blue-300">
+        <div className="w-full max-w-md bg-[#E5F5F1] dark:bg-[#254542]/50 border border-[#D8E9E4] dark:border-[#345451] rounded-xl p-3 text-[11px] text-[#10413E] dark:text-[#C5EEE6] space-y-1">
+          <div className="flex items-center gap-1.5 font-bold text-[#168C80] dark:text-[#73D8C7]">
             <Info className="w-3.5 h-3.5 shrink-0" />
             <span>Sandbox Credentials To Use In Popup</span>
           </div>
@@ -377,7 +408,7 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
             {loading ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Processing Escrow Capture...</span>
+                <span>Processing Payment...</span>
               </>
             ) : (
               <>

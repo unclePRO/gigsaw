@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     );
 
     const packagesToFund = acceptedPackages.length > 0 ? acceptedPackages : rawPackages;
-    const effectiveProjectName = targetProject?.projectName || projectName || 'GigSaw Project';
+    const effectiveProjectName = targetProject?.projectName || projectName || 'Gigsaw Project';
 
     // Fetch PayPal payout emails from MongoDB users for each accepted freelancer
     const purchase_units = await Promise.all(
@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
         let payeeEmail = wp.assignedFreelancerEmail || `freelancer-${index + 1}@sandbox.paypal.com`;
 
         // Lookup freelancer user profile in MongoDB Atlas
+        let matchedMerchantId: string | undefined;
         if (wp.assignedFreelancerEmail || wp.assignedFreelancerId) {
           try {
             const flUser = await UserModel.findOne({
@@ -99,11 +100,14 @@ export async function POST(req: NextRequest) {
                 ...(wp.assignedFreelancerId ? [{ _id: wp.assignedFreelancerId }] : []),
               ],
             })
-              .select('paypalEmail email name')
-              .lean();
+              .select('paypalEmail email name paypalMerchantId')
+              .lean() as any;
 
             if (flUser) {
               payeeEmail = flUser.paypalEmail || flUser.email || payeeEmail;
+              if (flUser.paypalMerchantId) {
+                matchedMerchantId = flUser.paypalMerchantId;
+              }
             }
           } catch (dbErr) {
             console.warn('[Create Order] Error finding freelancer PayPal email:', dbErr);
@@ -119,6 +123,14 @@ export async function POST(req: NextRequest) {
         const safeId = (wp.id || `pkg_${index + 1}`).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
         const referenceId = `Task_${safeTitle}_${safeId}`;
 
+        // Map to valid PayPal Sandbox Merchant ID matching frontend data-merchant-id attribute
+        const configuredMerchantIds = (process.env.NEXT_PUBLIC_PAYPAL_MERCHANT_IDS || 'CPAVCGFAR2STW,K5DDYMC3HD53N')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const fallbackMerchantId = configuredMerchantIds[index % configuredMerchantIds.length] || 'CPAVCGFAR2STW';
+        const finalMerchantId = matchedMerchantId || fallbackMerchantId;
+
         const unit: any = {
           reference_id: referenceId,
           description: `${effectiveProjectName} - ${wp.title}`,
@@ -127,7 +139,7 @@ export async function POST(req: NextRequest) {
             value: itemPrice,
           },
           payee: {
-            email_address: payeeEmail,
+            merchant_id: finalMerchantId,
           },
         };
 
@@ -171,7 +183,7 @@ export async function POST(req: NextRequest) {
       intent: 'CAPTURE',
       purchase_units,
       application_context: {
-        brand_name: 'GigSaw AI Escrow',
+        brand_name: 'Gigsaw AI',
         landing_page: 'NO_PREFERENCE',
         user_action: 'PAY_NOW',
         return_url: 'http://localhost:3000/dashboard',

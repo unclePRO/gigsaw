@@ -10,7 +10,7 @@
 When a small business owner or entrepreneur wants to launch a venture (e.g., *“Opening Artisan Roast & Brew cafe in Seattle with a $2,000 budget”*), traditional freelance marketplaces force them to:
 1. Search across hundreds of freelancers for multiple skill sets.
 2. Negotiate scopes, deadlines, and rates one by one.
-3. Manage multiple individual escrow payments, contracts, and milestone handoffs manually.
+3. Manage multiple individual payments, contracts, and milestone handoffs manually.
 
 ### The GigSaw Solution
 **GigSaw** solves this through natural-language project orchestration:
@@ -95,7 +95,7 @@ gigsaw/
 │   │   ├── ai/decompose/route.ts   # Task breakdown & freelancer matching API
 │   │   └── paypal/
 │   │       ├── create-order/route.ts # Multi-seller Orders v2 with 5% platform fee
-│   │       ├── capture-order/route.ts# Escrow capture and project funding
+│   │       ├── capture-order/route.ts# Multi-seller capture and project funding
 │   │       └── webhooks/route.ts     # PayPal webhook receiver
 │   ├── globals.css                 # Tailwind & AG Grid styling
 │   ├── layout.tsx                  # Root layout with Sidebar and PayPal Provider

@@ -6,24 +6,160 @@
 @import 'ag-grid-community/styles/ag-grid.css';
 @import 'ag-grid-community/styles/ag-theme-alpine.css';
 
+/* ==========================================================================
+   GIGSAW UNIFIED BRAND DESIGN SYSTEM
+   Palette Foundation:
+   - Deep Teal:     #10413E
+   - Ocean Teal:    #168C80
+   - Dark Teal:     #126B64
+   - Hover Teal:    #10766D
+   - Aqua:          #32B6A5
+   - Soft Aqua:     #73D8C7
+   - Pale Aqua:     #C5EEE6
+   - Mint Surface:  #E5F5F1
+   ========================================================================== */
+
 :root {
-  --background: #F8FAFC;
-  --foreground: #0F172A;
+  --teal-deep: #10413E;
+  --teal-ocean: #168C80;
+  --teal-dark: #126B64;
+  --teal-hover: #10766D;
+  --aqua-primary: #32B6A5;
+  --aqua-soft: #73D8C7;
+  --aqua-pale: #C5EEE6;
+  --mint-surface: #E5F5F1;
+
+  /* Global Light Theme */
+  --background: #F0F8F6;
+  --foreground: #10413E;
+  --text-muted: #527773;
+  --card-bg: #FFFFFF;
+  --navbar-bg: #D6ECE5;
+  --navbar-border: #B4D5CD;
+  --border-color: #D8E9E4;
+  --primary-accent: #168C80;
+  --active-nav: #E5F5F1;
+  --opportunity-highlight: #C5EEE6;
 }
 
 .dark {
-  --background: #090D16;
-  --foreground: #F8FAFC;
+  /* Global Dark Theme */
+  --background: #102B2B;
+  --foreground: #F0FAF8;
+  --text-muted: #A3C5BF;
+  --card-bg: #1B3B39;
+  --navbar-bg: #0B1E1E;
+  --navbar-border: #1F4240;
+  --border-color: #345451;
+  --primary-accent: #32B6A5;
+  --active-nav: #254542;
+  --opportunity-highlight: #254542;
 }
 
-body {
+/* Base Body Application */
+html, body {
   color: var(--foreground);
-  background: var(--background);
+  background-color: var(--background) !important;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbars */
+/* Ensure all page containers inherit the correct theme background */
+main {
+  background-color: var(--background);
+}
+
+/* Header & Navbar Standardized */
+header {
+  background-color: var(--navbar-bg) !important;
+  border-bottom: 1px solid var(--navbar-border, var(--border-color)) !important;
+}
+
+/* Footer Standardized */
+footer {
+  background-color: var(--navbar-bg) !important;
+  border-top: 1px solid var(--navbar-border, var(--border-color)) !important;
+  color: var(--text-muted) !important;
+}
+
+/* Catch and align hardcoded legacy dark backgrounds to new dark palette */
+.dark [class*="bg-[#090D16]"],
+.dark [class*="bg-[#080E1A]"],
+.dark [class*="bg-[#080d1a]"],
+.dark [class*="bg-slate-950"],
+.dark .bg-slate-950 {
+  background-color: #102B2B !important;
+}
+
+.dark [class*="bg-[#0B1120]"] {
+  background-color: #142F2E !important;
+}
+
+.dark [class*="bg-[#0F172A]"] {
+  background-color: #1B3B39 !important;
+}
+
+/* Standardize card borders */
+html:not(.dark) .border-slate-200,
+html:not(.dark) .border-slate-300,
+html:not(.dark) [class*="border-slate-200"] {
+  border-color: #D8E9E4 !important;
+}
+
+.dark .border-slate-800,
+.dark .border-slate-700,
+.dark [class*="dark:border-slate-800"],
+.dark [class*="dark:border-slate-700"],
+.dark [class*="dark:border-[#345451]"] {
+  border-color: #345451 !important;
+}
+
+/* Clean up lingering legacy pure-blue utility classes to Ocean Teal / Aqua */
+html:not(.dark) .bg-blue-600,
+html:not(.dark) .bg-blue-500 {
+  background-color: #168C80 !important;
+}
+
+.hover\:bg-blue-700:hover,
+.hover\:bg-blue-600:hover {
+  background-color: #10766D !important;
+}
+
+html:not(.dark) .text-blue-600,
+html:not(.dark) .text-blue-500 {
+  color: #168C80 !important;
+}
+
+.dark .text-blue-400,
+.dark .text-blue-300 {
+  color: #32B6A5 !important;
+}
+
+html:not(.dark) .bg-blue-50,
+html:not(.dark) .bg-indigo-50 {
+  background-color: #E5F5F1 !important;
+}
+
+.dark .bg-blue-950,
+.dark .bg-indigo-950,
+.dark [class*="dark:bg-blue-950"],
+.dark [class*="dark:bg-indigo-950"] {
+  background-color: #254542 !important;
+}
+
+html:not(.dark) .border-blue-200,
+html:not(.dark) .border-blue-500,
+html:not(.dark) .border-indigo-500 {
+  border-color: #D8E9E4 !important;
+}
+
+.dark .border-blue-800,
+.dark .border-blue-900,
+.dark [class*="dark:border-blue-900"] {
+  border-color: #345451 !important;
+}
+
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -32,40 +168,328 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #B8D7D0;
   border-radius: 9999px;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #345451;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #168C80;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #73D8C7;
 }
 
-/* Custom AG Grid styling for Light & Dark mode */
+/* Custom AG Grid styling for Light and Dark mode */
 .ag-theme-alpine {
-  --ag-header-background-color: #0F172A;
-  --ag-header-foreground-color: #F8FAFC;
-  --ag-border-color: #E2E8F0;
-  --ag-row-border-color: #F1F5F9;
-  --ag-odd-row-background-color: #FAFAFA;
-  --ag-row-hover-color: #F0FDF4;
-  --ag-selected-row-background-color: #E0F2FE;
+  --ag-header-background-color: #10413E;
+  --ag-header-foreground-color: #F0FAF8;
+  --ag-border-color: #D8E9E4;
+  --ag-row-border-color: #D8E9E4;
+  --ag-odd-row-background-color: #F8FCFB;
+  --ag-row-hover-color: #E5F5F1;
+  --ag-selected-row-background-color: #C5EEE6;
   font-family: inherit;
   font-size: 13px;
 }
 
 .dark .ag-theme-alpine {
-  --ag-background-color: #0b1120;
-  --ag-foreground-color: #e2e8f0;
-  --ag-header-background-color: #020617;
-  --ag-header-foreground-color: #f8fafc;
-  --ag-border-color: #1e293b;
-  --ag-row-border-color: #1e293b;
-  --ag-odd-row-background-color: #0f172a;
-  --ag-row-hover-color: #1e293b;
-  --ag-selected-row-background-color: #1e3a5f;
+  --ag-background-color: #1B3B39;
+  --ag-foreground-color: #F0FAF8;
+  --ag-header-background-color: #142F2E;
+  --ag-header-foreground-color: #F0FAF8;
+  --ag-border-color: #345451;
+  --ag-row-border-color: #345451;
+  --ag-odd-row-background-color: #102B2B;
+  --ag-row-hover-color: #254542;
+  --ag-selected-row-background-color: #254542;
+}
+
+/* ==========================================================================
+   EXPERIENCE 1: MERCHANT EXPERIENCE
+   Visual personality: Professional, Business-oriented, Structured, Reliable
+   Emphasis: Clean surfaces, financial metrics hierarchy, restrained accents
+   ========================================================================== */
+
+/* ==========================================================================
+   EXPERIENCE 1: MERCHANT EXPERIENCE
+   Visual personality: Professional, Business-oriented, Structured, Reliable
+   Emphasis: Clean surfaces, financial metrics hierarchy, restrained accents
+   ========================================================================== */
+
+/* Merchant Scoped Selectors - LIGHT THEME ONLY */
+html:not(.dark) body:has(nav a[href="/create"]),
+html:not(.dark) body:has(nav a[href="/dashboard"]),
+html:not(.dark) body:has(main a[href^="/dashboard"]),
+html:not(.dark) body:has(main a[href="/create"]),
+html:not(.dark) main:has(a[href^="/dashboard"]),
+html:not(.dark) main:has(a[href="/create"]) {
+  --card-bg: #FFFFFF;
+  --border-color: #D8E9E4;
+  --primary-accent: #168C80;
+}
+
+/* Dark mode merchant */
+.dark:has(nav a[href="/create"]),
+.dark:has(nav a[href="/dashboard"]),
+.dark:has(main a[href^="/dashboard"]),
+.dark:has(main a[href="/create"]),
+.dark main:has(a[href^="/dashboard"]),
+.dark main:has(a[href="/create"]) {
+  --card-bg: #1B3B39;
+  --border-color: #345451;
+  --primary-accent: #32B6A5;
+}
+
+/* Merchant Card Surfaces - LIGHT THEME ONLY */
+html:not(.dark) body:has(nav a[href="/create"]) .bg-white,
+html:not(.dark) body:has(nav a[href="/dashboard"]) .bg-white,
+html:not(.dark) body:has(main a[href^="/dashboard"]) .bg-white,
+html:not(.dark) body:has(main a[href="/create"]) .bg-white,
+html:not(.dark) main:has(a[href^="/dashboard"]) .bg-white,
+html:not(.dark) main:has(a[href="/create"]) .bg-white {
+  background-color: #FFFFFF !important;
+  border-color: #D8E9E4 !important;
+}
+
+/* Merchant Dark Card Surfaces */
+.dark:has(nav a[href="/create"]) [class*="dark:bg-[#1B3B39]"],
+.dark:has(nav a[href="/dashboard"]) [class*="dark:bg-[#1B3B39]"],
+.dark:has(main a[href^="/dashboard"]) [class*="dark:bg-[#1B3B39]"],
+.dark:has(main a[href="/create"]) [class*="dark:bg-[#1B3B39]"],
+.dark:has(nav a[href="/create"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(nav a[href="/dashboard"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(main a[href^="/dashboard"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(main a[href="/create"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(nav a[href="/create"]) [class*="dark:bg-[#142F2E]"],
+.dark:has(nav a[href="/dashboard"]) [class*="dark:bg-[#142F2E]"],
+.dark:has(main a[href^="/dashboard"]) [class*="dark:bg-[#142F2E]"],
+.dark:has(main a[href="/create"]) [class*="dark:bg-[#142F2E]"] {
+  background-color: #1B3B39 !important;
+  border-color: #345451 !important;
+}
+
+/* Merchant Active Nav Links */
+html:not(.dark) body:has(nav a[href="/create"]) nav a.bg-cyan-50,
+html:not(.dark) body:has(nav a[href="/dashboard"]) nav a.bg-cyan-50 {
+  background-color: #E5F5F1 !important;
+  color: #168C80 !important;
+  border-bottom: 2px solid #168C80 !important;
+}
+
+.dark:has(nav a[href="/create"]) nav a[class*="dark:bg-cyan-950"],
+.dark:has(nav a[href="/dashboard"]) nav a[class*="dark:bg-cyan-950"] {
+  background-color: #254542 !important;
+  color: #32B6A5 !important;
+  border-bottom: 2px solid #32B6A5 !important;
+}
+
+/* Merchant Headings & Hierarchy - LIGHT THEME ONLY */
+html:not(.dark) body:has(nav a[href="/create"]) h1,
+html:not(.dark) body:has(nav a[href="/create"]) h2,
+html:not(.dark) body:has(nav a[href="/create"]) h3,
+html:not(.dark) body:has(nav a[href="/dashboard"]) h1,
+html:not(.dark) body:has(nav a[href="/dashboard"]) h2,
+html:not(.dark) body:has(nav a[href="/dashboard"]) h3,
+html:not(.dark) body:has(main a[href^="/dashboard"]) h1,
+html:not(.dark) body:has(main a[href^="/dashboard"]) h2,
+html:not(.dark) body:has(main a[href^="/dashboard"]) h3 {
+  color: #10413E;
+}
+
+.dark:has(nav a[href="/create"]) h1,
+.dark:has(nav a[href="/create"]) h2,
+.dark:has(nav a[href="/create"]) h3,
+.dark:has(nav a[href="/dashboard"]) h1,
+.dark:has(nav a[href="/dashboard"]) h2,
+.dark:has(nav a[href="/dashboard"]) h3,
+.dark:has(main a[href^="/dashboard"]) h1,
+.dark:has(main a[href^="/dashboard"]) h2,
+.dark:has(main a[href^="/dashboard"]) h3 {
+  color: #F0FAF8 !important;
+}
+
+/* ==========================================================================
+   EXPERIENCE 2: FREELANCER EXPERIENCE
+   Visual personality: Welcoming, Human, Opportunity-focused, Creative
+   Emphasis: Soft Aqua highlights, opportunity badges, personal progress
+   ========================================================================== */
+
+/* Freelancer Scoped Selectors - LIGHT THEME ONLY */
+html:not(.dark) body:has(nav a[href*="/freelancer"]),
+html:not(.dark) body:has(main a[href*="/freelancer"]),
+html:not(.dark) main:has(a[href*="/freelancer"]) {
+  --primary-accent: #168C80;
+  --secondary-accent: #73D8C7;
+  --opportunity-highlight: #C5EEE6;
+}
+
+/* Freelancer Dark Tokens */
+.dark:has(nav a[href*="/freelancer"]),
+.dark:has(main a[href*="/freelancer"]),
+.dark main:has(a[href*="/freelancer"]) {
+  --primary-accent: #32B6A5;
+  --secondary-accent: #73D8C7;
+  --opportunity-highlight: #254542;
+}
+
+/* Freelancer Card Surfaces - LIGHT THEME ONLY */
+html:not(.dark) body:has(nav a[href*="/freelancer"]) .bg-white,
+html:not(.dark) body:has(main a[href*="/freelancer"]) .bg-white,
+html:not(.dark) main:has(a[href*="/freelancer"]) .bg-white {
+  background-color: #FFFFFF !important;
+  border-color: #D8E9E4 !important;
+}
+
+/* Freelancer Dark Card Surfaces */
+.dark:has(nav a[href*="/freelancer"]) [class*="dark:bg-[#1B3B39]"],
+.dark:has(main a[href*="/freelancer"]) [class*="dark:bg-[#1B3B39]"],
+.dark main:has(a[href*="/freelancer"]) [class*="dark:bg-[#1B3B39]"],
+.dark:has(nav a[href*="/freelancer"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(main a[href*="/freelancer"]) [class*="dark:bg-[#0F172A]"],
+.dark main:has(a[href*="/freelancer"]) [class*="dark:bg-[#0F172A]"],
+.dark:has(nav a[href*="/freelancer"]) [class*="dark:bg-[#142F2E]"],
+.dark:has(main a[href*="/freelancer"]) [class*="dark:bg-[#142F2E]"],
+.dark main:has(a[href*="/freelancer"]) [class*="dark:bg-[#142F2E]"] {
+  background-color: #1B3B39 !important;
+  border-color: #345451 !important;
+}
+
+/* Freelancer Opportunity Cards - Subtle Soft Aqua Ambient Highlight */
+html:not(.dark) body:has(nav a[href*="/freelancer"]) .border-slate-200\/90:hover,
+html:not(.dark) body:has(main a[href*="/freelancer"]) .border-slate-200\/90:hover,
+html:not(.dark) main:has(a[href*="/freelancer"]) .border-slate-200\/90:hover {
+  border-color: #73D8C7 !important;
+  box-shadow: 0 4px 20px -2px rgba(115, 216, 199, 0.25) !important;
+  transition: all 0.2s ease-in-out;
+}
+
+.dark:has(nav a[href*="/freelancer"]) .dark\:border-slate-800:hover,
+.dark:has(main a[href*="/freelancer"]) .dark\:border-slate-800:hover,
+.dark main:has(a[href*="/freelancer"]) .dark\:border-slate-800:hover {
+  border-color: #32B6A5 !important;
+  box-shadow: 0 4px 20px -2px rgba(50, 182, 165, 0.25) !important;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Freelancer Skill Tags and Badges (Soft Aqua Identity) */
+html:not(.dark) body:has(nav a[href*="/freelancer"]) .bg-cyan-500\/10,
+html:not(.dark) body:has(main a[href*="/freelancer"]) .bg-cyan-500\/10,
+html:not(.dark) main:has(a[href*="/freelancer"]) .bg-cyan-500\/10 {
+  background-color: #C5EEE6 !important;
+  color: #10413E !important;
+  border-color: #73D8C7 !important;
+}
+
+.dark:has(nav a[href*="/freelancer"]) .bg-cyan-500\/10,
+.dark:has(main a[href*="/freelancer"]) .bg-cyan-500\/10,
+.dark main:has(a[href*="/freelancer"]) .bg-cyan-500\/10,
+.dark:has(nav a[href*="/freelancer"]) [class*="dark:bg-cyan-950"],
+.dark:has(main a[href*="/freelancer"]) [class*="dark:bg-cyan-950"],
+.dark main:has(a[href*="/freelancer"]) [class*="dark:bg-cyan-950"] {
+  background-color: #254542 !important;
+  color: #73D8C7 !important;
+  border-color: #345451 !important;
+}
+
+/* Freelancer Active Nav Link */
+html:not(.dark) body:has(nav a[href*="/freelancer"]) nav a.bg-cyan-50 {
+  background-color: #E5F5F1 !important;
+  color: #168C80 !important;
+  border-bottom: 2px solid #73D8C7 !important;
+}
+
+.dark:has(nav a[href*="/freelancer"]) nav a[class*="dark:bg-cyan-950"],
+.dark:has(nav a[href*="/freelancer"]) nav a[class*="dark:bg-white"] {
+  background-color: #254542 !important;
+  color: #73D8C7 !important;
+  border-bottom: 2px solid #32B6A5 !important;
+}
+
+/* Freelancer Earnings & Milestone Indicator Accents */
+html:not(.dark) body:has(nav a[href*="/freelancer"]) .text-cyan-600,
+html:not(.dark) body:has(main a[href*="/freelancer"]) .text-cyan-600,
+html:not(.dark) main:has(a[href*="/freelancer"]) .text-cyan-600 {
+  color: #168C80 !important;
+}
+
+.dark:has(nav a[href*="/freelancer"]) .text-cyan-400,
+.dark:has(main a[href*="/freelancer"]) .text-cyan-400,
+.dark main:has(a[href*="/freelancer"]) .text-cyan-400 {
+  color: #73D8C7 !important;
+}
+
+/* Freelancer Progress Bar Accent */
+body:has(main a[href*="/freelancer"]) .from-cyan-500,
+main:has(a[href*="/freelancer"]) .from-cyan-500 {
+  --tw-gradient-from: #73D8C7 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: #168C80 var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+/* ==========================================================================
+   UNIVERSAL DARK THEME SAFETY NET
+   Guarantees that all card surfaces and boxes in dark theme render rich dark teal (#1B3B39)
+   and never leak light/white backgrounds or unreadable text.
+   ========================================================================== */
+.dark .dark\:bg-\[\#1B3B39\],
+.dark [class*="dark:bg-[#1B3B39]"] {
+  background-color: #1B3B39 !important;
+  border-color: #345451 !important;
+}
+
+.dark .dark\:bg-\[\#142F2E\],
+.dark [class*="dark:bg-[#142F2E]"] {
+  background-color: #142F2E !important;
+  border-color: #345451 !important;
+}
+
+.dark .dark\:bg-\[\#102B2B\],
+.dark [class*="dark:bg-[#102B2B]"],
+.dark [class*="dark:bg-[#080E1A]"],
+.dark [class*="dark:bg-[#090D16]"],
+.dark .dark\:bg-slate-950,
+.dark [class*="dark:bg-slate-950"] {
+  background-color: #102B2B !important;
+}
+
+/* Dark Theme Inner Input / Containers */
+.dark [class*="dark:bg-slate-900/60"],
+.dark [class*="dark:bg-slate-900/40"],
+.dark [class*="dark:bg-slate-900"],
+.dark [class*="dark:bg-slate-800/80"],
+.dark [class*="dark:bg-slate-800"] {
+  background-color: #142F2E !important;
+  border-color: #345451 !important;
+}
+
+/* Dark Theme Text Colors */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark .dark\:text-white,
+.dark [class*="dark:text-white"],
+.dark [class*="dark:text-slate-100"] {
+  color: #F0FAF8 !important;
+}
+
+.dark [class*="dark:text-slate-300"],
+.dark [class*="dark:text-slate-400"] {
+  color: #A3C5BF !important;
+}
+
+.dark [class*="dark:text-cyan-400"],
+.dark [class*="dark:text-cyan-300"] {
+  color: #73D8C7 !important;
+}
+
+/* Fix any buttons that had dark:bg-white to proper bright aqua */
+.dark .dark\:bg-white {
+  background-color: #32B6A5 !important;
+  color: #102B2B !important;
+}
+.dark .dark\:bg-white:hover {
+  background-color: #168C80 !important;
+  color: #FFFFFF !important;
 }
