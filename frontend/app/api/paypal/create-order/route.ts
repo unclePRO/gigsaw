@@ -185,6 +185,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
+    const proto = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+    const appOrigin = `${proto}://${host}`;
+
     // Call /v2/checkout/orders endpoint with multi-seller payload
     const orderPayload = {
       intent: 'CAPTURE',
@@ -193,8 +197,8 @@ export async function POST(req: NextRequest) {
         brand_name: 'Gigsaw AI',
         landing_page: 'NO_PREFERENCE',
         user_action: 'PAY_NOW',
-        return_url: 'http://localhost:3000/dashboard',
-        cancel_url: 'http://localhost:3000/dashboard',
+        return_url: `${appOrigin}/dashboard`,
+        cancel_url: `${appOrigin}/dashboard`,
       },
     };
 

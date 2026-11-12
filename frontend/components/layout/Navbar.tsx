@@ -66,6 +66,16 @@ export const Navbar: React.FC = () => {
     }
   }, [isFreelancer, fetchInviteCount]);
 
+  const handleLogout = async () => {
+    setProfileOpen(false);
+    try {
+      await signOut({ redirect: false });
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+    window.location.href = '/login';
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-[#D6ECE5]/95 dark:bg-[#0B1E1E]/95 backdrop-blur-md border-b border-[#B4D5CD] dark:border-[#1F4240] transition-colors shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -257,10 +267,7 @@ export const Navbar: React.FC = () => {
 
                   <div className="border-t border-[#D8E9E4] dark:border-[#1F4240] pt-1">
                     <button
-                      onClick={() => {
-                        setProfileOpen(false);
-                        signOut({ callbackUrl: '/login' });
-                      }}
+                      onClick={handleLogout}
                       className="w-full text-left px-3.5 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center gap-1.5 font-semibold"
                     >
                       <LogOut className="w-3.5 h-3.5" />

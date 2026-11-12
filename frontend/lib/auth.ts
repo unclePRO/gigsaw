@@ -65,6 +65,24 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      // If relative path, keep it relative so browser stays on current domain (Vercel, custom domain, or localhost)
+      if (url.startsWith('/')) {
+        return url;
+      }
+      try {
+        const parsed = new URL(url);
+        // If pointing to localhost while deployed or in browser, strip to relative path
+        if (parsed.hostname === 'localhost') {
+          return `${parsed.pathname}${parsed.search}`;
+        }
+        // If baseUrl exists and has same origin, allow it
+        if (baseUrl && parsed.origin === new URL(baseUrl).origin) {
+          return url;
+        }
+      } catch {}
+      return url.startsWith('/') ? url : '/login';
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = (user as any).id;
