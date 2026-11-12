@@ -67,7 +67,7 @@ export const RenderWakeupBanner: React.FC = () => {
   if (status === 'awake') {
     return (
       <aside aria-label="AI Service Status" className="fixed bottom-5 right-5 z-50 animate-fadeIn">
-        <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/95 dark:bg-[#1B3B39]/95 backdrop-blur-md border border-emerald-500/40 shadow-xl text-xs text-emerald-800 dark:text-emerald-200 font-bold">
+        <div className="hidden flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/95 dark:bg-[#1B3B39]/95 backdrop-blur-md border border-emerald-500/40 shadow-xl text-xs text-emerald-800 dark:text-emerald-200 font-bold">
           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
           <span>AI Engine Online &amp; Ready!</span>
         </div>
