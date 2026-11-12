@@ -131,13 +131,12 @@ export async function POST(req: NextRequest) {
         const safeId = (wp.id || `pkg_${index + 1}`).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
         const referenceId = `Task_${safeTitle}_${safeId}`;
 
-        // Map to valid PayPal Sandbox Merchant ID matching frontend data-merchant-id attribute
-        const configuredMerchantIds = (process.env.NEXT_PUBLIC_PAYPAL_MERCHANT_IDS || 'CPAVCGFAR2STW,K5DDYMC3HD53N')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
-        const fallbackMerchantId = configuredMerchantIds[index % configuredMerchantIds.length] || 'CPAVCGFAR2STW';
-        const finalMerchantId = matchedMerchantId || fallbackMerchantId;
+        // Map to verified PayPal Sandbox Merchant ID matching frontend merchant-id attribute
+        const defaultMerchantId =
+          process.env.NEXT_PUBLIC_PAYPAL_MERCHANT_ID ||
+          process.env.NEXT_PUBLIC_PAYPAL_MERCHANT_IDS?.split(',')[0]?.trim() ||
+          'CPAVCGFAR2STW';
+        const finalMerchantId = matchedMerchantId || defaultMerchantId;
 
         const unit: any = {
           reference_id: referenceId,

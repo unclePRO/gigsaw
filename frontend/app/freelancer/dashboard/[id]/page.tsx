@@ -313,6 +313,13 @@ export default function FreelancerGigWorkspacePage() {
   const isCompleted = matchingPkg.status === 'Completed';
   const isRevisionRequested = matchingPkg.status === 'Revision Requested';
   const hasSubmitted = Boolean(matchingPkg.deliverableLink || matchingPkg.deliverableNotes);
+  const isFunded =
+    project.status === 'FUNDED_IN_PROGRESS' ||
+    project.status === 'funded' ||
+    project.status === 'completed' ||
+    Boolean(matchingPkg.paypalCaptureId);
+  const isAwaitingPayment = project.status === 'READY_TO_FUND';
+  const isAwaitingAcceptance = project.status === 'ON_HOLD' || project.status === 'draft' || !project.status;
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col md:flex-row bg-[#F0F8F6] dark:bg-[#102B2B] text-slate-800 dark:text-slate-100 transition-colors">
@@ -455,8 +462,12 @@ export default function FreelancerGigWorkspacePage() {
             {!isSidebarCollapsed && (
               <div className="flex-1 flex items-center justify-between min-w-0">
                 <span className="truncate">Payment</span>
-                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                  ${matchingPkg.allocatedPrice}
+                <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${
+                  isFunded
+                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                    : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                }`}>
+                  {isFunded ? `$${matchingPkg.allocatedPrice}` : 'Pending'}
                 </span>
               </div>
             )}
@@ -492,6 +503,10 @@ export default function FreelancerGigWorkspacePage() {
                     ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                     : isRevisionRequested
                     ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                    : isFunded
+                    ? 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30'
+                    : isAwaitingPayment
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
                     : 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-[#D8E9E4] dark:border-[#345451]'
                 }`}
               >
@@ -501,7 +516,11 @@ export default function FreelancerGigWorkspacePage() {
                   ? 'Milestone Completed'
                   : isRevisionRequested
                   ? 'Revision Requested by Merchant'
-                  : 'In Execution'}
+                  : isFunded
+                  ? 'In Execution & Escrow Funded'
+                  : isAwaitingPayment
+                  ? 'Awaiting Merchant Payment'
+                  : 'Awaiting Team Acceptance'}
               </span>
 
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -685,12 +704,16 @@ export default function FreelancerGigWorkspacePage() {
                 <div className="text-xl font-black text-[#10413E] dark:text-[#F0FAF8]">
                   ${matchingPkg.allocatedPrice?.toLocaleString()}
                 </div>
-                <span className="text-[11px] text-[#168C80] dark:text-[#73D8C7] font-bold">
+                <span className="text-[11px] font-bold text-[#168C80] dark:text-[#73D8C7]">
                   {isCompleted
                     ? 'Payment Released'
                     : isProjectCancelled
                     ? 'Cancelled'
-                    : 'Paid via PayPal'}
+                    : isFunded
+                    ? 'Funded in Escrow via PayPal'
+                    : isAwaitingPayment
+                    ? 'Awaiting Merchant Payment'
+                    : 'Awaiting Team Acceptance'}
                 </span>
               </div>
 
@@ -1020,22 +1043,34 @@ export default function FreelancerGigWorkspacePage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#168C80]/20 pb-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-[#168C80]/20 text-[#168C80] dark:text-[#73D8C7] border border-[#168C80]/30 rounded-full flex items-center gap-1">
+                    <span className={`px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full flex items-center gap-1 border ${
+                      isFunded
+                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                        : isAwaitingPayment
+                        ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                        : 'bg-[#168C80]/20 text-[#168C80] dark:text-[#73D8C7] border-[#168C80]/30'
+                    }`}>
                       <Receipt className="w-3 h-3" />
-                      PayPal Multi-Seller Payment Active
+                      {isFunded ? 'PayPal Multi-Seller Payment Funded' : 'Payment Awaiting Merchant Funding'}
                     </span>
-                    <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded-full">
-                      Status: {matchingPkg.paypalInvoiceStatus || 'PAID'}
+                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                      isCompleted
+                        ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                        : isFunded
+                        ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30'
+                        : 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                    }`}>
+                      Status: {isCompleted ? 'RELEASED' : isFunded ? 'ESCROWED' : 'PENDING FUNDING'}
                     </span>
                   </div>
                   <h3 className="text-base font-black text-[#10413E] dark:text-[#F0FAF8]">
-                    Direct Payout Guaranteed by PayPal Orders v2
+                    {isFunded ? 'Direct Payout Guaranteed by PayPal Orders v2' : 'Escrow Deposit Pending Merchant Checkout'}
                   </h3>
                 </div>
 
                 <div className="text-right">
                   <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
-                    Funded Amount
+                    {isFunded ? 'Funded Amount' : 'Contract Amount'}
                   </span>
                   <span className="text-xl font-black text-[#10413E] dark:text-[#F0FAF8]">
                     ${matchingPkg.allocatedPrice?.toLocaleString()}
@@ -1044,7 +1079,19 @@ export default function FreelancerGigWorkspacePage() {
               </div>
 
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
-                Your <strong>${matchingPkg.allocatedPrice?.toLocaleString()}</strong> milestone fee is funded upfront by the merchant via PayPal Multi-Seller Checkout. Direct payout to your PayPal account upon deliverable verification.
+                {isFunded ? (
+                  <>
+                    Your <strong>${matchingPkg.allocatedPrice?.toLocaleString()}</strong> milestone fee is funded upfront in escrow by the merchant via PayPal Multi-Seller Checkout. Direct payout to your PayPal account upon deliverable verification.
+                  </>
+                ) : isAwaitingPayment ? (
+                  <>
+                    All team members have accepted invitations. Awaiting merchant checkout for <strong>${project.totalBudget?.toLocaleString()}</strong>. Your <strong>${matchingPkg.allocatedPrice?.toLocaleString()}</strong> fee will be locked in escrow once funded.
+                  </>
+                ) : (
+                  <>
+                    You have accepted this milestone invitation for <strong>${matchingPkg.allocatedPrice?.toLocaleString()}</strong>. Gigsaw initiates merchant checkout once all specialists on the team have accepted their invitations.
+                  </>
+                )}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
@@ -1110,7 +1157,7 @@ export default function FreelancerGigWorkspacePage() {
                       INVOICE #{officialInvoiceNumber || officialInvoiceId}
                     </span>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Status: <strong className="text-emerald-600">{invoiceStatus || 'PAID'}</strong> &bull; Amount: <strong>${matchingPkg.allocatedPrice} USD</strong>
+                      Status: <strong className={isFunded ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>{isFunded ? (invoiceStatus || 'PAID') : 'PENDING PAYMENT'}</strong> &bull; Amount: <strong>${matchingPkg.allocatedPrice} USD</strong>
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -1213,8 +1260,12 @@ export default function FreelancerGigWorkspacePage() {
                     <span className="font-mono text-xs font-bold text-[#10413E] dark:text-[#F0FAF8]">
                       INVOICE #{officialInvoiceNumber || officialInvoiceId}
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                      {invoiceStatus || 'PAID'}
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                      isFunded
+                        ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                        : 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                    }`}>
+                      {isFunded ? (invoiceStatus || 'PAID') : 'PENDING PAYMENT'}
                     </span>
                   </div>
 
