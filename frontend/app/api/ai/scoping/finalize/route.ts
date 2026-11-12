@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { UserModel } from '@/models/User';
 import { WorkPackage, ProjectProposal } from '@/types';
 import { aiClient, AiClientError } from '@/lib/aiClient';
+import { normalizePackageBudgets } from '@/lib/budget';
 
 export const dynamic = 'force-dynamic';
 
@@ -139,6 +140,22 @@ function generateSmartFallbackPlan(goal: string, budget: number = 1200, projectN
     });
   }
 
+  // Normalize fallback allocations so their sum strictly equals totalBudget
+  if (allocations.length > 0 && totalBudget > 0) {
+    const rawSum = allocations.reduce((s, a) => s + (a.allocated_amount || 0), 0);
+    let soFar = 0;
+    for (let i = 0; i < allocations.length; i++) {
+      if (i === allocations.length - 1) {
+        allocations[i].allocated_amount = Math.max(totalBudget >= allocations.length ? 1 : 0, totalBudget - soFar);
+      } else {
+        const ratio = (allocations[i].allocated_amount || 1) / (rawSum || 1);
+        const share = Math.max(1, Math.round(totalBudget * ratio));
+        allocations[i].allocated_amount = share;
+        soFar += share;
+      }
+    }
+  }
+
   return {
     project_name: title,
     budget: totalBudget,
@@ -194,7 +211,9 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     const finalProjectName = finalizeRes.project_name || project_name || `${cleanGoal.slice(0, 40)} Launch`;
-    const finalBudget = Number(finalizeRes.budget ?? finalizeRes.suggested_budget ?? budget ?? 1200);
+    // If merchant explicitly entered a budget > 0, strictly prioritize it over AI suggestions
+    const merchantBudget = budget && Number(budget) > 0 ? Number(budget) : null;
+    const finalBudget = merchantBudget ?? Number(finalizeRes.budget ?? finalizeRes.suggested_budget ?? 1200);
 
     const rawPackages = finalizeRes.analysis_result.work_packages || [];
     const allocations = finalizeRes.analysis_result.budget_plan?.allocations || [];
@@ -243,16 +262,20 @@ export async function POST(req: NextRequest) {
 
         const maxDays = Math.max(...pkgs.map((p: any) => p.estimated_days || 7));
 
-        // Sum allocated prices for this domain
-        const totalCatAlloc = pkgs.reduce((sum: number, p: any) => {
-          const alloc = allocations.find(
-            (a: any) => a.service_category?.toLowerCase() === p.service_category?.toLowerCase()
-          );
-          const rawPrice = alloc
-            ? (alloc.recommended_amount ?? alloc.allocated_amount ?? alloc.trusted_baseline)
-            : null;
-          return sum + (rawPrice != null && !isNaN(Number(rawPrice)) ? Number(rawPrice) : 0);
-        }, 0);
+        // Domain allocation from AI budget plan (single allocation for this consolidated domain)
+        const alloc = allocations.find((a: any) => {
+          const s = (a.service_category || '').toLowerCase();
+          if (cat === 'dev') return s.includes('dev') || s.includes('web') || s.includes('software');
+          if (cat === 'designer') return s.includes('design') || s.includes('graphic') || s.includes('ui');
+          if (cat === 'marketer') return s.includes('market') || s.includes('seo') || s.includes('growth');
+          return false;
+        }) || allocations.find(
+          (a: any) => a.service_category?.toLowerCase() === pkgs[0].service_category?.toLowerCase()
+        );
+        const rawPrice = alloc
+          ? (alloc.recommended_amount ?? alloc.allocated_amount ?? alloc.trusted_baseline)
+          : null;
+        const totalCatAlloc = rawPrice != null && !isNaN(Number(rawPrice)) ? Number(rawPrice) : 0;
 
         processedPackages.push({
           work_package_id: pkgs[0].work_package_id || `wp-${cat}-consolidated`,
@@ -376,6 +399,10 @@ export async function POST(req: NextRequest) {
                     yearsOfExperience: flUser.yearsOfExperience || candidate.freelancer?.yearsOfExperience || 2,
                     hourlyRate: flUser.hourlyRate || candidate.freelancer?.hourlyRate || 50,
                     location: flUser.location || candidate.freelancer?.location || 'Remote',
+                    title: (flUser as any).title || candidate.freelancer?.title || '',
+                    typicalDeliveryDays: (flUser as any).typicalDeliveryDays || candidate.freelancer?.typicalDeliveryDays || 5,
+                    category: (flUser as any).category || broadCategory,
+                    availability: (flUser as any).availability || 'available',
                   };
                   break;
                 }
@@ -414,6 +441,10 @@ export async function POST(req: NextRequest) {
               yearsOfExperience: chosen.yearsOfExperience || 2,
               hourlyRate: chosen.hourlyRate || 50,
               location: chosen.location || 'Remote',
+              title: (chosen as any).title || '',
+              typicalDeliveryDays: (chosen as any).typicalDeliveryDays || 5,
+              category: (chosen as any).category || broadCategory,
+              availability: (chosen as any).availability || 'available',
             };
             matchScore = 94;
             matchReasons = [
@@ -449,6 +480,10 @@ export async function POST(req: NextRequest) {
           assignedFreelancerYearsOfExperience: matchedFreelancer?.yearsOfExperience,
           assignedFreelancerHourlyRate: matchedFreelancer?.hourlyRate,
           assignedFreelancerLocation: matchedFreelancer?.location,
+          assignedFreelancerTitle: matchedFreelancer?.title,
+          assignedFreelancerTypicalDeliveryDays: matchedFreelancer?.typicalDeliveryDays,
+          assignedFreelancerCategory: matchedFreelancer?.category,
+          assignedFreelancerAvailability: matchedFreelancer?.availability,
           matchScore,
           matchScoreBreakdown,
           matchReasons,
@@ -457,6 +492,9 @@ export async function POST(req: NextRequest) {
         return convertedPackage;
       })
     );
+
+    // CRITICAL: Normalize work package allocations so their sum strictly equals the project budget!
+    normalizePackageBudgets(convertedPackages, finalBudget);
 
     const allocatedTotal = convertedPackages.reduce((s, p) => s + (p.allocatedPrice || 0), 0);
     const savings = Math.max(0, finalBudget - allocatedTotal);

@@ -103,6 +103,10 @@ export interface WorkPackage {
   assignedFreelancerYearsOfExperience?: number;
   assignedFreelancerHourlyRate?: number;
   assignedFreelancerLocation?: string;
+  assignedFreelancerTitle?: string;
+  assignedFreelancerTypicalDeliveryDays?: number;
+  assignedFreelancerCategory?: string;
+  assignedFreelancerAvailability?: string;
   // Project Completion & Review Fields
   closureRequested?: boolean;
   reviewSubmitted?: boolean;

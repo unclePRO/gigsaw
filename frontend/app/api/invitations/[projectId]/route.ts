@@ -65,6 +65,9 @@ export async function PATCH(
 
         // Recalculate totals
         project.allocatedTotal = project.workPackages.reduce((s, w) => s + (w.allocatedPrice || 0), 0);
+        if (project.allocatedTotal > project.totalBudget) {
+          project.totalBudget = project.allocatedTotal;
+        }
         project.savings = Math.max(0, project.totalBudget - project.allocatedTotal);
 
         const allAccepted =
@@ -76,6 +79,7 @@ export async function PATCH(
         }
       } else {
         pkg.quotationStatus = 'declined';
+        pkg.inviteStatus = 'declined';
       }
 
       await project.save();

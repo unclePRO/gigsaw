@@ -20,22 +20,15 @@ import {
   Code2,
   TrendingUp,
 } from 'lucide-react';
-import MerchantDashboardPage from '@/app/dashboard/page';
-import FreelancerDashboardPage from '@/app/freelancer/dashboard/page';
+import { RenderWakeupBanner } from '@/components/ai/RenderWakeupBanner';
 
 export default function HomePage() {
   const { data: session } = useSession();
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('All');
 
-  // If logged in as Merchant, render the Project Dashboard directly
-  if (session?.user && (session.user as any).role === 'merchant') {
-    return <MerchantDashboardPage />;
-  }
-
-  // If logged in as Freelancer, render the Freelancer Workspace directly
-  if (session?.user && (session.user as any).role === 'freelancer') {
-    return <FreelancerDashboardPage />;
-  }
+  const user = session?.user as any;
+  const isMerchant = user?.role === 'merchant';
+  const isFreelancer = user?.role === 'freelancer';
 
   const popularPills = [
     'Web & App Development',
@@ -48,6 +41,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col w-full">
+      <RenderWakeupBanner />
       {/* Fullscreen Hero Section with Graduated Transparent Background Image */}
       <section className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center items-center overflow-hidden px-4 sm:px-6 lg:px-8 w-full">
         {/* Background Layer with Right-Side Visibility (~20%) & Multi-Stop Fade to Transparency */}
@@ -108,29 +102,71 @@ export default function HomePage() {
 
           {/* 2 Primary Clear Options: 'Hire Freelancers' and 'Find Work' */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link
-              href="/login?tab=register&role=merchant"
-              className="w-full sm:w-auto px-8 py-4 bg-cyan-500 hover:bg-cyan-600 active:scale-95 text-white font-bold rounded-2xl text-sm shadow-glow-cyan transition-all flex items-center justify-center gap-2 shadow-lg"
-            >
-              <Users className="w-4 h-4" />
-              <span>Hire Freelancers</span>
-              <ArrowRight className="w-4 h-4 ml-0.5" />
-            </Link>
+            {isMerchant ? (
+              <>
+                <Link
+                  href="/create"
+                  className="w-full sm:w-auto px-8 py-4 bg-cyan-500 hover:bg-cyan-600 active:scale-95 text-white font-bold rounded-2xl text-sm shadow-glow-cyan transition-all flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Launch New Project</span>
+                  <ArrowRight className="w-4 h-4 ml-0.5" />
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="w-full sm:w-auto px-8 py-4 bg-white/90 dark:bg-slate-900/90 hover:bg-white dark:hover:bg-slate-900 backdrop-blur-sm border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Layers className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                  <span>Merchant Dashboard</span>
+                </Link>
+              </>
+            ) : isFreelancer ? (
+              <>
+                <Link
+                  href="/freelancer/dashboard"
+                  className="w-full sm:w-auto px-8 py-4 bg-cyan-500 hover:bg-cyan-600 active:scale-95 text-white font-bold rounded-2xl text-sm shadow-glow-cyan transition-all flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <Briefcase className="w-4 h-4" />
+                  <span>My Gigs Hub</span>
+                  <ArrowRight className="w-4 h-4 ml-0.5" />
+                </Link>
+                <Link
+                  href="/freelancer/invitations"
+                  className="w-full sm:w-auto px-8 py-4 bg-white/90 dark:bg-slate-900/90 hover:bg-white dark:hover:bg-slate-900 backdrop-blur-sm border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Users className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                  <span>Client Invitations</span>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login?tab=register&role=merchant"
+                  className="w-full sm:w-auto px-8 py-4 bg-cyan-500 hover:bg-cyan-600 active:scale-95 text-white font-bold rounded-2xl text-sm shadow-glow-cyan transition-all flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Hire Freelancers</span>
+                  <ArrowRight className="w-4 h-4 ml-0.5" />
+                </Link>
 
-            <Link
-              href="/login?tab=register&role=freelancer"
-              className="w-full sm:w-auto px-8 py-4 bg-white/90 dark:bg-slate-900/90 hover:bg-white dark:hover:bg-slate-900 backdrop-blur-sm border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
-            >
-              <Briefcase className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-              <span>Find Work as a Specialist</span>
-            </Link>
+                <Link
+                  href="/login?tab=register&role=freelancer"
+                  className="w-full sm:w-auto px-8 py-4 bg-white/90 dark:bg-slate-900/90 hover:bg-white dark:hover:bg-slate-900 backdrop-blur-sm border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Briefcase className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                  <span>Find Work as a Specialist</span>
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
         {/* Scroll Down Indicator */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 text-[11px] font-semibold tracking-wider uppercase animate-bounce pointer-events-none select-none">
-          <span>Scroll to explore</span>
-          <ChevronDown className="w-4 h-4" />
+        <div className="absolute bottom-6 inset-x-0 z-10 flex justify-center pointer-events-none select-none">
+          <div className="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 text-[11px] font-semibold tracking-wider uppercase animate-bounce">
+            <span>Scroll to explore</span>
+            <ChevronDown className="w-4 h-4" />
+          </div>
         </div>
       </section>
 

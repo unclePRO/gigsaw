@@ -154,13 +154,28 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         description="AI analysis and recommendation service supporting merchant conversational creation, freelancer matching, and project chat room facilitation.",
     )
+    
+    settings = get_settings()
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_origins=settings.cors_origins if settings.cors_origins != ["*"] else ["*"],
+        allow_origin_regex=".*",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Root probe routes for hosting platforms (Render, Railway, Fly.io)
+    @app.get("/", tags=["health"], summary="Root status check")
+    @app.get("/health", tags=["health"], summary="Cloud probe")
+    async def root_health():
+        return {
+            "status": "ok",
+            "service": "gigsaw-ai",
+            "provider": settings.ai_provider,
+            "message": "GigSaw AI Intelligence Service is running"
+        }
+
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(projects.router, prefix="/api/v1")
     app.include_router(scoping.router, prefix="/api/v1")

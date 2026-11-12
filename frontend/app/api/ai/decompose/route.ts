@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { UserModel } from '@/models/User';
 import { WorkPackage, ProjectProposal, IAiAnalysis } from '@/types';
 import { aiClient } from '@/lib/aiClient';
+import { normalizePackageBudgets } from '@/lib/budget';
 
 export const dynamic = 'force-dynamic';
 
@@ -227,6 +228,7 @@ export async function POST(req: NextRequest) {
           });
         }
 
+        normalizePackageBudgets(convertedPackages, budget);
         const allocatedTotal = convertedPackages.reduce((s, p) => s + p.allocatedPrice, 0);
 
         aiPackages = convertedPackages;
@@ -420,6 +422,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    normalizePackageBudgets(packages, budget);
     const allocatedTotal = packages.reduce((s, p) => s + p.allocatedPrice, 0);
 
     const fallbackAnalysis: IAiAnalysis = {
