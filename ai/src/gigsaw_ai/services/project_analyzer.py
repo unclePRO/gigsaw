@@ -4,26 +4,12 @@ import re
 
 from gigsaw_ai.llm.gemini_client import GeminiClient
 from gigsaw_ai.schemas.projects import ProjectAnalysis, ProjectAnalyzeRequest
-
-SERVICE_ALIASES = {
-    "website development": ("website", "web site", "landing page", "web app"),
-    "logo and branding": ("logo", "brand", "branding", "identity"),
-    "graphic design": ("graphic design", "flyer", "poster", "signage"),
-    "social media creatives": ("banner", "creative", "instagram post", "social post", "reel"),
-    "food photography": ("food photo", "food photography", "photography", "photoshoot"),
-    "digital menu design": ("digital menu", "menu design", "menu"),
-    "social media management": ("social media management", "manage social", "community management", "content calendar"),
-    "digital marketing": ("digital marketing", "marketing", "advertising", "ads", "campaign"),
-}
+from gigsaw_ai.services.service_registry import SERVICE_ALIASES, canonicalize_service, detect_services_from_text
 
 
 def canonical_service_category(value: str) -> str:
     """Map Gemini/backend wording to the catalogue's stable category keys."""
-    candidate = value.strip().lower()
-    for category, aliases in SERVICE_ALIASES.items():
-        if candidate == category or any(alias in candidate for alias in aliases):
-            return category
-    return candidate
+    return canonicalize_service(value)
 
 
 def canonical_service_categories(values: list[str]) -> list[str]:
@@ -42,7 +28,9 @@ class ProjectAnalyzer:
     @staticmethod
     def _demo_analysis(request: ProjectAnalyzeRequest) -> ProjectAnalysis:
         text = request.customer_request.lower()
-        services = [category for category, aliases in SERVICE_ALIASES.items() if any(alias in text for alias in aliases)]
+        services = detect_services_from_text(text) or [
+            category for category, aliases in SERVICE_ALIASES.items() if any(alias in text for alias in aliases)
+        ]
         if not services:
             services = ["graphic design"]
         # A narrow mention of social content generally implies launch management only when explicitly asked.

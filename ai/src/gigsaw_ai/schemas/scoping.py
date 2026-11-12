@@ -16,6 +16,25 @@ class ChatMessage(SchemaModel):
     timestamp: str | None = None
 
 
+class ScopingRequirementsState(SchemaModel):
+    """Structured conversation memory separating raw intent, confirmed answers, and AI suggestions."""
+
+    original_request: str = ""
+    ai_interpretation: str = ""
+    detected_services: list[str] = Field(default_factory=list)
+    merchant_answers: dict[str, str] = Field(default_factory=dict)
+    ai_inferred_info: dict[str, str] = Field(default_factory=dict)
+    ai_suggested_specs: dict[str, str] = Field(default_factory=dict)
+    merchant_confirmed_specs: dict[str, str] = Field(default_factory=dict)
+    asked_questions: list[str] = Field(default_factory=list)
+    missing_requirements: list[str] = Field(default_factory=list)
+    optional_refinements: list[str] = Field(default_factory=list)
+    service_readiness: dict[str, Literal["needs_info", "ready_for_matching"]] = Field(default_factory=dict)
+    contradictions_or_changes: list[str] = Field(default_factory=list)
+    awaiting_confirmation: bool = False
+    merchant_confirmed: bool = False
+
+
 class ProjectScopingChatRequest(SchemaModel):
     initial_goal: str = Field(min_length=2, description="Merchant's high-level goal from Step 1")
     messages: list[ChatMessage] = Field(default_factory=list, description="Recent conversation turns")
@@ -23,6 +42,7 @@ class ProjectScopingChatRequest(SchemaModel):
     currency: str = "USD"
     project_name: str | None = None
     extracted_spec: dict[str, str] = Field(default_factory=dict)
+    requirements_state: ScopingRequirementsState | None = None
 
 
 class ProjectScopingChatResponse(SchemaModel):
@@ -38,6 +58,7 @@ class ProjectScopingChatResponse(SchemaModel):
     is_ready_to_finalize: bool = False
     ready_for_decomposition: bool = False
     recommended_action: Literal["continue_asking", "ready_to_finalize"] = "continue_asking"
+    requirements_state: ScopingRequirementsState | None = None
 
 
 class ProjectScopingTitleRequest(SchemaModel):
@@ -67,6 +88,7 @@ class ProjectScopingFinalizeRequest(SchemaModel):
     currency: str = "USD"
     project_name: str | None = None
     auto_decompose: bool = True
+    requirements_state: ScopingRequirementsState | None = None
 
 
 class ProjectScopingFinalizeResponse(SchemaModel):
@@ -80,3 +102,4 @@ class ProjectScopingFinalizeResponse(SchemaModel):
     additional_details: list[str] = Field(default_factory=list)
     analysis_result: ProjectAnalyzeResponse | None = None
     freelancer_matches: list[WorkPackageFreelancerMatch] = Field(default_factory=list)
+    requirements_state: ScopingRequirementsState | None = None

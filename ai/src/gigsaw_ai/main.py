@@ -33,6 +33,7 @@ from gigsaw_ai.services.budget_planner import BudgetPlanner
 from gigsaw_ai.services.counteroffer_assistant import CounterofferAssistant
 from gigsaw_ai.services.dependency_planner import DependencyPlanner
 from gigsaw_ai.services.freelancer_matcher import FreelancerMatcher
+from gigsaw_ai.services.matching_feedback import MatchingFeedbackTracker
 from gigsaw_ai.services.invitation_assistant import InvitationAssistant
 from gigsaw_ai.services.invoice_assistant import InvoiceAssistant
 from gigsaw_ai.services.project_analyzer import ProjectAnalyzer
@@ -61,6 +62,7 @@ class ApplicationContainer:
     project_chat_room_assistant: ProjectChatRoomAssistant
     invitation_assistant: InvitationAssistant
     database_status: dict[str, str]
+    matching_feedback_tracker: MatchingFeedbackTracker | None = None
     mongo: MongoDatabase | None = None
 
     async def close(self) -> None:
@@ -110,6 +112,8 @@ async def build_container(settings: Settings) -> ApplicationContainer:
     )
     project_chat_room_assistant = ProjectChatRoomAssistant(llm=llm)
     invitation_assistant = InvitationAssistant(service_repository=service_repository, llm=llm)
+    feedback_collection = mongo.db["matching_feedback"] if (mongo is not None and mongo.db is not None) else None
+    matching_feedback_tracker = MatchingFeedbackTracker(collection=feedback_collection)
 
     return ApplicationContainer(
         settings=settings,
@@ -126,6 +130,7 @@ async def build_container(settings: Settings) -> ApplicationContainer:
         project_chat_room_assistant=project_chat_room_assistant,
         invitation_assistant=invitation_assistant,
         database_status=status,
+        matching_feedback_tracker=matching_feedback_tracker,
         mongo=mongo,
     )
 

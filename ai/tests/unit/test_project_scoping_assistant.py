@@ -342,3 +342,115 @@ def test_project_scoping_finalize_refines_chat_intent_and_passes_full_brief_to_m
     assert len(captured_briefs) == 2
     assert all("Next.js + Stripe subscriptions" in brief for brief in captured_briefs)
     assert all("Exclude native mobile app in Phase 1" in brief for brief in captured_briefs)
+
+
+def test_scoping_chat_tracks_state_non_tech_specs_contradictions_and_readiness(container):
+    assistant = _make_gemini_assistant(
+        container,
+        [
+            _GeminiScopingChatOutput(
+                project_name="Copper Cup Cafe",
+                updated_budget=Decimal("2000"),
+                currency="USD",
+                refined_goal="Launch website, logo, food photography, and Instagram banners for Copper Cup Cafe.",
+                reply="Exciting launch! To start, which city or neighborhood is the cafe in for the food photoshoot, and what website pages do you need?",
+                clarifying_question="Which city or neighborhood is the cafe in for the food photoshoot, and what website pages do you need?",
+                suggested_replies=["Austin, TX - Menu & Reservations", "Chicago - Online Ordering", "Remote only"],
+                detected_services=["website development", "logo and branding", "food photography", "social media creatives"],
+                question_priority="essential",
+                asked_topic="location_and_website_scope",
+                service_readiness=[
+                    _SpecAttribute(key="website development", value="needs_info"),
+                    _SpecAttribute(key="food photography", value="needs_info"),
+                ],
+                missing_essential_requirements=["photoshoot location", "website pages"],
+                completeness_score=0.35,
+                is_ready_to_finalize=False,
+            ),
+            _GeminiScopingChatOutput(
+                project_name="Copper Cup Cafe",
+                updated_budget=Decimal("2400"),
+                currency="USD",
+                budget_changed=True,
+                refined_goal="Create an e-commerce coffee website, logo, and 20-dish food photoshoot in Austin within 3 weeks.",
+                reply="Got it! Should the food photos and menu designs be used mainly online, printed in-store, or both?",
+                clarifying_question="Should the food photos and menu designs be used mainly online, printed in-store, or both?",
+                suggested_replies=["Both online and print", "Online only", "No preference, specialist can advise"],
+                detected_services=["website development", "logo and branding", "food photography"],
+                question_priority="quotation",
+                asked_topic="usage_context",
+                extracted_spec=[
+                    _SpecAttribute(key="location", value="Austin, TX"),
+                    _SpecAttribute(key="website_scope", value="E-commerce online ordering + menu"),
+                ],
+                merchant_confirmed_specs=[
+                    _SpecAttribute(key="location", value="Austin, TX"),
+                    _SpecAttribute(key="website_scope", value="E-commerce online ordering + menu"),
+                ],
+                ai_suggested_specs=[
+                    _SpecAttribute(key="web_media_format", value="Web-optimized WebP/JPEG plus responsive mobile checkout"),
+                ],
+                contradictions_or_changes=[
+                    "Scope updated from basic website to e-commerce ordering; removed social media banners; budget increased to $2400."
+                ],
+                service_readiness=[
+                    _SpecAttribute(key="website development", value="ready_for_matching"),
+                    _SpecAttribute(key="logo and branding", value="ready_for_matching"),
+                    _SpecAttribute(key="food photography", value="ready_for_matching"),
+                ],
+                missing_essential_requirements=[],
+                missing_optional_requirements=["preferred brand colors"],
+                completeness_score=0.82,
+                is_ready_to_finalize=True,
+                ready_for_decomposition=True,
+                recommended_action="ready_to_finalize",
+            ),
+        ],
+    )
+
+    turn1 = asyncio.run(
+        assistant.chat(
+            ProjectScopingChatRequest(
+                initial_goal="I am opening a cafe. Need website, logo, food photography and Instagram banners. Budget $2000.",
+                messages=[],
+                current_budget=Decimal("2000"),
+            )
+        )
+    )
+    assert not turn1.is_ready_to_finalize
+    assert turn1.requirements_state is not None
+    assert turn1.requirements_state.original_request.startswith("I am opening a cafe")
+    assert "website development" in turn1.requirements_state.detected_services
+    assert "food photography" in turn1.requirements_state.detected_services
+    assert turn1.clarifying_question in turn1.requirements_state.asked_questions
+
+    # Verify non-blocking optional preference still transitions to confirmation review when essentials are met
+    turn2 = asyncio.run(
+        assistant.chat(
+            ProjectScopingChatRequest(
+                initial_goal="I am opening a cafe. Need website, logo, food photography and Instagram banners. Budget $2000.",
+                messages=[
+                    ChatMessage(role="assistant", content=turn1.reply),
+                    ChatMessage(role="user", content="We are in Austin, TX. Actually skip banners and make the website e-commerce with budget $2400. Color? Not sure yet."),
+                ],
+                current_budget=turn1.current_budget,
+                project_name=turn1.project_name,
+                extracted_spec=turn1.extracted_spec,
+                requirements_state=turn1.requirements_state,
+            )
+        )
+    )
+    assert turn2.is_ready_to_finalize is True
+    assert turn2.budget_changed is True
+    assert turn2.current_budget == Decimal("2400")
+    assert turn2.requirements_state is not None
+    assert turn2.requirements_state.awaiting_confirmation is True
+    assert turn2.requirements_state.ai_suggested_specs["web_media_format"].startswith("Web-optimized")
+    assert turn2.requirements_state.contradictions_or_changes
+    assert "AI-Suggested Technical Specs" in turn2.reply
+
+    # Inspect the context sent on Turn 2 to confirm already_asked_questions & service_guidance were supplied
+    second_call_context = assistant.llm.generate_structured.call_args_list[1].args[1]
+    assert second_call_context["already_asked_questions"] == [turn1.clarifying_question]
+    assert "food photography" in second_call_context["service_guidance"]["onsite_services"]
+
