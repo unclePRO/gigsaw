@@ -130,9 +130,11 @@ export default function HomePage() {
         </div>
 
         {/* Scroll Down Indicator */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 text-[11px] font-semibold tracking-wider uppercase animate-bounce pointer-events-none select-none">
-          <span>Scroll to explore</span>
-          <ChevronDown className="w-4 h-4" />
+        <div className="absolute bottom-6 inset-x-0 z-10 flex justify-center pointer-events-none select-none">
+          <div className="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 text-[11px] font-semibold tracking-wider uppercase animate-bounce">
+            <span>Scroll to explore</span>
+            <ChevronDown className="w-4 h-4" />
+          </div>
         </div>
       </section>
 

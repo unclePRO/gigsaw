@@ -419,13 +419,12 @@ export default function MerchantProjectWorkspacePage() {
     if (!project || isDecidingCounter) return;
     setIsDecidingCounter(true);
     try {
-      const res = await fetch('/api/quotations', {
+      const res = await fetch(`/api/invitations/${(project as any)._id || project.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          projectId: (project as any)._id || project.id,
+          action: decision === 'accept' ? 'accept_counteroffer' : 'decline_counteroffer',
           packageId,
-          decision,
         }),
       });
       const data = await res.json();
@@ -1166,7 +1165,13 @@ export default function MerchantProjectWorkspacePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {project.workPackages.map((wp) => {
                 const isAccepted = wp.inviteStatus === 'accepted';
-                const isDeclined = wp.inviteStatus === 'declined';
+                const isDeclined = wp.inviteStatus === 'declined' || wp.quotationStatus === 'declined';
+                const hasCounteroffer = wp.quotationStatus === 'counteroffer';
+                // Only allow finding someone else if:
+                // 1) The freelancer rejected the invite (isDeclined), OR
+                // 2) Freelancer submitted a counteroffer the merchant wants to reject/replace (hasCounteroffer)
+                // NEVER when the invite was accepted or project is funded/in-progress.
+                const canFindSomeoneElse = (isDeclined || hasCounteroffer) && !isAccepted && wp.status !== 'Completed';
                 const isSwapping = swappingPackageId === wp.id;
 
                 return (
@@ -1237,8 +1242,8 @@ export default function MerchantProjectWorkspacePage() {
                       </span>
                     </div>
 
-                    {/* Action Bar: Swap Specialist & Chat */}
-                    <div className="pt-2 flex items-center justify-between gap-2">
+                    {/* Action Bar: Chat & (Only if rejected or counteroffer) Find Someone Else */}
+                    <div className="pt-2 flex items-center justify-between gap-2 flex-wrap">
                       <button
                         type="button"
                         onClick={() => setActiveTab('chat')}
@@ -1248,30 +1253,32 @@ export default function MerchantProjectWorkspacePage() {
                         <span>Chat with Freelancer</span>
                       </button>
 
-                      {/* Find Someone Else Button */}
-                      <button
-                        type="button"
-                        disabled={isSwapping}
-                        onClick={() => handleSwapSpecialist(wp)}
-                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          isDeclined
-                            ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs'
-                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
-                        }`}
-                        title="Replace this freelancer with another talent"
-                      >
-                        {isSwapping ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#168C80]" />
-                            <span>Swapping...</span>
-                          </>
-                        ) : (
-                          <>
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            <span>{isDeclined ? 'Find Alternative' : 'Find Someone Else'}</span>
-                          </>
-                        )}
-                      </button>
+                      {/* Find Someone Else Button - ONLY when freelancer declined or counteroffer received/rejected */}
+                      {canFindSomeoneElse && (
+                        <button
+                          type="button"
+                          disabled={isSwapping}
+                          onClick={() => handleSwapSpecialist(wp)}
+                          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            isDeclined
+                              ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs'
+                              : 'bg-amber-500 hover:bg-amber-600 text-white shadow-xs'
+                          }`}
+                          title="Replace this freelancer with an alternative talent"
+                        >
+                          {isSwapping ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                              <span>Swapping...</span>
+                            </>
+                          ) : (
+                            <>
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>{isDeclined ? 'Find Alternative' : 'Replace Freelancer'}</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

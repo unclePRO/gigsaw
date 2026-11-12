@@ -76,6 +76,7 @@ export async function PATCH(
         }
       } else {
         pkg.quotationStatus = 'declined';
+        pkg.inviteStatus = 'declined';
       }
 
       await project.save();
