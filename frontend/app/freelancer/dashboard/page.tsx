@@ -5,25 +5,14 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  FolderOpen,
+  Briefcase,
   CheckCircle2,
   Clock,
-  ExternalLink,
-  MessageSquare,
-  ShieldCheck,
   RefreshCw,
-  PlusCircle,
-  Briefcase,
-  Layers,
   ArrowRight,
-  TrendingUp,
-  DollarSign,
-  AlertCircle,
-  AlertTriangle,
   Star,
   Award,
-  ChevronRight,
-  Sparkles,
+  Search,
 } from 'lucide-react';
 import { WorkPackage, ProjectProposal } from '@/types';
 
@@ -34,6 +23,7 @@ export default function FreelancerDashboardPage() {
   const [projects, setProjects] = useState<ProjectProposal[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -107,125 +97,99 @@ export default function FreelancerDashboardPage() {
     (g) => g.pkg.status !== 'Completed' && g.pkg.status !== 'Cancelled' && g.project.status !== 'cancelled'
   ).length;
   const completedGigsCount = allAcceptedGigs.filter((g) => g.pkg.status === 'Completed').length;
-  const totalContractEarnings = allAcceptedGigs.reduce((acc, g) => acc + (g.pkg.allocatedPrice || 0), 0);
 
-  // Filtered Gigs
+  // Filtered Gigs with search support
   const filteredGigs = allAcceptedGigs.filter((gig) => {
+    const query = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      gig.project.projectName?.toLowerCase().includes(query) ||
+      gig.pkg.title?.toLowerCase().includes(query) ||
+      gig.pkg.description?.toLowerCase().includes(query) ||
+      gig.project.merchantName?.toLowerCase().includes(query) ||
+      gig.pkg.category?.toLowerCase().includes(query);
+
     const isCompleted = gig.pkg.status === 'Completed';
     const isActive =
       gig.pkg.status !== 'Completed' &&
       gig.pkg.status !== 'Cancelled' &&
       gig.project.status !== 'cancelled';
 
-    if (statusFilter === 'active') return isActive;
-    if (statusFilter === 'completed') return isCompleted;
-    return true;
+    if (statusFilter === 'active') return matchesSearch && isActive;
+    if (statusFilter === 'completed') return matchesSearch && isCompleted;
+    return matchesSearch;
   });
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-[#168C80] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Loading freelancer dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'unauthenticated' || (session?.user as any)?.role !== 'freelancer') {
+    return null;
+  }
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
-      {/* Top Header Card */}
-      <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-              Freelancer Gigs Hub
-            </span>
-            <span className="text-xs font-semibold text-slate-400">
-              {totalGigsCount} Total Contract{totalGigsCount !== 1 ? 's' : ''}
-            </span>
-          </div>
-
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
-            My Client Projects & Gigs
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Select any project workspace to submit deliverables, track milestone progress, and collaborate with clients.
-          </p>
+      {/* Filter and Search Bar (matching merchant dashboard layout) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#1B3B39] p-3.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 transition-colors">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            placeholder="Search gigs by project, task, or client..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          />
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          {(['all', 'active', 'completed'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setStatusFilter(tab)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap cursor-pointer ${
+                statusFilter === tab
+                  ? 'bg-cyan-500 text-white shadow-sm'
+                  : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              {tab === 'all'
+                ? `All (${totalGigsCount})`
+                : tab === 'active'
+                ? `Active (${activeGigsCount})`
+                : `Completed (${completedGigsCount})`}
+            </button>
+          ))}
+
           {pendingInvitesCount > 0 && (
             <Link
               href="/freelancer/invitations"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-xs transition-all whitespace-nowrap shrink-0"
             >
-              <span>Invitations</span>
-              <span className="px-1.5 py-0.2 bg-white text-amber-600 rounded-full text-[10px] font-bold">
-                {pendingInvitesCount}
-              </span>
+              <Award className="w-3.5 h-3.5" />
+              <span>Invites ({pendingInvitesCount})</span>
             </Link>
           )}
 
           <button
             onClick={fetchProjects}
-            className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
             title="Refresh"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* Metrics Banner */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Workspaces</span>
-          <div className="text-xl font-black text-cyan-600 dark:text-cyan-400">
-            {activeGigsCount}
-          </div>
-          <span className="text-[11px] text-slate-400">In execution</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed Milestones</span>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-            {completedGigsCount}
-          </div>
-          <span className="text-[11px] text-slate-400">Accepted by clients</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Contract Value</span>
-          <div className="text-xl font-black text-slate-900 dark:text-white">
-            ${totalContractEarnings.toLocaleString()}
-          </div>
-          <span className="text-[11px] text-slate-400">Total Allocated Budget</span>
-        </div>
-
-        <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 space-y-1 transition-colors">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Invites</span>
-          <div className="text-xl font-black text-amber-500">
-            {pendingInvitesCount}
-          </div>
-          <Link
-            href="/freelancer/invitations"
-            className="text-[11px] text-cyan-600 dark:text-cyan-400 hover:underline font-bold inline-flex items-center gap-1"
-          >
-            <span>Review offers</span>
-            <ChevronRight className="w-3 h-3" />
-          </Link>
-        </div>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-3">
-        {(['all', 'active', 'completed'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setStatusFilter(tab)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer ${
-              statusFilter === tab
-                ? 'bg-slate-900 dark:bg-[#32B6A5] text-white dark:text-[#102B2B] shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#142F2E]'
-            }`}
-          >
-            {tab === 'all' ? `All Gigs (${totalGigsCount})` : tab === 'active' ? `Active (${activeGigsCount})` : `Completed (${completedGigsCount})`}
-          </button>
-        ))}
-      </div>
-
-      {/* Gigs List */}
+      {/* Gigs List & Dynamic Tiles */}
       {loading ? (
         <div className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-16 text-center text-slate-400 text-xs">
           <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-500" />
@@ -238,10 +202,12 @@ export default function FreelancerDashboardPage() {
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              No gigs match this filter
+              {searchQuery ? 'No matching gigs found' : 'No active gigs yet'}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-              {pendingInvitesCount > 0
+              {searchQuery
+                ? 'Try adjusting your search query or filter settings.'
+                : pendingInvitesCount > 0
                 ? `You have ${pendingInvitesCount} pending client invitation(s) waiting for your review!`
                 : 'Check back when clients select your profile for milestones.'}
             </p>
@@ -257,7 +223,7 @@ export default function FreelancerDashboardPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
           {filteredGigs.map(({ project: proj, pkg }) => {
             const pId = (proj as any)._id || proj.id;
             const isCompleted = pkg.status === 'Completed';
@@ -268,101 +234,115 @@ export default function FreelancerDashboardPage() {
             return (
               <div
                 key={`${pId}-${pkg.id}`}
-                className="bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm"
+                onClick={() => router.push(`/freelancer/dashboard/${pId}?pkg=${pkg.id}`)}
+                className="group bg-white dark:bg-[#1B3B39] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 space-y-3 hover:border-[#168C80] dark:hover:border-[#32B6A5] hover:shadow-lg transition-all duration-300 ease-out cursor-pointer flex flex-col justify-between"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                          isProjectCancelled
-                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
-                            : isCompleted
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                            : isRevision
-                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                            : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
-                        }`}
-                      >
-                        {isProjectCancelled
-                          ? 'Project Cancelled'
+                {/* Top Meta Row: Status Pill, Category Badge & Allocated Fee */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                        isProjectCancelled
+                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
                           : isCompleted
-                          ? 'Completed'
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                           : isRevision
-                          ? 'Revision Requested'
-                          : 'In Execution'}
-                      </span>
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                        {pkg.category}
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        Client: <strong className="text-slate-700 dark:text-slate-300">{proj.merchantName}</strong>
-                      </span>
-                    </div>
-
-                    <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                      {pkg.title}
-                    </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 max-w-2xl">
-                      Project: {proj.projectName} &bull; {pkg.description}
-                    </p>
+                          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                          : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+                      }`}
+                    >
+                      {isProjectCancelled
+                        ? 'Cancelled'
+                        : isCompleted
+                        ? 'Completed'
+                        : isRevision
+                        ? 'Revision'
+                        : 'In Execution'}
+                    </span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      {pkg.category}
+                    </span>
                   </div>
 
-                  {/* Open Workspace Action */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Link
-                      href={`/freelancer/dashboard/${pId}?pkg=${pkg.id}`}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#168C80] hover:bg-[#126B64] dark:bg-[#32B6A5] dark:hover:bg-[#168C80] text-white dark:text-[#102B2B] dark:hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
-                    >
-                      <span>Open Workspace</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                  {/* Milestone Fee */}
+                  <div className="text-right shrink-0">
+                    <span className="text-xs font-black text-[#10413E] dark:text-[#F0FAF8]">
+                      ${pkg.allocatedPrice?.toLocaleString()}
+                    </span>
                   </div>
                 </div>
 
-                {/* Milestone Deliverables & Fee Bar */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-850 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mr-1.5">
-                        Fee:
-                      </span>
-                      <strong className="text-slate-900 dark:text-white font-bold">
-                        ${pkg.allocatedPrice?.toLocaleString()}
-                      </strong>
-                    </div>
+                {/* Main Title Area: Project Title is Prominent (Interchanged!) */}
+                <div className="space-y-1">
+                  <h2 className="text-sm font-black text-slate-900 dark:text-white tracking-tight line-clamp-1 group-hover:line-clamp-2 transition-all">
+                    {proj.projectName}
+                  </h2>
 
-                    <div>
-                      <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mr-1.5">
-                        Turnaround:
-                      </span>
-                      <strong className="text-slate-700 dark:text-slate-300 font-semibold">
-                        {pkg.estimatedDays ? `~${pkg.estimatedDays} days` : 'Standard'}
-                      </strong>
-                    </div>
-
-                    {hasDeliverable && (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Deliverable submitted</span>
-                      </span>
-                    )}
-
-                    {pkg.reviewSubmitted && (
-                      <span className="text-amber-500 font-bold flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-900/40">
-                        <Star className="w-3 h-3 fill-amber-400" />
-                        <span>{pkg.reviewRating}.0 / 5.0 Reviewed</span>
-                      </span>
-                    )}
+                  {/* Freelancer's Role / Task (Interchanged!) */}
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#168C80] dark:text-[#32B6A5] truncate">
+                    <Briefcase className="w-3.5 h-3.5 shrink-0 text-[#168C80] dark:text-[#32B6A5]" />
+                    <span className="truncate">{pkg.title}</span>
                   </div>
 
-                  <span className="text-[11px] text-slate-400">
-                    {isCompleted
-                      ? 'Milestone Completed & Verified'
-                      : isProjectCancelled
-                      ? 'Milestone Closed'
-                      : 'Direct PayPal Milestone Payment'}
+                  {/* Client Name */}
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    Client: <strong className="text-slate-700 dark:text-slate-300 font-medium">{proj.merchantName}</strong>
+                  </p>
+                </div>
+
+                {/* Always-visible Compact Indicators */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1 font-medium">
+                    <Clock className="w-3 h-3 text-cyan-500" />
+                    <span>{pkg.estimatedDays ? `~${pkg.estimatedDays} days` : 'Standard'}</span>
                   </span>
+
+                  {hasDeliverable ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 text-[10px]">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Deliverable submitted</span>
+                    </span>
+                  ) : pkg.reviewSubmitted ? (
+                    <span className="text-amber-500 font-bold flex items-center gap-1 text-[10px]">
+                      <Star className="w-3 h-3 fill-amber-400" />
+                      <span>{pkg.reviewRating}.0 / 5.0</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 font-medium">Direct Escrow</span>
+                  )}
+
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#168C80] dark:group-hover:text-[#32B6A5] group-hover:translate-x-1 transition-all" />
+                </div>
+
+                {/* Dynamic Hover-Growing Drawer: Max Size on Hover */}
+                <div className="max-h-0 opacity-0 group-hover:max-h-56 group-hover:opacity-100 transition-all duration-300 ease-out overflow-hidden">
+                  <div className="pt-2.5 mt-1 border-t border-dashed border-slate-200 dark:border-slate-700 space-y-2.5">
+                    {pkg.description && (
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
+                        {pkg.description}
+                      </p>
+                    )}
+
+                    {pkg.deliverables && pkg.deliverables.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {pkg.deliverables.slice(0, 2).map((del, dIdx) => (
+                          <span
+                            key={dIdx}
+                            className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 truncate max-w-[220px]"
+                          >
+                            &bull; {del}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="pt-1">
+                      <span className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#168C80] hover:bg-[#126B64] dark:bg-[#32B6A5] dark:hover:bg-[#168C80] text-white dark:text-[#102B2B] dark:hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm">
+                        <span>Open Workspace</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
