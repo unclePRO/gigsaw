@@ -12,7 +12,7 @@ export default function FreelancerAssistantPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login?callbackUrl=/freelancer/assistant');
+      router.push('/login?callbackUrl=/freelancer/assistant&role=freelancer');
     } else if (status === 'authenticated') {
       const u = session?.user as any;
       if (u?.role === 'merchant') {

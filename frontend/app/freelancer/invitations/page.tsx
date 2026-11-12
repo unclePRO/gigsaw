@@ -90,7 +90,7 @@ export default function FreelancerInvitationsPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login?callbackUrl=/freelancer/invitations');
+      router.push('/login?callbackUrl=/freelancer/invitations&role=freelancer');
     } else if (status === 'authenticated') {
       const u = session?.user as any;
       if (u?.role === 'merchant') {
@@ -209,6 +209,10 @@ export default function FreelancerInvitationsPage() {
         <span>Loading invitations from MongoDB...</span>
       </div>
     );
+  }
+
+  if (status === 'unauthenticated' || (session?.user as any)?.role !== 'freelancer') {
+    return null;
   }
 
   return (

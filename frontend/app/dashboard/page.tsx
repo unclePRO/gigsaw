@@ -43,7 +43,7 @@ export default function MerchantDashboardPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login?callbackUrl=/dashboard');
+      router.push('/login?callbackUrl=/dashboard&role=merchant');
     } else if (status === 'authenticated' && (session?.user as any)?.role === 'freelancer') {
       router.push('/freelancer/dashboard');
     }
@@ -130,6 +130,23 @@ export default function MerchantDashboardPage() {
     if (statusFilter === 'cancelled') return matchesSearch && isProjectCancelled;
     return matchesSearch;
   });
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-[#168C80] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Loading merchant dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'unauthenticated' || (session?.user as any)?.role !== 'merchant') {
+    return null;
+  }
+
+
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">

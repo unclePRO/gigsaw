@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import {
   Sparkles,
-  Mic,
-  MicOff,
   DollarSign,
   ArrowRight,
   ArrowLeft,
@@ -91,9 +89,7 @@ export default function CreateProjectPage() {
     setSelectedFreelancer,
   } = useProjectStore();
 
-  // Voice & Local UI State
-  const [isListening, setIsListening] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(true);
+  // Local UI State
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
@@ -183,20 +179,17 @@ export default function CreateProjectPage() {
   const chatInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Authentication guard
+  // Authentication & Role guard
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login?callbackUrl=/create');
+      router.push('/login?callbackUrl=/create&role=merchant');
+    } else if (status === 'authenticated') {
+      const u = session?.user as any;
+      if (u?.role === 'freelancer') {
+        router.push('/freelancer/dashboard');
+      }
     }
-  }, [status, router]);
-
-  // Speech Recognition check
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (!SR) setSpeechSupported(false);
-    }
-  }, []);
+  }, [status, session, router]);
 
   // Fetch real freelancers from MongoDB for replacement pool
   useEffect(() => {
@@ -264,6 +257,10 @@ export default function CreateProjectPage() {
     );
   }
 
+  if (status === 'unauthenticated') {
+    return null;
+  }
+
   // Guard: freelancers cannot launch projects
   if (session?.user && (session.user as any).role === 'freelancer') {
     return (
@@ -282,33 +279,6 @@ export default function CreateProjectPage() {
       </div>
     );
   }
-
-  // Voice Input Toggle
-  const toggleListening = () => {
-    if (isListening) {
-      setIsListening(false);
-      return;
-    }
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return;
-    try {
-      const recognition = new SR();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-      recognition.onstart = () => setIsListening(true);
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setPrompt(prompt ? `${prompt} ${transcript}` : transcript);
-        setIsListening(false);
-      };
-      recognition.onerror = () => setIsListening(false);
-      recognition.onend = () => setIsListening(false);
-      recognition.start();
-    } catch {
-      setIsListening(false);
-    }
-  };
 
   // STEP 1 -> STEP 2: Animated Transition to Conversational AI Gathering
   const handleInitialSubmit = () => {
@@ -675,7 +645,7 @@ export default function CreateProjectPage() {
                 What would you like to build?
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-                Describe your project in plain language. Our conversational AI will structure requirements and match top verified specialists.
+                Describe your project in plain language. Our conversational AI will structure requirements and match top verified freelancers.
               </p>
             </div>
 
@@ -700,33 +670,20 @@ export default function CreateProjectPage() {
                     }
                   }}
                   placeholder="e.g. I need a website for my coffee shop with brand identity, digital menu, and a local social media launch campaign..."
-                  className="w-full p-4 pr-14 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 leading-relaxed resize-none transition-colors"
+                  className="w-full p-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 leading-relaxed resize-none transition-colors"
                 />
 
-                {speechSupported && (
-                  <button
-                    type="button"
-                    onClick={toggleListening}
-                    className={`absolute right-3.5 top-3.5 p-2 rounded-xl transition-all ${
-                      isListening
-                        ? 'bg-rose-500 text-white animate-pulse'
-                        : 'text-slate-400 hover:text-cyan-500 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                    title={isListening ? 'Stop listening' : 'Voice Input'}
-                  >
-                    {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  </button>
-                )}
+                
               </div>
 
               {/* Budget Ceiling Input */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <div>
                   <label htmlFor="budget-input" className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                    Estimated Project Budget Ceiling (USD)
+                    Project Budget (USD)
                   </label>
                   <p className="text-[11px] text-slate-400">
-                    Calculated transparently across verified specialists in our service catalog.
+                    Will be shared smartly among team members with AI.
                   </p>
                 </div>
 
@@ -800,20 +757,6 @@ export default function CreateProjectPage() {
                   <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{prompt}</p>
                   <p className="text-[10px] text-slate-400">Budget: ${budget} USD &bull; Conversational AI Scoping</p>
                 </div>
-              </div>
-
-              {/* Scoping Completeness Progress Indicator */}
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Scope Clarity</span>
-                <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                  <div
-                    className="h-full bg-cyan-500 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.round(completenessScore * 100)}%` }}
-                  />
-                </div>
-                <span className="text-[10px] font-black text-cyan-600 dark:text-cyan-400">
-                  {Math.round(completenessScore * 100)}%
-                </span>
               </div>
 
               <button

@@ -112,12 +112,17 @@ function FreelancerProfileContent() {
     }
   };
 
-  // Authentication check
+  // Authentication & Role check
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login?callbackUrl=/freelancer/profile');
+      router.push('/login?callbackUrl=/freelancer/profile&role=freelancer');
+    } else if (status === 'authenticated') {
+      const u = session?.user as any;
+      if (u?.role === 'merchant') {
+        router.push('/dashboard');
+      }
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
   // Fetch current profile from MongoDB
   useEffect(() => {
@@ -307,6 +312,10 @@ function FreelancerProfileContent() {
         <span>Loading freelancer profile from MongoDB...</span>
       </div>
     );
+  }
+
+  if (status === 'unauthenticated' || (session?.user as any)?.role === 'merchant') {
+    return null;
   }
 
   return (

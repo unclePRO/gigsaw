@@ -37,7 +37,7 @@ export default function FreelancerDashboardPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login?callbackUrl=/freelancer/dashboard');
+      router.push('/login?callbackUrl=/freelancer/dashboard&role=freelancer');
     } else if (status === 'authenticated') {
       const u = session?.user as any;
       if (u?.role === 'merchant') {

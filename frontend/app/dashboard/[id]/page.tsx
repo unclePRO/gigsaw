@@ -219,7 +219,7 @@ export default function MerchantProjectWorkspacePage() {
   // Auth & role check
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push(`/login?callbackUrl=/dashboard/${projectId}`);
+      router.push(`/login?callbackUrl=/dashboard/${projectId}&role=merchant`);
     } else if (status === 'authenticated') {
       const user = session?.user as any;
       if (user?.role === 'freelancer') {
@@ -485,7 +485,7 @@ export default function MerchantProjectWorkspacePage() {
     );
   }, [project?.workPackages]);
 
-  if (loading) {
+  if (status === 'loading' || loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 space-y-6">
         <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
@@ -493,6 +493,10 @@ export default function MerchantProjectWorkspacePage() {
         <div className="h-96 bg-slate-100 dark:bg-[#1B3B39] rounded-2xl animate-pulse" />
       </div>
     );
+  }
+
+  if (status === 'unauthenticated' || (session?.user as any)?.role === 'freelancer') {
+    return null;
   }
 
   if (error || !project) {
@@ -524,16 +528,6 @@ export default function MerchantProjectWorkspacePage() {
       >
         {/* Sidebar Header: Project Brand & Collapse Toggle */}
         <div className="p-4 border-b border-[#D8E9E4] dark:border-[#345451] flex items-center justify-between gap-2">
-          {!isSidebarCollapsed && (
-            <div className="min-w-0 flex-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#168C80] dark:text-[#73D8C7] block truncate">
-                Project Workspace
-              </span>
-              <h2 className="text-xs font-black text-[#10413E] dark:text-[#F0FAF8] truncate" title={project.projectName}>
-                {project.projectName}
-              </h2>
-            </div>
-          )}
 
           <button
             type="button"

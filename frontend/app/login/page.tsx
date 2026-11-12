@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import {
   ArrowRight,
   AlertCircle,
@@ -27,6 +27,25 @@ function LoginFormContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') === 'register' ? 'register' : 'login';
   const initialRole = searchParams.get('role') === 'freelancer' ? 'freelancer' : 'merchant';
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      const user = session.user as any;
+      const callbackUrl = searchParams.get('callbackUrl');
+      if (callbackUrl && callbackUrl.startsWith('/')) {
+        router.replace(callbackUrl);
+      } else if (user.role === 'freelancer') {
+        if (!user.isProfileComplete) {
+          router.replace('/freelancer/profile?setup=required');
+        } else {
+          router.replace('/freelancer/dashboard');
+        }
+      } else {
+        router.replace('/dashboard');
+      }
+    }
+  }, [status, session, router, searchParams]);
 
   const [tab, setTab] = useState<'login' | 'register'>(initialTab);
   const [showPassword, setShowPassword] = useState(false);
@@ -41,6 +60,19 @@ function LoginFormContent() {
   const [role, setRole] = useState<UserRole>(initialRole);
   const [category, setCategory] = useState<FreelancerCategory>('dev');
   const [hourlyRate, setHourlyRate] = useState<number>(50);
+
+  if (status === 'loading' || status === 'authenticated') {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-teal-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {status === 'authenticated' ? 'Redirecting to your dashboard...' : 'Verifying session...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

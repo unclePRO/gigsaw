@@ -24,7 +24,7 @@ import { useTheme } from '@/components/providers/ThemeProvider';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { theme, toggleTheme } = useTheme();
   const [profileOpen, setProfileOpen] = useState(false);
   const [pendingInviteCount, setPendingInviteCount] = useState(0);

@@ -25,7 +25,19 @@ import FreelancerDashboardPage from '@/app/freelancer/dashboard/page';
 import { RenderWakeupBanner } from '@/components/ai/RenderWakeupBanner';
 
 export default function HomePage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+
+  // Show clean loading state while resolving NextAuth session to prevent flashing guest landing page
+  if (status === 'loading') {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-[#168C80] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Loading your workspace...</p>
+        </div>
+      </div>
+    );
+  }
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('All');
 
   // If logged in as Merchant, render the Project Dashboard directly

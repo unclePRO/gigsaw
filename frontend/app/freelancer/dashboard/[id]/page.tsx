@@ -92,7 +92,7 @@ export default function FreelancerGigWorkspacePage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push(`/login?callbackUrl=/freelancer/dashboard/${projectId}`);
+      router.push(`/login?callbackUrl=/freelancer/dashboard/${projectId}&role=freelancer`);
     } else if (status === 'authenticated') {
       const u = session?.user as any;
       if (u?.role === 'merchant') {
@@ -284,6 +284,10 @@ export default function FreelancerGigWorkspacePage() {
         <div className="h-96 bg-slate-100 dark:bg-[#1B3B39] rounded-2xl animate-pulse" />
       </div>
     );
+  }
+
+  if (status === 'unauthenticated' || (session?.user as any)?.role === 'merchant') {
+    return null;
   }
 
   if (error || !project || !matchingPkg) {
