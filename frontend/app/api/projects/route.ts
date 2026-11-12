@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ProjectModel } from '@/models/Project';
+import { normalizePackageBudgets } from '@/lib/budget';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,16 +83,24 @@ export async function POST(req: NextRequest) {
     const finalMerchantName = session?.user?.name || merchantName || 'Merchant';
     const finalMerchantEmail = (session?.user?.email || merchantEmail || 'merchant@example.com').toLowerCase();
 
+    const parsedBudget = Number(totalBudget) || 0;
+    let finalPackages = Array.isArray(workPackages) ? [...workPackages] : [];
+    if (parsedBudget > 0 && finalPackages.length > 0) {
+      finalPackages = normalizePackageBudgets(finalPackages, parsedBudget);
+    }
+    const finalAllocatedTotal = finalPackages.reduce((s: number, w: any) => s + (Number(w.allocatedPrice) || 0), 0);
+    const finalSavings = Math.max(0, parsedBudget - finalAllocatedTotal);
+
     const newProject = await ProjectModel.create({
       merchantId: finalMerchantId,
       merchantName: finalMerchantName,
       merchantEmail: finalMerchantEmail,
       projectName: projectName || 'New Launch Project',
       merchantPrompt,
-      totalBudget: Number(totalBudget),
-      allocatedTotal: Number(allocatedTotal) || workPackages.reduce((s: number, w: any) => s + (w.allocatedPrice || 0), 0),
-      savings: Number(savings) || 0,
-      workPackages,
+      totalBudget: parsedBudget || finalAllocatedTotal,
+      allocatedTotal: finalAllocatedTotal,
+      savings: finalSavings,
+      workPackages: finalPackages,
       status: body.status || 'ON_HOLD',
       paypalOrderId: paypalOrderId || undefined,
       aiAnalysis,

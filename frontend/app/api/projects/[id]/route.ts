@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ProjectModel } from '@/models/Project';
+import { normalizePackageBudgets } from '@/lib/budget';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,34 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Dynamic self-heal: if all freelancer invites are accepted, update to READY_TO_FUND
+    // Dynamic self-heal 1: Budget distribution normalization for projects awaiting funding
+    const targetBudget = Number(project.totalBudget) || 0;
+    const currentSum = (project.workPackages || []).reduce(
+      (s: number, w: any) => s + (Number(w.allocatedPrice) || 0),
+      0
+    );
+    if (
+      targetBudget > 0 &&
+      project.workPackages?.length > 0 &&
+      currentSum !== targetBudget &&
+      (project.status === 'draft' || project.status === 'ON_HOLD' || project.status === 'READY_TO_FUND' || !project.status)
+    ) {
+      normalizePackageBudgets(project.workPackages, targetBudget);
+      project.allocatedTotal = targetBudget;
+      project.savings = 0;
+      await ProjectModel.updateOne(
+        { _id: project._id },
+        {
+          $set: {
+            workPackages: project.workPackages,
+            allocatedTotal: targetBudget,
+            savings: 0,
+          },
+        }
+      );
+    }
+
+    // Dynamic self-heal 2: if all freelancer invites are accepted, update to READY_TO_FUND
     const allAccepted =
       project.workPackages?.length > 0 &&
       project.workPackages.every((w: any) => w.inviteStatus === 'accepted');

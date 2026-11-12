@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { WorkPackage } from '@/types';
+import { normalizePackageBudgets } from '@/lib/budget';
 import { FreelancerProfileHoverCard, FreelancerProfileData } from '@/components/ai/FreelancerProfileHoverCard';
 
 // Structured clarifying categories for the AI Project Manager
@@ -557,16 +558,19 @@ export default function CreateProjectPage() {
     setSaveError(null);
 
     try {
+      const targetBudget = budget > 0 ? budget : workPackages.reduce((s, w) => s + (w.allocatedPrice || 0), 0);
+      const normalizedPkgs = normalizePackageBudgets([...workPackages], targetBudget);
+
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectName: projectName || proposal?.projectName || `${prompt.slice(0, 30)} Project`,
           merchantPrompt: proposal?.merchantPrompt || aiAnalysis?.summary || prompt,
-          totalBudget: budget,
-          allocatedTotal: workPackages.reduce((s, w) => s + w.allocatedPrice, 0),
-          savings: Math.max(0, budget - workPackages.reduce((s, w) => s + w.allocatedPrice, 0)),
-          workPackages: workPackages.map((w) => ({
+          totalBudget: targetBudget,
+          allocatedTotal: normalizedPkgs.reduce((s, w) => s + (w.allocatedPrice || 0), 0),
+          savings: Math.max(0, targetBudget - normalizedPkgs.reduce((s, w) => s + (w.allocatedPrice || 0), 0)),
+          workPackages: normalizedPkgs.map((w) => ({
             ...w,
             inviteStatus: 'invited',
             status: 'Pending',

@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { ProjectModel } from '@/models/Project';
 import { UserModel } from '@/models/User';
 import { WorkPackage } from '@/types';
+import { normalizePackageBudgets } from '@/lib/budget';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +84,13 @@ export async function POST(req: NextRequest) {
     );
 
     const packagesToFund = acceptedPackages.length > 0 ? acceptedPackages : rawPackages;
+
+    // Ensure allocated prices strictly sum to totalBudget if all packages are being funded
+    const targetBudget = Number(targetProject?.totalBudget || totalBudget);
+    if (targetBudget > 0 && packagesToFund.length === rawPackages.length) {
+      normalizePackageBudgets(packagesToFund, targetBudget);
+    }
+
     const effectiveProjectName = targetProject?.projectName || projectName || 'Gigsaw Project';
 
     // Fetch PayPal payout emails from MongoDB users for each accepted freelancer

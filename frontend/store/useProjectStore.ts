@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { WorkPackage, ProjectProposal, IAiAnalysis } from '@/types';
+import { normalizePackageBudgets } from '@/lib/budget';
 
 export interface ChatMessage {
   role: 'ai' | 'user';
@@ -83,8 +84,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   setWorkPackages: (workPackages, extraMeta = {}) => {
-    const allocatedTotal = workPackages.reduce((sum, wp) => sum + (wp.allocatedPrice || 0), 0);
-    const budget = get().budget;
+    const budget = get().budget > 0 ? get().budget : (extraMeta.totalBudget && extraMeta.totalBudget > 0 ? extraMeta.totalBudget : 0);
+    const normalizedPackages = budget > 0 && workPackages.length > 0
+      ? normalizePackageBudgets([...workPackages], budget)
+      : workPackages;
+    const allocatedTotal = normalizedPackages.reduce((sum, wp) => sum + (wp.allocatedPrice || 0), 0);
     const prompt = get().prompt;
 
     const proposal: ProjectProposal = {
@@ -93,10 +97,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       merchantEmail: '',
       projectName: extraMeta.projectName || get().proposal?.projectName || 'New Launch Project',
       merchantPrompt: prompt,
-      totalBudget: budget,
+      totalBudget: budget || allocatedTotal,
       allocatedTotal,
-      savings: Math.max(0, budget - allocatedTotal),
-      workPackages,
+      savings: Math.max(0, (budget || allocatedTotal) - allocatedTotal),
+      workPackages: normalizedPackages,
       status: 'draft',
       createdAt: new Date().toISOString(),
       aiAnalysis: extraMeta.aiAnalysis || get().aiAnalysis || undefined,
@@ -105,7 +109,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       risks: extraMeta.risks || get().risks,
     };
 
-    set({ workPackages, proposal });
+    set({ workPackages: normalizedPackages, proposal });
   },
 
   updatePackagePrice: (packageId, newPrice) => {
