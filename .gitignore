@@ -42,6 +42,8 @@ pnpm-debug.log*
 # ==========================================
 # Backend (Python / FastAPI)
 # ==========================================
+storage/
+*/storage/
 __pycache__/
 */__pycache__/
 *.py[cod]
