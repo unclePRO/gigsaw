@@ -84,6 +84,7 @@ function LoginFormContent() {
         email: email.trim().toLowerCase(),
         password,
         redirect: false,
+        callbackUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
       });
 
       if (res?.error) {
@@ -106,6 +107,21 @@ function LoginFormContent() {
         router.refresh();
       }
     } catch (err: any) {
+      // Self-heal: check if session cookie was successfully written despite any client URL parsing error
+      try {
+        const sessionRes = await fetch('/api/auth/session');
+        const sessionData = await sessionRes.json();
+        const user = sessionData?.user;
+        if (user) {
+          if (user.role === 'freelancer') {
+            router.push(user.isProfileComplete ? '/freelancer/dashboard' : '/freelancer/profile?setup=required');
+          } else {
+            router.push('/dashboard');
+          }
+          router.refresh();
+          return;
+        }
+      } catch {}
       setError(err.message || 'Login failed.');
     } finally {
       setLoading(false);
@@ -152,6 +168,7 @@ function LoginFormContent() {
         email: email.trim().toLowerCase(),
         password,
         redirect: false,
+        callbackUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
       });
 
       if (!loginRes?.error) {

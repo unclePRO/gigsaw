@@ -66,22 +66,32 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async redirect({ url, baseUrl }) {
-      // If relative path, keep it relative so browser stays on current domain (Vercel, custom domain, or localhost)
-      if (url.startsWith('/')) {
-        return url;
+      // Determine canonical base URL
+      let effectiveBase = baseUrl || 'http://localhost:3000';
+      if (effectiveBase.includes('localhost') && process.env.VERCEL_URL) {
+        effectiveBase = `https://${process.env.VERCEL_URL}`;
       }
+      effectiveBase = effectiveBase.replace(/\/$/, '');
+
+      // 1. If relative URL, prepend canonical base URL (NextAuth requires absolute URL)
+      if (url.startsWith('/')) {
+        return `${effectiveBase}${url}`;
+      }
+
+      // 2. If it is already an absolute URL
       try {
         const parsed = new URL(url);
-        // If pointing to localhost while deployed or in browser, strip to relative path
-        if (parsed.hostname === 'localhost') {
-          return `${parsed.pathname}${parsed.search}`;
+        // If it points to localhost while deployed on Vercel, replace origin with effectiveBase
+        if (parsed.hostname === 'localhost' && process.env.VERCEL_URL) {
+          return `${effectiveBase}${parsed.pathname}${parsed.search}`;
         }
-        // If baseUrl exists and has same origin, allow it
-        if (baseUrl && parsed.origin === new URL(baseUrl).origin) {
+        // Allow same origin
+        if (parsed.origin === new URL(effectiveBase).origin) {
           return url;
         }
       } catch {}
-      return url.startsWith('/') ? url : '/login';
+
+      return effectiveBase;
     },
     async jwt({ token, user, trigger, session }) {
       if (user) {
