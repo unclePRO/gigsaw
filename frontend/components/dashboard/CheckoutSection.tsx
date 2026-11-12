@@ -37,17 +37,19 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
 
   const [{ options }, dispatch] = usePayPalScriptReducer();
 
-  // Ensure PayPal SDK script options strictly match multi-seller marketplace requirements
+  // Ensure PayPal SDK script options strictly match verified sandbox merchant requirements
   useEffect(() => {
-    const rawMerchantIds =
-      process.env.NEXT_PUBLIC_PAYPAL_MERCHANT_IDS || 'CPAVCGFAR2STW,K5DDYMC3HD53N';
+    const rawMerchantId =
+      process.env.NEXT_PUBLIC_PAYPAL_MERCHANT_ID ||
+      process.env.NEXT_PUBLIC_PAYPAL_MERCHANT_IDS?.split(',')[0]?.trim() ||
+      'CPAVCGFAR2STW';
     const clientId =
       process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ||
       'ATHuST02ZWliopS0gXnO6ZGroO6O0N6TxZUhQZMr553nOR76h-kYQE5TxPn5UJA8_UPG6tjkbXgAzA3V';
 
     if (
-      options['merchant-id'] !== '*' ||
-      options['data-merchant-id'] !== rawMerchantIds ||
+      options['merchant-id'] !== rawMerchantId ||
+      options['data-merchant-id'] !== rawMerchantId ||
       options.clientId !== clientId
     ) {
       dispatch({
@@ -57,10 +59,10 @@ export const CheckoutSection: React.FC<CheckoutSectionProps> = ({
           clientId,
           currency: 'USD',
           intent: 'capture',
-          'merchant-id': '*',
-          'data-merchant-id': rawMerchantIds,
-          dataMerchantId: rawMerchantIds,
-          merchantId: rawMerchantIds.split(',').map((s) => s.trim()).filter(Boolean),
+          'merchant-id': rawMerchantId,
+          'data-merchant-id': rawMerchantId,
+          dataMerchantId: rawMerchantId,
+          merchantId: [rawMerchantId],
         },
       });
     }

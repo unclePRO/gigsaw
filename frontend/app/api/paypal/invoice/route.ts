@@ -54,6 +54,13 @@ export async function POST(req: NextRequest) {
       ? project.workPackages.find((wp) => wp.id === packageId)
       : undefined;
 
+    const isProjectFunded =
+      project.status === 'FUNDED_IN_PROGRESS' ||
+      project.status === 'funded' ||
+      project.status === 'completed' ||
+      Boolean(project.paypalOrderId && project.status !== 'ON_HOLD' && project.status !== 'READY_TO_FUND');
+    const effectiveInvoiceStatus = isProjectFunded ? 'PAID' : 'PENDING';
+
     // Check if official PayPal invoice already exists
     if (targetPackage?.paypalInvoiceUrl) {
       return NextResponse.json({
@@ -61,7 +68,7 @@ export async function POST(req: NextRequest) {
         invoiceId: targetPackage.paypalInvoiceId,
         invoiceNumber: targetPackage.paypalInvoiceNumber,
         invoiceUrl: targetPackage.paypalInvoiceUrl,
-        status: targetPackage.paypalInvoiceStatus || 'PAID',
+        status: isProjectFunded ? (targetPackage.paypalInvoiceStatus || 'PAID') : 'PENDING',
         cached: true,
       });
     }
@@ -72,7 +79,7 @@ export async function POST(req: NextRequest) {
         invoiceId: project.paypalInvoiceId,
         invoiceNumber: project.paypalInvoiceNumber,
         invoiceUrl: project.paypalInvoiceUrl,
-        status: 'PAID',
+        status: effectiveInvoiceStatus,
         cached: true,
       });
     }
@@ -111,7 +118,7 @@ export async function POST(req: NextRequest) {
         targetPackage.paypalInvoiceId = mockInvoiceId;
         targetPackage.paypalInvoiceNumber = mockNumber;
         targetPackage.paypalInvoiceUrl = mockUrl;
-        targetPackage.paypalInvoiceStatus = 'PAID';
+        targetPackage.paypalInvoiceStatus = effectiveInvoiceStatus;
       } else {
         project.paypalInvoiceId = mockInvoiceId;
         project.paypalInvoiceNumber = mockNumber;
@@ -124,7 +131,7 @@ export async function POST(req: NextRequest) {
         invoiceId: mockInvoiceId,
         invoiceNumber: mockNumber,
         invoiceUrl: mockUrl,
-        status: 'PAID',
+        status: effectiveInvoiceStatus,
       });
     }
 
@@ -296,7 +303,7 @@ export async function POST(req: NextRequest) {
       targetPackage.paypalInvoiceId = invoiceId;
       targetPackage.paypalInvoiceNumber = invoiceNumber;
       targetPackage.paypalInvoiceUrl = invoiceUrl;
-      targetPackage.paypalInvoiceStatus = 'PAID';
+      targetPackage.paypalInvoiceStatus = effectiveInvoiceStatus;
     } else {
       project.paypalInvoiceId = invoiceId;
       project.paypalInvoiceNumber = invoiceNumber;
@@ -310,8 +317,8 @@ export async function POST(req: NextRequest) {
       invoiceId,
       invoiceNumber,
       invoiceUrl,
-      status: 'PAID',
-      message: 'Official PayPal invoice generated and marked as PAID.',
+      status: effectiveInvoiceStatus,
+      message: `Official PayPal invoice generated (Status: ${effectiveInvoiceStatus}).`,
     });
   } catch (err: any) {
     console.error('Unhandled error in /api/paypal/invoice:', err);

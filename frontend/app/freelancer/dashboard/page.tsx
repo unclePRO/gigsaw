@@ -230,6 +230,12 @@ export default function FreelancerDashboardPage() {
             const isProjectCancelled = proj.status === 'cancelled';
             const isRevision = pkg.status === 'Revision Requested';
             const hasDeliverable = Boolean(pkg.deliverableLink);
+            const isFunded =
+              proj.status === 'FUNDED_IN_PROGRESS' ||
+              proj.status === 'funded' ||
+              proj.status === 'completed' ||
+              Boolean(pkg.paypalCaptureId);
+            const isAwaitingPayment = proj.status === 'READY_TO_FUND';
 
             return (
               <div
@@ -248,7 +254,11 @@ export default function FreelancerDashboardPage() {
                           ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                           : isRevision
                           ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                          : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+                          : isFunded
+                          ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+                          : isAwaitingPayment
+                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                          : 'bg-[#E5F5F1] dark:bg-[#254542] text-[#168C80] dark:text-[#73D8C7] border-[#D8E9E4] dark:border-[#345451]'
                       }`}
                     >
                       {isProjectCancelled
@@ -257,7 +267,11 @@ export default function FreelancerDashboardPage() {
                         ? 'Completed'
                         : isRevision
                         ? 'Revision'
-                        : 'In Execution'}
+                        : isFunded
+                        ? 'In Execution'
+                        : isAwaitingPayment
+                        ? 'Awaiting Payment'
+                        : 'Awaiting Team'}
                     </span>
                     <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                       {pkg.category}
@@ -307,8 +321,12 @@ export default function FreelancerDashboardPage() {
                       <Star className="w-3 h-3 fill-amber-400" />
                       <span>{pkg.reviewRating}.0 / 5.0</span>
                     </span>
+                  ) : isFunded ? (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Escrow Funded</span>
+                  ) : isAwaitingPayment ? (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Awaiting Checkout</span>
                   ) : (
-                    <span className="text-[10px] text-slate-400 font-medium">Direct Escrow</span>
+                    <span className="text-[10px] text-slate-400 font-medium">Awaiting Team</span>
                   )}
 
                   <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#168C80] dark:group-hover:text-[#32B6A5] group-hover:translate-x-1 transition-all" />

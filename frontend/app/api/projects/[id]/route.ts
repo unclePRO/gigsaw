@@ -50,7 +50,21 @@ export async function GET(
       );
     }
 
-    // Dynamic self-heal 2: if all freelancer invites are accepted, update to READY_TO_FUND
+    // Dynamic self-heal 2: Ensure un-funded projects never have paypalInvoiceStatus as 'PAID'
+    if (project.status === 'draft' || project.status === 'ON_HOLD' || project.status === 'READY_TO_FUND' || !project.status) {
+      let invoiceFixed = false;
+      project.workPackages?.forEach((wp: any) => {
+        if (wp.paypalInvoiceStatus === 'PAID') {
+          wp.paypalInvoiceStatus = 'PENDING';
+          invoiceFixed = true;
+        }
+      });
+      if (invoiceFixed) {
+        await ProjectModel.updateOne({ _id: project._id }, { $set: { workPackages: project.workPackages } });
+      }
+    }
+
+    // Dynamic self-heal 3: if all freelancer invites are accepted, update to READY_TO_FUND
     const allAccepted =
       project.workPackages?.length > 0 &&
       project.workPackages.every((w: any) => w.inviteStatus === 'accepted');
