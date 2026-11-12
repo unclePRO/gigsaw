@@ -57,6 +57,7 @@ def _backend_user_to_freelancer(document: dict[str, Any]) -> Freelancer:
     return Freelancer(
         freelancer_id=str(document["_id"]),
         name=str(document.get("name") or "Unnamed freelancer"),
+        title=str(document.get("title") or "").strip(),
         skills=[str(skill) for skill in document.get("skills", []) if skill],
         service_categories=service_categories,
         experience_years=experience,
@@ -72,6 +73,19 @@ def _backend_user_to_freelancer(document: dict[str, Any]) -> Freelancer:
         completed_projects=completed,
         category=category or None,
         email=str(document.get("email") or "") if document.get("email") else None,
+        is_profile_complete=bool(document["isProfileComplete"]) if "isProfileComplete" in document else True,
+        remote_ok=bool(document.get("remoteOk", True)),
+        travel_radius_km=document.get("travelRadiusKm"),
+        negotiable_pricing=bool(document.get("negotiablePricing", False)),
+        active_project_count=int(document.get("activeProjectCount") or 0),
+        max_concurrent_projects=max(1, int(document.get("maxConcurrentProjects") or 3)),
+        available_from_days=max(0, int(document.get("availableFromDays") or 0)),
+        verified=bool(document.get("verified", False)),
+        response_rate=document.get("responseRate"),
+        on_time_rate=document.get("onTimeRate"),
+        cancellation_rate=document.get("cancellationRate"),
+        domain_experience_tags=[str(tag) for tag in document.get("domainTags", []) if tag],
+        rating_count=int(document.get("ratingCount") or 0),
     )
 
 
@@ -89,6 +103,7 @@ class InMemoryFreelancerRepository:
             freelancer
             for freelancer in self._items.values()
             if freelancer.availability
+            and freelancer.is_profile_complete
             and (
                 service_category is None
                 or service_category.lower() in {x.lower() for x in freelancer.service_categories}
@@ -119,7 +134,7 @@ class MongoFreelancerRepository:
         return Freelancer.model_validate(document) if document else None
 
     async def list_available(self, service_category: str | None = None) -> Sequence[Freelancer]:
-        query: dict = {"availability": True}
+        query: dict = {"availability": True, "is_profile_complete": {"$ne": False}}
         if service_category:
             query["service_categories"] = {"$regex": f"^{re.escape(service_category)}$", "$options": "i"}
         cursor = self.collection.find(query, {"_id": 0})
@@ -151,14 +166,18 @@ class MongoBackendUserRepository:
 
     async def ensure_indexes(self) -> None:
         # Non-unique only: no backend identity or data constraint is changed.
-        await self.collection.create_index([("role", 1), ("availability", 1), ("category", 1)])
+        await self.collection.create_index([("role", 1), ("availability", 1), ("isProfileComplete", 1), ("category", 1)])
 
     async def get(self, freelancer_id: str) -> Freelancer | None:
         document = await self.collection.find_one({"_id": _mongo_identifier(freelancer_id), "role": "freelancer"})
         return _backend_user_to_freelancer(document) if document else None
 
     async def list_available(self, service_category: str | None = None) -> Sequence[Freelancer]:
-        query: dict[str, Any] = {"role": "freelancer", "availability": "available"}
+        query: dict[str, Any] = {
+            "role": "freelancer",
+            "availability": "available",
+            "isProfileComplete": True,
+        }
         if service_category:
             cat_lower = service_category.lower()
             category_key = next((key for key, services in BACKEND_CATEGORY_SERVICES.items() if cat_lower in services), None)

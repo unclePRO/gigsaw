@@ -1,10 +1,12 @@
+"""Conversational AI scoping assistant managing iterative requirement gathering and brief synthesis."""
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from collections.abc import Sequence
 from decimal import Decimal, InvalidOperation
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -12,7 +14,12 @@ from gigsaw_ai.core.exceptions import ProviderError
 from gigsaw_ai.llm.gemini_client import STANDARD_PROVIDER_RETRY_MESSAGE, GeminiClient
 from gigsaw_ai.schemas.common import SchemaModel
 from gigsaw_ai.schemas.matching import FreelancerMatchingRequest
-from gigsaw_ai.schemas.projects import ProjectAnalysis, ProjectAnalyzeRequest, ProjectAnalyzeResponse, ProjectBudget
+from gigsaw_ai.schemas.projects import (
+    ProjectAnalysis,
+    ProjectAnalyzeRequest,
+    ProjectAnalyzeResponse,
+    ProjectBudget,
+)
 from gigsaw_ai.schemas.scoping import (
     ChatMessage,
     ProjectScopingChatRequest,
@@ -21,6 +28,7 @@ from gigsaw_ai.schemas.scoping import (
     ProjectScopingFinalizeResponse,
     ProjectScopingTitleRequest,
     ProjectScopingTitleResponse,
+    ScopingRequirementsState,
     WorkPackageFreelancerMatch,
 )
 from gigsaw_ai.services.budget_planner import BudgetPlanner
@@ -31,7 +39,14 @@ from gigsaw_ai.services.project_analyzer import (
     ProjectAnalyzer,
     canonical_service_categories,
 )
+from gigsaw_ai.services.service_registry import (
+    build_service_consultation_guidance,
+    canonicalize_service,
+    detect_services_from_text,
+)
 from gigsaw_ai.services.task_decomposer import TaskDecomposer
+
+logger = logging.getLogger(__name__)
 
 
 class _SpecAttribute(SchemaModel):
@@ -55,6 +70,17 @@ class _GeminiScopingChatOutput(SchemaModel):
     is_ready_to_finalize: bool = False
     ready_for_decomposition: bool = False
     recommended_action: Literal["continue_asking", "ready_to_finalize"] = "continue_asking"
+    # Additive structured memory & dynamic consultation fields (safe defaults for existing tests)
+    detected_services: list[str] = Field(default_factory=list)
+    question_priority: Literal["essential", "quotation", "optional", "confirmation", "none"] = "essential"
+    asked_topic: str = ""
+    merchant_confirmed_specs: list[_SpecAttribute] = Field(default_factory=list)
+    ai_suggested_specs: list[_SpecAttribute] = Field(default_factory=list)
+    missing_essential_requirements: list[str] = Field(default_factory=list)
+    missing_optional_requirements: list[str] = Field(default_factory=list)
+    service_readiness: list[_SpecAttribute] = Field(default_factory=list)
+    contradictions_or_changes: list[str] = Field(default_factory=list)
+    merchant_confirmed: bool = False
 
 
 class _GeminiScopingFinalizeOutput(SchemaModel):
@@ -66,6 +92,9 @@ class _GeminiScopingFinalizeOutput(SchemaModel):
     extracted_spec: list[_SpecAttribute] = Field(default_factory=list)
     additional_details: list[str] = Field(default_factory=list)
     detected_services: list[str] = Field(min_length=1)
+    merchant_confirmed_specs: list[_SpecAttribute] = Field(default_factory=list)
+    ai_suggested_specs: list[_SpecAttribute] = Field(default_factory=list)
+    location: str = ""
 
 
 _TRIVIAL_CONFIRMATIONS = {
@@ -82,7 +111,17 @@ _TRIVIAL_CONFIRMATIONS = {
     "finalize details",
     "proceed",
     "go ahead",
+    "just find me freelancers now",
 }
+
+_EARLY_PROCEED_PHRASES = (
+    "just find me freelancers",
+    "find me freelancers now",
+    "ready to finalize",
+    "looks good, ready",
+    "skip questions",
+    "match specialists now",
+)
 
 
 def _merge_spec(base_spec: dict[str, str], additions: Sequence[_SpecAttribute]) -> dict[str, str]:
@@ -93,6 +132,14 @@ def _merge_spec(base_spec: dict[str, str], additions: Sequence[_SpecAttribute]) 
         if key and val:
             merged[key] = val
     return merged
+
+
+def _attrs_to_dict(items: Sequence[_SpecAttribute]) -> dict[str, str]:
+    return {
+        item.key.strip(): item.value.strip()
+        for item in items
+        if item.key.strip() and item.value.strip()
+    }
 
 
 def _extract_user_chat_notes(messages: Sequence[ChatMessage], initial_goal: str) -> list[str]:
@@ -114,6 +161,67 @@ def _extract_user_chat_notes(messages: Sequence[ChatMessage], initial_goal: str)
     return notes
 
 
+def _extract_asked_questions(messages: Sequence[ChatMessage]) -> list[str]:
+    questions: list[str] = []
+    for msg in messages:
+        if msg.role != "assistant":
+            continue
+        cleaned = re.sub(r"\s+", " ", msg.content).strip()
+        if cleaned and "?" in cleaned and cleaned not in questions:
+            questions.append(cleaned)
+    return questions
+
+
+def _append_unique_question(questions: list[str], candidate: str) -> None:
+    clean = re.sub(r"\s+", " ", candidate).strip()
+    if not clean:
+        return
+    clean_lower = clean.lower()
+    for existing in questions:
+        existing_lower = existing.lower()
+        if clean_lower == existing_lower or clean_lower in existing_lower or existing_lower in clean_lower:
+            return
+    questions.append(clean)
+
+
+def _hydrate_requirements_state(
+    *,
+    initial_goal: str,
+    messages: Sequence[ChatMessage],
+    extracted_spec: dict[str, str],
+    existing_state: ScopingRequirementsState | None,
+) -> ScopingRequirementsState:
+    base = existing_state.model_copy(deep=True) if existing_state else ScopingRequirementsState()
+    if not base.original_request:
+        base.original_request = initial_goal.strip()
+
+    text_blob = " ".join(
+        [initial_goal, *(m.content for m in messages if m.role == "user"), *(str(v) for v in extracted_spec.values())]
+    )
+    inferred_services = detect_services_from_text(text_blob)
+    if not base.detected_services and inferred_services:
+        base.detected_services = inferred_services
+
+    asked = _extract_asked_questions(messages)
+    for q in asked:
+        _append_unique_question(base.asked_questions, q)
+
+    for idx, msg in enumerate(messages):
+        if msg.role == "user":
+            content = re.sub(r"\s+", " ", msg.content).strip()
+            if content:
+                turn_key = f"turn_{idx + 1}"
+                base.merchant_answers.setdefault(turn_key, content)
+
+    for k, v in extracted_spec.items():
+        clean_k = str(k).strip()
+        clean_v = str(v).strip()
+        if clean_k and clean_v and clean_k not in ("ai_suggested_tech",):
+            base.merchant_confirmed_specs[clean_k] = clean_v
+
+    return base
+
+
 def _format_spec_checklist_lines(
     *,
     project_name: str | None,
@@ -122,6 +230,7 @@ def _format_spec_checklist_lines(
     goal: str | None,
     spec: dict[str, str],
     detected_services: Sequence[str] = (),
+    ai_suggested: dict[str, str] | None = None,
 ) -> list[str]:
     lines: list[str] = []
     if project_name:
@@ -130,13 +239,17 @@ def _format_spec_checklist_lines(
         lines.append(f"- Budget: {budget} {currency}")
     if goal and goal.strip():
         lines.append(f"- Project Goal: {goal.strip()}")
+    if detected_services:
+        lines.append(f"- Requested Services: {', '.join(detected_services)}")
     for key, val in spec.items():
         if key in ("project_name", "budget", "refined_goal"):
             continue
         label = key.replace("_", " ").strip().title()
         lines.append(f"- {label}: {val}")
-    if detected_services:
-        lines.append(f"- Target Services: {', '.join(detected_services)}")
+    if ai_suggested:
+        formatted_suggestions = "; ".join(f"{k.replace('_', ' ')}: {v}" for k, v in ai_suggested.items())
+        if formatted_suggestions:
+            lines.append(f"- AI-Suggested Technical Specs (for confirmation): {formatted_suggestions}")
     return lines
 
 
@@ -150,6 +263,7 @@ def _compose_confirmed_brief(
     spec: dict[str, str],
     detected_services: Sequence[str],
     additional_details: Sequence[str],
+    ai_suggested_specs: dict[str, str] | None = None,
 ) -> str:
     """Build a concise, plain-English freelancer brief combining the improved intent, key specs, and extra notes."""
     del project_name, budget, currency, detected_services
@@ -189,6 +303,15 @@ def _compose_confirmed_brief(
     if detail_lines:
         sections.append("Key Details:\n" + "\n".join(detail_lines))
 
+    if ai_suggested_specs:
+        tech_lines = [
+            f"- {k.replace('_', ' ').strip().title()}: {re.sub(r'\s+', ' ', v).strip()}"
+            for k, v in ai_suggested_specs.items()
+            if v and v.strip()
+        ]
+        if tech_lines:
+            sections.append("Suggested Technical Specs:\n" + "\n".join(tech_lines))
+
     return "\n\n".join(sections).strip()
 
 
@@ -214,6 +337,8 @@ def _format_gathered_review(
     currency: str,
     spec: dict[str, str],
     refined_goal: str | None = None,
+    detected_services: Sequence[str] = (),
+    ai_suggested_specs: dict[str, str] | None = None,
 ) -> str:
     """Render all gathered scoping fields cleanly for merchant verification before finalizing."""
     lines = ["Here are the gathered project details. Please recheck everything carefully:"]
@@ -225,6 +350,8 @@ def _format_gathered_review(
             currency=currency,
             goal=resolved_goal,
             spec=spec,
+            detected_services=detected_services,
+            ai_suggested=ai_suggested_specs,
         )
     )
     lines.append("")
@@ -232,6 +359,15 @@ def _format_gathered_review(
         'If anything needs to be changed (project name, budget, timeline, or requirements), reply with the update; otherwise click "Finalize Details & Match Specialists" to proceed.'
     )
     return "\n".join(lines)
+
+
+def _infer_context_tags(text: str) -> list[str]:
+    lowered = text.lower()
+    known_tags = (
+        "cafe", "coffee shop", "bakery", "restaurant", "hospitality",
+        "ecommerce", "saas", "retail", "stationery", "subscription", "local business",
+    )
+    return [tag for tag in known_tags if tag in lowered]
 
 
 class ProjectScopingAssistant:
@@ -260,7 +396,19 @@ class ProjectScopingAssistant:
             )
 
         current_title = request.project_name or request.extracted_spec.get("project_name")
-        starting_budget = request.current_budget if request.current_budget is not None else _parse_decimal(request.extracted_spec.get("budget"))
+        starting_budget = (
+            request.current_budget
+            if request.current_budget is not None
+            else _parse_decimal(request.extracted_spec.get("budget"))
+        )
+        memory_state = _hydrate_requirements_state(
+            initial_goal=request.initial_goal,
+            messages=request.messages,
+            extracted_spec=request.extracted_spec,
+            existing_state=request.requirements_state,
+        )
+        service_guidance = build_service_consultation_guidance(memory_state.detected_services)
+
         context = {
             "initial_goal": request.initial_goal,
             "current_project_name": current_title,
@@ -268,6 +416,9 @@ class ProjectScopingAssistant:
             "current_budget": str(starting_budget) if starting_budget is not None else None,
             "currency": request.currency,
             "extracted_spec": request.extracted_spec,
+            "scoping_memory": memory_state.model_dump(mode="json"),
+            "already_asked_questions": memory_state.asked_questions,
+            "service_guidance": service_guidance,
         }
         try:
             res = await self.llm.generate_structured(
@@ -303,20 +454,90 @@ class ProjectScopingAssistant:
             or (resolved_budget is not None and starting_budget is None)
         )
 
-        # Never pre-finalize on the first ever prompt (Turn 0) before conversation begins
-        has_user_reply = any(m.role == "user" for m in request.messages)
+        # Update structured scoping memory transparently without breaking legacy clients
+        detected = canonical_service_categories(
+            res.detected_services or memory_state.detected_services
+        )
+        memory_state.detected_services = detected
+        if res.refined_goal.strip():
+            memory_state.ai_interpretation = res.refined_goal.strip()
+
+        confirmed_additions = _attrs_to_dict(res.merchant_confirmed_specs)
+        for k, v in _attrs_to_dict(res.extracted_spec).items():
+            if k not in ("project_name", "budget", "refined_goal", "ai_suggested_tech"):
+                memory_state.merchant_confirmed_specs[k] = v
+        memory_state.merchant_confirmed_specs.update(confirmed_additions)
+
+        suggested_additions = _attrs_to_dict(res.ai_suggested_specs)
+        memory_state.ai_suggested_specs.update(suggested_additions)
+        memory_state.ai_inferred_info.update(suggested_additions)
+
+        if res.contradictions_or_changes:
+            for change in res.contradictions_or_changes:
+                cleaned_change = change.strip()
+                if cleaned_change and cleaned_change not in memory_state.contradictions_or_changes:
+                    memory_state.contradictions_or_changes.append(cleaned_change)
+
+        readiness_map: dict[str, Literal["needs_info", "ready_for_matching"]] = {}
+        for attr in res.service_readiness:
+            svc_key = canonicalize_service(attr.key)
+            val_norm = attr.value.strip().lower()
+            readiness_map[svc_key] = (
+                "ready_for_matching" if "ready" in val_norm else "needs_info"
+            )
+        for svc in detected:
+            readiness_map.setdefault(
+                svc,
+                "ready_for_matching" if res.completeness_score >= 0.75 else "needs_info",
+            )
+        memory_state.service_readiness = readiness_map
+        memory_state.missing_requirements = [
+            item.strip() for item in res.missing_essential_requirements if item.strip()
+        ]
+        memory_state.optional_refinements = [
+            item.strip() for item in res.missing_optional_requirements if item.strip()
+        ]
+
+        user_messages = [m for m in request.messages if m.role == "user"]
+        has_user_reply = bool(user_messages)
+        latest_user_text = user_messages[-1].content.strip().lower() if user_messages else ""
+        explicit_early_proceed = any(phrase in latest_user_text for phrase in _EARLY_PROCEED_PHRASES) or (
+            latest_user_text.rstrip(".!") in _TRIVIAL_CONFIRMATIONS
+        )
+
+        # Check whether essential matching blockers (e.g., on-site location or essential scope) remain
+        all_services_ready = (
+            all(status == "ready_for_matching" for status in readiness_map.values())
+            if readiness_map
+            else True
+        )
+        llm_wants_finalize = bool(
+            res.is_ready_to_finalize
+            or res.ready_for_decomposition
+            or res.recommended_action == "ready_to_finalize"
+        )
+        # Never pre-finalize on Turn 0; allow ready_to_finalize when services are ready or user explicitly confirms
         is_ready = bool(
             has_user_reply
             and (
-                res.is_ready_to_finalize
-                or res.ready_for_decomposition
-                or res.recommended_action == "ready_to_finalize"
+                explicit_early_proceed
+                or (
+                    llm_wants_finalize
+                    and (not memory_state.missing_requirements or all_services_ready)
+                )
             )
         )
+
         action: Literal["continue_asking", "ready_to_finalize"] = (
             "ready_to_finalize" if is_ready else "continue_asking"
         )
         clarifying_q = None if is_ready else (res.clarifying_question or res.reply)
+        if clarifying_q:
+            _append_unique_question(memory_state.asked_questions, clarifying_q)
+
+        memory_state.awaiting_confirmation = is_ready and not (res.merchant_confirmed or explicit_early_proceed)
+        memory_state.merchant_confirmed = bool(res.merchant_confirmed or (latest_user_text.rstrip(".!") in _TRIVIAL_CONFIRMATIONS))
+
         final_reply = (
             _format_gathered_review(
                 initial_goal=request.initial_goal,
@@ -325,6 +546,8 @@ class ProjectScopingAssistant:
                 currency=resolved_currency,
                 spec=merged_spec,
                 refined_goal=res.refined_goal,
+                detected_services=detected,
+                ai_suggested_specs=memory_state.ai_suggested_specs or None,
             )
             if is_ready
             else res.reply
@@ -352,6 +575,7 @@ class ProjectScopingAssistant:
             is_ready_to_finalize=is_ready,
             ready_for_decomposition=is_ready,
             recommended_action=action,
+            requirements_state=memory_state,
         )
 
     async def suggest_title(self, request: ProjectScopingTitleRequest) -> ProjectScopingTitleResponse:
@@ -389,7 +613,7 @@ class ProjectScopingAssistant:
         *,
         budget: Decimal,
         currency: str,
-    ) -> tuple[str, str, str, list[str], dict[str, str], list[str]]:
+    ) -> tuple[str, str, str, list[str], dict[str, str], list[str], dict[str, str], str]:
         goal = request.initial_goal.strip()
         user_notes = _extract_user_chat_notes(request.messages, goal)
         spec = dict(request.extracted_spec)
@@ -397,11 +621,13 @@ class ProjectScopingAssistant:
             goal + " " + " ".join(user_notes) + " " + " ".join(str(v) for v in spec.values())
         ).lower()
 
-        detected = [
-            category
-            for category, aliases in SERVICE_ALIASES.items()
-            if any(alias in combined_text for alias in aliases)
-        ]
+        detected = detect_services_from_text(combined_text)
+        if not detected:
+            detected = [
+                category
+                for category, aliases in SERVICE_ALIASES.items()
+                if any(alias in combined_text for alias in aliases)
+            ]
         if not detected:
             cleaned = re.sub(r"^(i need|looking for|hire|want|build|create)\s+(a|an|some)?\s*", "", goal.lower()).strip()
             detected = [cleaned[:60] if cleaned else "custom service"]
@@ -430,6 +656,13 @@ class ProjectScopingAssistant:
         updated_spec["project_name"] = title
         updated_spec["budget"] = str(budget)
 
+        ai_suggested = (
+            dict(request.requirements_state.ai_suggested_specs)
+            if request.requirements_state
+            else {}
+        )
+        location = spec.get("location", "")
+
         full_brief = _compose_confirmed_brief(
             executive_brief=executive_brief,
             refined_goal=refined_goal,
@@ -439,25 +672,42 @@ class ProjectScopingAssistant:
             spec=updated_spec,
             detected_services=detected,
             additional_details=user_notes,
+            ai_suggested_specs=ai_suggested or None,
         )
-        return title, refined_goal, full_brief, detected, updated_spec, user_notes
+        return title, refined_goal, full_brief, detected, updated_spec, user_notes, ai_suggested, location
 
     async def finalize(self, request: ProjectScopingFinalizeRequest) -> ProjectScopingFinalizeResponse:
         spec_budget = _parse_decimal(request.extracted_spec.get("budget"))
+        has_explicit_budget = request.budget is not None or spec_budget is not None
         fallback_budget = request.budget if request.budget is not None else (spec_budget or Decimal("1200"))
+
+        memory_state = _hydrate_requirements_state(
+            initial_goal=request.initial_goal,
+            messages=request.messages,
+            extracted_spec=request.extracted_spec,
+            existing_state=request.requirements_state,
+        )
 
         if self.llm.settings.is_demo:
             currency = (request.currency or "USD").strip().upper() or "USD"
             budget = fallback_budget
-            title, refined_goal, enriched_brief, detected, updated_spec, additional_details = (
-                self._synthesize_demo_brief(request, budget=budget, currency=currency)
-            )
+            (
+                title,
+                refined_goal,
+                enriched_brief,
+                detected,
+                updated_spec,
+                additional_details,
+                ai_suggested,
+                location,
+            ) = self._synthesize_demo_brief(request, budget=budget, currency=currency)
         else:
             requested_title = request.project_name or request.extracted_spec.get("project_name")
             context = {
                 "initial_goal": request.initial_goal,
                 "messages": [m.model_dump() for m in request.messages],
                 "extracted_spec": request.extracted_spec,
+                "scoping_memory": memory_state.model_dump(mode="json"),
                 "budget": str(request.budget) if request.budget is not None else (str(spec_budget) if spec_budget is not None else None),
                 "currency": request.currency,
                 "project_name": requested_title,
@@ -475,11 +725,24 @@ class ProjectScopingAssistant:
 
             title = synthesized.project_name.strip() or requested_title or "New Launch Project"
             detected = canonical_service_categories(synthesized.detected_services)
-            budget = synthesized.final_budget if synthesized.final_budget is not None else fallback_budget
+            if synthesized.final_budget is not None:
+                budget = synthesized.final_budget
+                has_explicit_budget = True
+            else:
+                budget = fallback_budget
             currency = (synthesized.currency or request.currency or "USD").strip().upper() or "USD"
             updated_spec = _merge_spec(request.extracted_spec, synthesized.extracted_spec)
+            confirmed_map = _attrs_to_dict(synthesized.merchant_confirmed_specs)
+            if confirmed_map:
+                updated_spec.update(confirmed_map)
             updated_spec["project_name"] = title
             updated_spec["budget"] = str(budget)
+
+            ai_suggested = dict(memory_state.ai_suggested_specs)
+            ai_suggested.update(_attrs_to_dict(synthesized.ai_suggested_specs))
+            location = synthesized.location.strip() or updated_spec.get("location", "")
+            if location and not updated_spec.get("location"):
+                updated_spec["location"] = location
 
             refined_goal = synthesized.business_goal.strip() or synthesized.enriched_brief.strip()
             additional_details = [d.strip() for d in synthesized.additional_details if d.strip()] or _extract_user_chat_notes(
@@ -495,7 +758,15 @@ class ProjectScopingAssistant:
                 spec=updated_spec,
                 detected_services=detected,
                 additional_details=additional_details,
+                ai_suggested_specs=ai_suggested or None,
             )
+
+        memory_state.detected_services = detected
+        memory_state.ai_interpretation = refined_goal
+        memory_state.ai_suggested_specs = ai_suggested
+        memory_state.merchant_confirmed = True
+        memory_state.awaiting_confirmation = False
+        memory_state.service_readiness = {svc: "ready_for_matching" for svc in detected}
 
         analysis_result: ProjectAnalyzeResponse | None = None
         freelancer_matches: list[WorkPackageFreelancerMatch] = []
@@ -551,14 +822,18 @@ class ProjectScopingAssistant:
                     alloc.service_category.lower(): alloc.recommended_amount
                     for alloc in budget_plan.allocations
                 }
+                context_tags = _infer_context_tags(f"{title} {enriched_brief} {request.initial_goal}")
+                resolved_location = (location or updated_spec.get("location") or "").strip() or None
+                assigned_top_ids: list[str] = []
 
-                async def _match_pkg(pkg):
-                    alloc_amt = alloc_by_cat.get(pkg.service_category.lower())
+                for pkg in packages:
+                    alloc_amt = alloc_by_cat.get(pkg.service_category.lower()) if has_explicit_budget else None
                     match_brief = (
                         f"{pkg.description}\n\n{enriched_brief}"
                         if pkg.description
                         else enriched_brief
                     )
+                    # Coordinate across multiple services in the same project to avoid duplicate top assignments
                     match_res = await self.freelancer_matcher.match(
                         FreelancerMatchingRequest(
                             service_category=pkg.service_category,
@@ -566,17 +841,37 @@ class ProjectScopingAssistant:
                             brief=match_brief,
                             budget=alloc_amt,
                             max_delivery_days=pkg.estimated_days,
+                            location=resolved_location,
+                            project_context_tags=context_tags,
+                            exclude_freelancer_ids=list(assigned_top_ids),
                             limit=3,
                         )
                     )
-                    return WorkPackageFreelancerMatch(
-                        work_package_id=pkg.work_package_id,
-                        service_category=pkg.service_category,
-                        allocated_amount=alloc_amt,
-                        match_result=match_res,
-                    )
+                    # If exclusion emptied the pool (small pool), re-run without excluding prior top picks
+                    if not match_res.matches and assigned_top_ids:
+                        match_res = await self.freelancer_matcher.match(
+                            FreelancerMatchingRequest(
+                                service_category=pkg.service_category,
+                                required_skills=pkg.required_skills,
+                                brief=match_brief,
+                                budget=alloc_amt,
+                                max_delivery_days=pkg.estimated_days,
+                                location=resolved_location,
+                                project_context_tags=context_tags,
+                                limit=3,
+                            )
+                        )
+                    if match_res.matches:
+                        assigned_top_ids.append(match_res.matches[0].freelancer.freelancer_id)
 
-                freelancer_matches = list(await asyncio.gather(*(_match_pkg(pkg) for pkg in packages)))
+                    freelancer_matches.append(
+                        WorkPackageFreelancerMatch(
+                            work_package_id=pkg.work_package_id,
+                            service_category=pkg.service_category,
+                            allocated_amount=alloc_amt,
+                            match_result=match_res,
+                        )
+                    )
 
         return ProjectScopingFinalizeResponse(
             project_name=title,
@@ -589,4 +884,5 @@ class ProjectScopingAssistant:
             additional_details=additional_details,
             analysis_result=analysis_result,
             freelancer_matches=freelancer_matches,
+            requirements_state=memory_state,
         )
